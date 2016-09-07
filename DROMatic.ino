@@ -27,6 +27,10 @@ int totalChannels = 0;
 int minPPM = 1200;
 int maxPPM = 1400;
 
+String suffix;
+String displayHour;
+String displayMin;
+String displayDay;
 int hour;
 int minute;
 int sec;
@@ -34,10 +38,13 @@ int day;
 int month;
 int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+char* meridiem;
 
 int currentChannelIndex;
+int currentChannelSize;
 int currentSessionIndex;
 int currentAlphaIndex = 0;
+
 const char* alphabet[37] = { 
 	" ", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", 
 	"N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", 
@@ -63,10 +70,6 @@ const char* displayNames[17][3] = {
 	{ "RPT", "SESSION REPEAT", "CONFIGURATION" }
 };
 const char* months[12] = { "Jan", "Feb", "Mar", "Apl", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-String suffix;
-String displayHour;
-String displayMin;
-String displayDay;
 
 byte upArrow[8] = {
 	B00000,
@@ -132,6 +135,20 @@ void setCropData(JsonObject& data){
 	crop.close();
 }
 
+JsonObject& getChannelData(){
+	StaticJsonBuffer<512> buffer;
+	File channel = SD.open(cropName + "/Channels/SysCh" + currentChannelIndex + "/channel.dro", FILE_READ);
+	return buffer.parseObject(channel.readString());
+}
+
+void setChannelData(JsonObject& data){
+	char buffer[128];
+	File channel = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/CHANNEL.DRO", O_WRITE | O_TRUNC);
+	data.printTo(buffer, sizeof(buffer));
+	channel.print(buffer);
+	channel.close();
+}
+
 void setup()
 {
 	lcd.createChar(0, upArrow);
@@ -193,6 +210,16 @@ void loop()
 			screenMatrix();
 			delay(250);
 		}
+		if (screenName == "CHNUM"){}
+		if (screenName == "CHSIZE"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
 	}
 	if (Key == 99) {
 		//Up
@@ -214,6 +241,10 @@ void loop()
 		if (screenName == "CHNUM"){
 
 		}
+		if (screenName == "CHSIZE"){
+			setChannelSize(10);
+			delay(250);
+		}
 	}
 	if (Key == 255){
 		//Down
@@ -234,6 +265,10 @@ void loop()
 		}
 		if (screenName == "CHNUM"){
 			
+		}
+		if (screenName == "CHSIZE"){
+			setChannelSize(-10);
+			delay(250);
 		}
 	}
 	if (Key == 408) {
@@ -276,6 +311,16 @@ void loop()
 			screenMatrix();
 			delay(250);
 		}
+		if (screenName == "CHNUM"){}
+		if (screenName == "CHSIZE"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX - 1;
+			screenMatrix();
+			delay(250);
+		}
 	}
 	if (Key == 639) {
 		//Select
@@ -290,14 +335,13 @@ void loop()
 				printDisplayNames(menus.front());
 				printScrollArrows();
 			}else{
-				//screenName = menus[menuIndex];
 				screenName = menusHistory.back();
 				if (screenName == "DATETIME"){
 					lcd.blink();
 					lcd.clear();
 					lcd.home();
 					captureDateTime();
-					lcd.print(String(displayHour) + ":" + String(displayMin) + "AM " + String(months[month]) + " " + String(displayDay));
+					lcd.print(String(displayHour) + ":" + String(displayMin) + meridiem + " " + String(months[month]) + " " + String(displayDay));
 					lcd.setCursor(0, 1);
 					lcd.print(String(year)+" <back> <ok>");
 					lcd.setCursor(1, 0);
@@ -322,6 +366,20 @@ void loop()
 					lcd.setCursor(10,1);
 					lcd.print("<save>");
 					lcd.setCursor(1,0);
+				}
+				if (screenName == "CHSIZE"){
+					lcd.clear();
+					JsonObject& data = getChannelData();
+					currentChannelSize = data["size"];
+					lcd.clear();
+					String channelSize = (currentChannelSize < 100) ? (currentChannelSize < 10) ? "00" + String(currentChannelSize) : "0" + String(currentChannelSize) : String(currentChannelSize);
+					lcd.print(channelSize+" (ml) volume");
+					lcd.setCursor(0, 1);
+					lcd.print("<back>      <ok>");
+					cursorX = 2;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+					lcd.blink();
 				}
 			}
 			delay(350);
@@ -365,7 +423,28 @@ void loop()
 				printScrollArrows();
 				delay(350);
 			}
-			
+		}
+		if (screenName == "CHNUM"){}
+		if (screenName == "CHSIZE"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getChannelData();
+				data["size"] = currentChannelSize;
+				setChannelData(data);
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				currentChannelSize = 0;
+				menusHistory.pop_back();
+				menuIndex = 0;
+				screenName = "";
+				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+				getDirectoryMenus(prevLvl);
+				lcd.clear();
+				lcd.noBlink();
+				prevLvl.close();
+				printDisplayNames(menus.front());
+				printScrollArrows();
+				delay(350);
+			}
 		}
 	}
 
@@ -374,7 +453,7 @@ void loop()
 void openHomeScreen(){
 	captureDateTime();
 	lcd.clear();
-	lcd.print(displayHour + ":" + displayMin + "PM " + months[rtc.getTime().mon] + " " + displayDay);
+	lcd.print(displayHour + ":" + displayMin + meridiem + " " + months[rtc.getTime().mon] + " " + displayDay);
 	lcd.setCursor(0, 1);
 	lcd.print("PPM:1275 PH:6.0");
 	lcd.home();
@@ -570,12 +649,14 @@ void printDisplayNames(String menu){
 		lcd.print("SYSTEM");
 		lcd.setCursor(0, 1);
 		lcd.print("CHANNEL " + String(menuIndex+1));
+		currentChannelIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
 	}else if(isSession){
 		lcd.print("CHANNEL");
 		lcd.setCursor(0, 1);
 		lcd.print("SESSION " + String(menuIndex+1));
+		currentSessionIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
 	}else{
@@ -660,11 +741,12 @@ void setDateTime(int dir){
 	lcd.clear();
 	captureDateTimeDisplays();
 
-	lcd.print(String(displayHour) + ":" + String(displayMin) + "AM " + String(months[month]) + " " + String(displayDay));
+	lcd.print(String(displayHour) + ":" + String(displayMin) + meridiem +" " + String(months[month]) + " " + String(displayDay));
 	lcd.setCursor(0, 1);
 	lcd.print(String(year)+" <back> <ok>");
 	lcd.setCursor(cursorX, cursorY);
 }
+	
 	void captureDateTime(){
 		hour = rtc.getTime().hour;
 		minute = rtc.getTime().min;
@@ -674,12 +756,45 @@ void setDateTime(int dir){
 		year = rtc.getTime().year;
 		captureDateTimeDisplays();
 	}
+		
 		void captureDateTimeDisplays(){
+			int hourConversion = (hour == 0) ? 12 : hour;
+
+			//Thanks Romans...
+			int hoursKey[12][2] = {
+				{ 13, 1 }, { 14, 2 }, { 15, 3 }, { 16, 4 }, { 17, 5 }, { 18, 6 }, { 19, 7 }, { 20, 8 }, { 21, 9 }, { 22, 10 }, { 23, 11 }, { 24, 12 }
+			};
+			if (hourConversion > 12){
+				for (int i = 0; i < 12; i++){
+					if (hourConversion == hoursKey[i][0]){
+						hourConversion = hoursKey[i][1];
+					}
+				}
+			}
+
+			meridiem = (hour >= 12 && hour < 24) ? "PM" : "AM";
 			suffix = (day == 1 || day == 21 || day == 31) ? "st" : (day == 2 || day == 22) ? "nd" : (day == 3 || day == 23) ? "rd" : "th";
-			displayHour = (hour < 10) ? "0" + String(hour) : String(hour);
+			displayHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
 			displayMin = (minute < 10) ? "0" + String(minute) : String(minute);
 			displayDay = (day < 10) ? "0" + String(day) + suffix : String(day) + suffix;
+			
 		}
+
+void setChannelSize(int dir){
+	if (cursorY == 0){
+		if (cursorX == 2){
+			currentChannelSize = currentChannelSize + dir;
+			lcd.clear();
+			currentChannelSize = (currentChannelSize < 0) ? 0 : (currentChannelSize > 500) ? 500 : currentChannelSize;
+			String channelSize = (currentChannelSize < 100) ? (currentChannelSize < 10) ? "00" + String(currentChannelSize) : "0" + String(currentChannelSize) : String(currentChannelSize);
+			lcd.print(channelSize + " (ml) volume");
+			lcd.setCursor(0, 1);
+			lcd.print("<back>      <ok>");
+			lcd.setCursor(cursorX, cursorY);
+
+		}
+	}
+}
 
 void buildCrop(){
 	const int bufferSize = 64;
