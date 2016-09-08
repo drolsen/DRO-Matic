@@ -42,6 +42,8 @@ char* meridiem;
 
 int currentChannelIndex;
 int currentChannelSize;
+int currentCalibrationSize;
+int currentCalibrationRots;
 int currentSessionIndex;
 int currentAlphaIndex = 0;
 
@@ -220,6 +222,15 @@ void loop()
 			screenMatrix();
 			delay(250);
 		}
+		if (screenName == "CHCALIB"){
+			matrix = {
+				{ { 10, 10 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
 	}
 	if (Key == 99) {
 		//Up
@@ -245,6 +256,10 @@ void loop()
 			setChannelSize(10);
 			delay(250);
 		}
+		if (screenName == "CHCALIB"){
+			setCalibrationSize(1);
+			delay(250);
+		}
 	}
 	if (Key == 255){
 		//Down
@@ -268,6 +283,10 @@ void loop()
 		}
 		if (screenName == "CHSIZE"){
 			setChannelSize(-10);
+			delay(250);
+		}
+		if (screenName == "CHCALIB"){
+			setCalibrationSize(-1);
 			delay(250);
 		}
 	}
@@ -315,6 +334,15 @@ void loop()
 		if (screenName == "CHSIZE"){
 			matrix = {
 				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX - 1;
+			screenMatrix();
+			delay(250);
+		}
+		if (screenName == "CHCALIB"){
+			matrix = {
+				{ { 10, 10 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
 			cursorX = cursorX - 1;
@@ -381,6 +409,22 @@ void loop()
 					lcd.setCursor(cursorX, cursorY);
 					lcd.blink();
 				}
+				if (screenName == "CHCALIB"){
+					lcd.clear();
+					lcd.home();
+					JsonObject& data = getChannelData();
+					currentCalibrationSize = data["size"];
+					currentCalibrationRots = data["calibration"];
+					String targetSize = (currentCalibrationSize >= 10 && currentCalibrationSize <= 99) ? "0" + String(currentCalibrationSize) : (currentCalibrationSize < 10 && currentCalibrationSize >= 0) ? "00" + String(currentCalibrationSize) : String(currentCalibrationSize);
+					String rotsSize = (currentCalibrationRots >= 10 && currentCalibrationRots <= 99) ? "0" + String(currentCalibrationRots) : (currentCalibrationRots < 10 && currentCalibrationRots >= 0) ? "00" + String(currentCalibrationRots) : String(currentCalibrationRots);
+					lcd.print(targetSize + "(ml) " + rotsSize + " rots");
+					lcd.setCursor(0,1);
+					lcd.print("<back>      <ok>");
+					lcd.blink();
+					cursorX = 10;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+				}
 			}
 			delay(350);
 		}
@@ -446,10 +490,36 @@ void loop()
 				delay(350);
 			}
 		}
+		if (screenName == "CHCALIB"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getChannelData();
+				data["calibration"] = currentCalibrationRots;
+				setChannelData(data);
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				currentChannelSize = 0;
+				screenName = "";
+				currentCalibrationRots = 0;
+				currentCalibrationSize = 0;
+				menusHistory.pop_back();
+				menuIndex = 0;
+				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+				getDirectoryMenus(prevLvl);
+				lcd.clear();
+				lcd.noBlink();
+				prevLvl.close();
+				printDisplayNames(menus.front());
+				printScrollArrows();
+				delay(350);
+			}
+		}
 	}
 
 }
-
+int division(int sum, int size)
+{
+	return sum / size;
+}
 void openHomeScreen(){
 	captureDateTime();
 	lcd.clear();
@@ -795,6 +865,31 @@ void setChannelSize(int dir){
 		}
 	}
 }
+
+void setCalibrationSize(int dir){
+	if (cursorX == 10){
+		lcd.clear();
+		String displayRots = "00";
+		String displaySize = "00";
+		currentCalibrationRots = currentCalibrationRots + dir;
+		if (currentCalibrationRots < 0) { currentCalibrationRots = 0; }
+		if (currentCalibrationRots >= 10 && currentCalibrationRots < 100) { displayRots = "0"; }
+		if (currentCalibrationRots >= 100) { displayRots = ""; }
+		displayRots = displayRots + String(currentCalibrationRots);
+
+		if (currentCalibrationSize < 0) { currentCalibrationSize = 0; }
+		if (currentCalibrationSize >= 10 && currentCalibrationSize < 100) { displaySize = "0"; }
+		if (currentCalibrationSize >= 100) { displaySize = ""; }
+		displaySize = displaySize + String(currentCalibrationSize);
+
+		lcd.home();
+		lcd.print(displaySize+"(ml) " + displayRots + " rots");
+		lcd.setCursor(0, 1);
+		lcd.print("<back>      <ok>");
+		lcd.setCursor(cursorX, cursorY);
+	}
+}
+
 
 void buildCrop(){
 	const int bufferSize = 64;
