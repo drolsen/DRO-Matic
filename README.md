@@ -27,7 +27,7 @@ Thus, there is a lot of a screens to this little OS:
 ### System Settings
 - **Date/Time Configuration** = Allows you to set the date and time of the DROMatic OS
 - **Number of Channels** = Allows you to set how many total solutions this crop will be dosed with (max is 10)
-- **EC/PPM Range Configuration** = Sets the desired range of EC/PPM you would like your doseing to maintain for this crop
+- **EC/PPM Range Configuration** = Sets the desired range of EC/PPM you would like your DROMatic to maintain for this crop
 - **Load Crop** = Load an existing crop project on your SD card
 - **New Crop** = Start a brand new crop project on your SD card
 - **Delete Crop** = Delete the available listed crops on SD card (except for currently loaded crop)
