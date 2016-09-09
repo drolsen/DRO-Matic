@@ -59,6 +59,7 @@ int currentChannelSize;
 int currentCalibrationSize;
 int currentCalibrationRots;
 int currentSessionAmount;
+int currentSessionDelay;
 int currentSessionIndex;
 int currentAlphaIndex = 0;
 
@@ -193,6 +194,7 @@ void setup()
 		lcd.print("SD Card Required");
 		lcd.setCursor(0,1);
 		lcd.print("Insert And Rest");
+		screenName = "REQUIREDSD";
 	}else{
 		coreInit();
 	}
@@ -278,6 +280,15 @@ void loop()
 			screenMatrix();
 			delay(250);
 		}
+		if (screenName == "DLY"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
 	}
 	if (Key == 99) {
 		//Up
@@ -315,6 +326,10 @@ void loop()
 			setSessionDateTime(1);
 			delay(250);
 		}
+		if (screenName == "DLY"){
+			setSessionDelay(1);
+			delay(250);
+		}
 	}
 	if (Key == 255){
 		//Down
@@ -350,6 +365,10 @@ void loop()
 		}
 		if (screenName == "STR"){
 			setSessionDateTime(-1);
+			delay(250);
+		}
+		if (screenName == "DLY"){
+			setSessionDelay(-1);
 			delay(250);
 		}
 	}
@@ -427,6 +446,15 @@ void loop()
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
 			cursorX = cursorX - 1;
+			screenMatrix();
+			delay(250);
+		}
+		if (screenName == "DLY"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
 			screenMatrix();
 			delay(250);
 		}
@@ -532,6 +560,21 @@ void loop()
 					lcd.setCursor(1, 0);
 					cursorX = 1;
 					cursorY = 0;
+				}
+				if (screenName == "DLY"){
+					lcd.clear();
+					lcd.home();
+					JsonObject& data = getSessionData();
+					currentSessionDelay = data["delay"];
+					String displayDelay = (currentSessionDelay >= 10 && currentSessionDelay <= 99) ? "0" + String(currentSessionDelay) : (currentSessionDelay < 10 && currentSessionDelay >= 0) ? "00" + String(currentSessionDelay) : String(currentSessionDelay);
+
+					lcd.print(displayDelay + "(sec)  delay");
+					lcd.setCursor(0, 1);
+					lcd.print("<back>      <ok>");
+					cursorX = 2;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+					lcd.blink();
 				}
 			}
 			delay(350);
@@ -674,6 +717,27 @@ void loop()
 				menusHistory.pop_back();
 				menuIndex = 0;
 				screenName = "";
+				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+				getDirectoryMenus(prevLvl);
+				lcd.clear();
+				lcd.noBlink();
+				prevLvl.close();
+				printDisplayNames(menus.front());
+				printScrollArrows();
+				delay(350);
+			}
+		}
+		if (screenName == "DLY"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getSessionData();
+				data["delay"] = currentSessionDelay;
+				setSessionData(data);
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				currentSessionDelay = 0;
+				screenName = "";
+				menusHistory.pop_back();
+				menuIndex = 0;
 				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
 				getDirectoryMenus(prevLvl);
 				lcd.clear();
@@ -1148,6 +1212,27 @@ void setSessionDateTime(int dir){
 			displaySessionDay = (sessionDay < 10) ? "0" + String(sessionDay) + sessionSuffix : String(sessionDay) + sessionSuffix;
 		}
 
+void setSessionDelay(int dir){
+	if (cursorX == 2){
+		lcd.clear();
+		String prefix = "00";
+		currentSessionDelay = currentSessionDelay + dir;
+		if (currentSessionDelay < 10){
+			currentSessionDelay == 10;
+		}
+		if (currentSessionDelay >= 10 && currentSessionDelay < 100){
+			prefix = "0";
+		}
+		if (currentSessionDelay >= 100){
+			prefix = "";
+		}
+		String displayDelay = prefix + String(currentSessionDelay);
+		lcd.print(displayDelay + "(sec)  delay");
+		lcd.setCursor(0, 1);
+		lcd.print("<back>      <ok>");
+		lcd.setCursor(cursorX, cursorY);
+	}
+}
 
 void buildCrop(){
 	const int bufferSize = 64;
