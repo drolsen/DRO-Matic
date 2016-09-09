@@ -1,10 +1,11 @@
-#include <DS3231.h>
 #include <LiquidCrystal.h>
 #include <SPI.h>
 #include <SD.h>
 #include <StandardCplusplus.h>
-#include <vector>
+#include <StandardCplusplus\vector>
+#include <StandardCplusplus\ctime>
 #include <ArduinoJson\ArduinoJson.h>
+#include <DS3231.h>
 DS3231  rtc(SDA, SCL);
 using namespace std;
 
@@ -38,12 +39,26 @@ int day;
 int month;
 int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+char* daysOfWeek[7] = {"Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"};
 char* meridiem;
+
+String sessionSuffix;
+String displaySessionHour;
+String displaySessionMin;
+String displaySessionDay;
+int sessionHour;
+int sessionMinute;
+int sessionSec;
+int sessionDay;
+int sessionMonth;
+int sessionYear;
+char* sessionMeridiem;
 
 int currentChannelIndex;
 int currentChannelSize;
 int currentCalibrationSize;
 int currentCalibrationRots;
+int currentSessionAmount;
 int currentSessionIndex;
 int currentAlphaIndex = 0;
 
@@ -139,7 +154,7 @@ void setCropData(JsonObject& data){
 
 JsonObject& getChannelData(){
 	StaticJsonBuffer<512> buffer;
-	File channel = SD.open(cropName + "/Channels/SysCh" + currentChannelIndex + "/channel.dro", FILE_READ);
+	File channel = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/CHANNEL.DRO", FILE_READ);
 	return buffer.parseObject(channel.readString());
 }
 
@@ -150,6 +165,20 @@ void setChannelData(JsonObject& data){
 	channel.print(buffer);
 	channel.close();
 }
+
+	JsonObject& getSessionData(){
+		StaticJsonBuffer<512> buffer;
+		File session = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + currentSessionIndex + "/SESSION.DRO", FILE_READ);
+		return buffer.parseObject(session.readString());
+	}
+
+		void setSessionData(JsonObject& data){
+			char sessionBuffer[1024];
+			File session = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + currentSessionIndex + "/SESSION.DRO", O_WRITE | O_TRUNC);
+			data.printTo(sessionBuffer, sizeof(sessionBuffer));
+			session.print(sessionBuffer);
+			session.close();
+		}
 
 void setup()
 {
@@ -231,6 +260,24 @@ void loop()
 			screenMatrix();
 			delay(250);
 		}
+		if (screenName == "AMT"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
+		if (screenName == "STR"){
+			matrix = {
+				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
+				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
 	}
 	if (Key == 99) {
 		//Up
@@ -260,6 +307,14 @@ void loop()
 			setCalibrationSize(1);
 			delay(250);
 		}
+		if (screenName == "AMT"){
+			setSessionAmount(10);
+			delay(250);
+		}
+		if (screenName == "STR"){
+			setSessionDateTime(1);
+			delay(250);
+		}
 	}
 	if (Key == 255){
 		//Down
@@ -287,6 +342,14 @@ void loop()
 		}
 		if (screenName == "CHCALIB"){
 			setCalibrationSize(-1);
+			delay(250);
+		}
+		if (screenName == "AMT"){
+			setSessionAmount(-10);
+			delay(250);
+		}
+		if (screenName == "STR"){
+			setSessionDateTime(-1);
 			delay(250);
 		}
 	}
@@ -344,6 +407,24 @@ void loop()
 			matrix = {
 				{ { 10, 10 } },
 				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX - 1;
+			screenMatrix();
+			delay(250);
+		}
+		if (screenName == "AMT"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+			cursorX = cursorX - 1;
+			screenMatrix();
+			delay(250);
+		}
+		if (screenName == "STR"){
+			matrix = {
+				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
+				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
 			cursorX = cursorX - 1;
 			screenMatrix();
@@ -425,6 +506,33 @@ void loop()
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
 				}
+				if (screenName == "AMT"){
+					lcd.clear();
+					lcd.home();
+					JsonObject& data = getSessionData();
+					currentSessionAmount = data["amount"];
+					String displayAmount = (currentSessionAmount >= 10 && currentSessionAmount <= 99) ? "0" + String(currentSessionAmount) : (currentSessionAmount < 10 && currentSessionAmount >= 0) ? "00" + String(currentSessionAmount) : String(currentSessionAmount);
+
+					lcd.print(displayAmount+"(ml) volume");
+					lcd.setCursor(0, 1);
+					lcd.print("<back>      <ok>");
+					cursorX = 2;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+					lcd.blink();
+				}
+				if (screenName == "STR"){
+					lcd.blink();
+					lcd.clear();
+					lcd.home();
+					captureSessionDateTime();
+					lcd.print(String(displaySessionHour) + ":" + String(displaySessionMin) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(displaySessionDay));
+					lcd.setCursor(0, 1);
+					lcd.print(String(sessionYear) + " <back> <ok>");
+					lcd.setCursor(1, 0);
+					cursorX = 1;
+					cursorY = 0;
+				}
 			}
 			delay(350);
 		}
@@ -503,6 +611,69 @@ void loop()
 				currentCalibrationSize = 0;
 				menusHistory.pop_back();
 				menuIndex = 0;
+				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+				getDirectoryMenus(prevLvl);
+				lcd.clear();
+				lcd.noBlink();
+				prevLvl.close();
+				printDisplayNames(menus.front());
+				printScrollArrows();
+				delay(350);
+			}
+		}
+		if (screenName == "AMT"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getSessionData();
+				data["amount"] = currentSessionAmount;
+				setSessionData(data);
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				currentSessionAmount = 0;
+				screenName = "";
+				menusHistory.pop_back();
+				menuIndex = 0;
+				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+				getDirectoryMenus(prevLvl);
+				lcd.clear();
+				lcd.noBlink();
+				prevLvl.close();
+				printDisplayNames(menus.front());
+				printScrollArrows();
+				delay(350);
+			}
+		}
+		if (screenName == "STR"){
+			if (cursorX == 13 && cursorY == 1){
+				//learn to compile sessionTime into string that can be churned over
+				JsonObject& data = getSessionData();
+
+				StaticJsonBuffer<64> dateBuffer;
+				StaticJsonBuffer<32> timeBuffer;
+				JsonArray& date = dateBuffer.createArray();
+				JsonArray& time = timeBuffer.createArray();
+				time.add(sessionHour);
+				time.add(sessionMinute);
+				time.add(sessionSec);
+
+				date.add(sessionDay);
+				date.add(sessionMonth);
+				date.add(sessionYear);
+
+				tm time_in = { sessionSec, sessionMinute, sessionHour, // second, minute, hour
+					sessionDay, sessionMonth, sessionYear - sessionYear }; // 1-based day, 0-based month, year since 1900
+				time_t time_temp = mktime(&time_in);
+				tm const *time_out = localtime(&time_temp);
+				date.add(time_out->tm_wday);
+
+				data["date"] = date;
+				data["time"] = time;
+				setSessionData(data);
+
+			}
+			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
+				menusHistory.pop_back();
+				menuIndex = 0;
+				screenName = "";
 				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
 				getDirectoryMenus(prevLvl);
 				lcd.clear();
@@ -890,6 +1061,93 @@ void setCalibrationSize(int dir){
 	}
 }
 
+void setSessionAmount(int dir){
+	if (cursorX == 2){
+		lcd.clear();
+		String prefix = "00";
+		currentSessionAmount = currentSessionAmount + dir;
+		if (currentSessionAmount < 10){
+			currentSessionAmount == 10;
+		}
+		if (currentSessionAmount >= 10 && currentSessionAmount < 100){
+			prefix = "0";
+		}
+		if (currentSessionAmount >= 100){
+			prefix = "";
+		}
+		String displayAmount = prefix + String(currentSessionAmount);
+		lcd.print(displayAmount + "(ml) volume");
+		lcd.setCursor(0, 1);
+		lcd.print("<back>      <ok>");
+		lcd.setCursor(cursorX, cursorY);
+	}
+}
+
+void setSessionDateTime(int dir){
+	int maxDaysInMonth = days[month];
+	if (cursorY == 0){
+		if (cursorX == 1){
+			(dir == 1) ? (sessionHour = (sessionHour + 1 > 24) ? 1 : sessionHour + 1) : (sessionHour = (sessionHour - 1 < 1) ? 24 : sessionHour - 1);
+		}
+		if (cursorX == 4){
+			(dir == 1) ? (sessionMinute = (sessionMinute + 1 > 59) ? 0 : sessionMinute + 1) : (sessionMinute = (sessionMinute - 1 < 0) ? 59 : sessionMinute - 1);
+		}
+		if (cursorX == 10){
+			(dir == 1) ? (sessionMonth = (sessionMonth + 1 > 11) ? 0 : sessionMonth + 1) : (sessionMonth = (sessionMonth - 1 < 0) ? 11 : sessionMonth - 1);
+			sessionDay = 1;
+		}
+		if (cursorX == 13){
+			(dir == 1) ? (sessionDay = (sessionDay + 1 > maxDaysInMonth) ? 1 : sessionDay + 1) : (sessionDay = (sessionDay - 1 < 1) ? maxDaysInMonth : sessionDay - 1);
+		}
+	}
+	else{
+		if (cursorX == 3){
+			sessionYear = (dir == 1) ? sessionYear + 1 : sessionYear - 1;
+		}
+	}
+
+	lcd.clear();
+	captureSessionDateTimeDisplays();
+
+	lcd.print(String(displaySessionHour) + ":" + String(displaySessionMin) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(displaySessionDay));
+	lcd.setCursor(0, 1);
+	lcd.print(String(sessionYear) + " <back> <ok>");
+	lcd.setCursor(cursorX, cursorY);
+}
+
+	void captureSessionDateTime(){
+		JsonObject& data = getSessionData();
+		sessionHour = data["time"][0];
+		sessionMinute = data["time"][1];
+		sessionSec = data["time"][2];
+		sessionDay = data["date"][0];
+		sessionMonth = data["date"][1];
+		sessionYear = data["date"][2];
+		captureSessionDateTimeDisplays();
+	}
+
+		void captureSessionDateTimeDisplays(){
+			int hourConversion = (sessionHour == 0) ? 12 : sessionHour;
+
+			//Thanks Romans...
+			int hoursKey[12][2] = {
+				{ 13, 1 }, { 14, 2 }, { 15, 3 }, { 16, 4 }, { 17, 5 }, { 18, 6 }, { 19, 7 }, { 20, 8 }, { 21, 9 }, { 22, 10 }, { 23, 11 }, { 24, 12 }
+			};
+			if (hourConversion > 12){
+				for (int i = 0; i < 12; i++){
+					if (hourConversion == hoursKey[i][0]){
+						hourConversion = hoursKey[i][1];
+					}
+				}
+			}
+
+			sessionMeridiem = (sessionHour >= 12 && sessionHour < 24) ? "PM" : "AM";
+			sessionSuffix = (sessionDay == 1 || sessionDay == 21 || sessionDay == 31) ? "st" : (sessionDay == 2 || sessionDay == 22) ? "nd" : (sessionDay == 3 || sessionDay == 23) ? "rd" : "th";
+			displaySessionHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
+			displaySessionMin = (sessionMinute < 10) ? "0" + String(sessionMinute) : String(sessionMinute);
+			displaySessionDay = (sessionDay < 10) ? "0" + String(sessionDay) + sessionSuffix : String(sessionDay) + sessionSuffix;
+		}
+
 
 void buildCrop(){
 	const int bufferSize = 64;
@@ -959,10 +1217,17 @@ void buildCrop(){
 			StaticJsonBuffer<bufferSize> sessionObjBuffer;
 			char sessionBuffer[bufferSize];
 			JsonObject& sessionSettings = sessionObjBuffer.createObject();
+			StaticJsonBuffer<200> dateBuffer;
+			StaticJsonBuffer<200> timeBuffer;
+			JsonArray& date = dateBuffer.createArray();
+			JsonArray& time = timeBuffer.createArray();
 
 			sessionSettings["id"] = j;
 			sessionSettings["channel"] = i;
-			sessionSettings["ammount"] = sessionSettings["start"] = sessionSettings["delay"] = sessionSettings["repeatIncrements"] = 0;
+			sessionSettings["ammount"] = 80;
+			sessionSettings["date"] = date;
+			sessionSettings["time"] = time;
+			sessionSettings["delay"] = sessionSettings["repeatIncrements"] = 0;
 			sessionSettings["repeatCount"] = 1; //-2 never, -1 forever, 0 or greater is a fixed number 
 			makeNewFile(sessionName + "/session.dro", sessionSettings);
 		}
