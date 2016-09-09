@@ -4,16 +4,16 @@ This is a Arduino based Operating System built for Hydroponic farmers looking to
 
 The OS minimum hardware requirments are as follows:
 - Arduino Mega 2650 R3
-![alt tag](https://images-na.ssl-images-amazon.com/images/I/517bETdtT4L.jpg) 
+<img src="https://images-na.ssl-images-amazon.com/images/I/517bETdtT4L.jpg" width="50"> 
 
 - LCD 16x2 DFRobot Keypad Shield 
-![alt tag](https://images-na.ssl-images-amazon.com/images/I/61XwiY78d3L._SX522_.jpg) 
+<img src="https://images-na.ssl-images-amazon.com/images/I/61XwiY78d3L._SX522_.jpg" width="50"> 
 
 - DS3231 RTC Chip 
-![alt tag](https://images-na.ssl-images-amazon.com/images/I/61GHli1sjJL._SX522_.jpg) 
+<img src="https://images-na.ssl-images-amazon.com/images/I/61GHli1sjJL._SX522_.jpg" width="50"> 
 
 - Arduino Micro SD Card Adapter 
-![alt tag](https://images-na.ssl-images-amazon.com/images/I/61oB9UmTXZL._SX522_.jpg) 
+<img src="https://images-na.ssl-images-amazon.com/images/I/61oB9UmTXZL._SX522_.jpg" width="50"> 
 
 The DROMatic OS was built to communicate directly with 10 stepper motors or pumps, allowing you to automate / configure up to 10 different hydroponic solutions and save them as "Crops" or individual projects on a SD card. The doser hardware is not something found commercially for this OS and must be built by hand. Here is a basic parts list for the actual doser hardware:
 
