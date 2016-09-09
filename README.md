@@ -6,7 +6,7 @@ A single DROMatic crop disk size (SD card) can very, but in extreme instances la
 
 
 ## The OS minimum hardware requirments are as follows:
-- <a href="https://www.amazon.com/gp/product/B016D5L7NY/ref=oh_aui_detailpage_o08_s00?ie=UTF8&psc=1">Arduino Mega 2650 R3 <br>
+- <a href="https://www.amazon.com/gp/product/B016D5L7NY/ref=oh_aui_detailpage_o08_s00?ie=UTF8&psc=1">Arduino Mega 2560 R3 <br>
 <img src="https://images-na.ssl-images-amazon.com/images/I/517bETdtT4L.jpg" width="128"></a>
 
 - <a href="https://www.amazon.com/gp/product/B01C466H1S/ref=oh_aui_detailpage_o08_s00?ie=UTF8&psc=1">LCD 16x2 DFRobot Keypad Shield <br>
