@@ -1,6 +1,6 @@
 # DROMatic
 
-The Arduino based Operating System built for hydroponic farmers who want to fully automate both nutrient and PH dosing. 
+The Arduino based Operating System built for serious hydroponic farmers who want to fully automate both nutrient and PH dosing. 
 The DROMatic has been built to allow users to create, configure and share what are called "crops" by building crops onto an external MicroSD card. 
 A single DROMatic crop disk size (SD card) can very, but in extreme instances large crop configurations were found to be under 3MB.
 
@@ -37,17 +37,17 @@ Thus, there is a lot of a screens to this little OS:
 
 ### Channel Settings
 - **Number of Sessions** = Set the number of dosing sessions you would like this crop channel to perform
-- **Size of Channel** = Set the total size of this channel in ml
+- **Size of Channel** = Set the total size of this channel (in ml)
 - **Channel Calibration** = Calibrate how many rotations a motor or pump takes to reach channels total size
 
 ### Channel Sessions
 - Lists all the available channel's dosing sessions configured under channel settings
 
 ### Session Settings
-- **Session Amount** = How much of this channels solution should this dosing session dose
-- **Session Start Date/Time** = What time/day should this dosing session start
+- **Session Amount** = How much of hydroponic solution (in ml) should this session dose
+- **Session Start Date/Time** = What time/day should this dosing session should start
 - **Session Delay Configuration** = How many seconds would you like to delay the dosing start time (optional and 999sec max)
-- **Session Repeat Configuration** = If/How/When this dosing session should be repeated. This is good for when you want to repeat 1 dosing session X times vs hand configuring the same session over and over again. (Optional)
+- **Session Repeat Configuration** = If/How/When this dosing session should be repeated. This is good for when you want to repeat 1 dosing session X times vs. hand configuring the same session over and over again. (Optional)
 
 The DROMatic OS was built to communicate directly with 10 stepper motors or pumps, allowing you to automate / configure up to 10 different hydroponic solutions and save them as "Crops" or individual projects on a SD card. The doser hardware is not something found commercially for this OS and must be built by hand. Here is a basic parts list for the actual doser hardware:
 
