@@ -1,10 +1,11 @@
-#include <DS3231.h>
 #include <LiquidCrystal.h>
 #include <SPI.h>
 #include <SD.h>
 #include <StandardCplusplus.h>
-#include <vector>
+#include <StandardCplusplus\vector>
+#include <StandardCplusplus\ctime>
 #include <ArduinoJson\ArduinoJson.h>
+#include <DS3231.h>
 DS3231  rtc(SDA, SCL);
 using namespace std;
 
@@ -38,8 +39,10 @@ int day;
 int month;
 int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+char* daysOfWeek[7] = {"Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"};
 char* meridiem;
 
+String sessionSuffix;
 String displaySessionHour;
 String displaySessionMin;
 String displaySessionDay;
@@ -163,19 +166,19 @@ void setChannelData(JsonObject& data){
 	channel.close();
 }
 
-JsonObject& getSessionData(){
-	StaticJsonBuffer<512> buffer;
-	File session = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + currentSessionIndex + "/SESSION.DRO", FILE_READ);
-	return buffer.parseObject(session.readString());
-}
+	JsonObject& getSessionData(){
+		StaticJsonBuffer<512> buffer;
+		File session = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + currentSessionIndex + "/SESSION.DRO", FILE_READ);
+		return buffer.parseObject(session.readString());
+	}
 
-void setSessionData(JsonObject& data){
-	char buffer[128];
-	File session = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + currentSessionIndex + "/SESSION.DRO", O_WRITE | O_TRUNC);
-	data.printTo(buffer, sizeof(buffer));
-	session.print(buffer);
-	session.close();
-}
+		void setSessionData(JsonObject& data){
+			char sessionBuffer[1024];
+			File session = SD.open(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + currentSessionIndex + "/SESSION.DRO", O_WRITE | O_TRUNC);
+			data.printTo(sessionBuffer, sizeof(sessionBuffer));
+			session.print(sessionBuffer);
+			session.close();
+		}
 
 void setup()
 {
@@ -522,10 +525,10 @@ void loop()
 					lcd.blink();
 					lcd.clear();
 					lcd.home();
-					captureDateTime();
-					lcd.print(String(displayHour) + ":" + String(displayMin) + meridiem + " " + String(months[month]) + " " + String(displayDay));
+					captureSessionDateTime();
+					lcd.print(String(displaySessionHour) + ":" + String(displaySessionMin) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(displaySessionDay));
 					lcd.setCursor(0, 1);
-					lcd.print(String(year) + " <back> <ok>");
+					lcd.print(String(sessionYear) + " <back> <ok>");
 					lcd.setCursor(1, 0);
 					cursorX = 1;
 					cursorY = 0;
@@ -642,7 +645,30 @@ void loop()
 		if (screenName == "STR"){
 			if (cursorX == 13 && cursorY == 1){
 				//learn to compile sessionTime into string that can be churned over
-				
+				JsonObject& data = getSessionData();
+
+				StaticJsonBuffer<64> dateBuffer;
+				StaticJsonBuffer<32> timeBuffer;
+				JsonArray& date = dateBuffer.createArray();
+				JsonArray& time = timeBuffer.createArray();
+				time.add(sessionHour);
+				time.add(sessionMinute);
+				time.add(sessionSec);
+
+				date.add(sessionDay);
+				date.add(sessionMonth);
+				date.add(sessionYear);
+
+				tm time_in = { sessionSec, sessionMinute, sessionHour, // second, minute, hour
+					sessionDay, sessionMonth, sessionYear - sessionYear }; // 1-based day, 0-based month, year since 1900
+				time_t time_temp = mktime(&time_in);
+				tm const *time_out = localtime(&time_temp);
+				date.add(time_out->tm_wday);
+
+				data["date"] = date;
+				data["time"] = time;
+				setSessionData(data);
+
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				menusHistory.pop_back();
@@ -1081,13 +1107,47 @@ void setSessionDateTime(int dir){
 	}
 
 	lcd.clear();
-	captureDateTimeDisplays();
+	captureSessionDateTimeDisplays();
 
 	lcd.print(String(displaySessionHour) + ":" + String(displaySessionMin) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(displaySessionDay));
 	lcd.setCursor(0, 1);
 	lcd.print(String(sessionYear) + " <back> <ok>");
 	lcd.setCursor(cursorX, cursorY);
 }
+
+	void captureSessionDateTime(){
+		JsonObject& data = getSessionData();
+		sessionHour = data["time"][0];
+		sessionMinute = data["time"][1];
+		sessionSec = data["time"][2];
+		sessionDay = data["date"][0];
+		sessionMonth = data["date"][1];
+		sessionYear = data["date"][2];
+		captureSessionDateTimeDisplays();
+	}
+
+		void captureSessionDateTimeDisplays(){
+			int hourConversion = (sessionHour == 0) ? 12 : sessionHour;
+
+			//Thanks Romans...
+			int hoursKey[12][2] = {
+				{ 13, 1 }, { 14, 2 }, { 15, 3 }, { 16, 4 }, { 17, 5 }, { 18, 6 }, { 19, 7 }, { 20, 8 }, { 21, 9 }, { 22, 10 }, { 23, 11 }, { 24, 12 }
+			};
+			if (hourConversion > 12){
+				for (int i = 0; i < 12; i++){
+					if (hourConversion == hoursKey[i][0]){
+						hourConversion = hoursKey[i][1];
+					}
+				}
+			}
+
+			sessionMeridiem = (sessionHour >= 12 && sessionHour < 24) ? "PM" : "AM";
+			sessionSuffix = (sessionDay == 1 || sessionDay == 21 || sessionDay == 31) ? "st" : (sessionDay == 2 || sessionDay == 22) ? "nd" : (sessionDay == 3 || sessionDay == 23) ? "rd" : "th";
+			displaySessionHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
+			displaySessionMin = (sessionMinute < 10) ? "0" + String(sessionMinute) : String(sessionMinute);
+			displaySessionDay = (sessionDay < 10) ? "0" + String(sessionDay) + sessionSuffix : String(sessionDay) + sessionSuffix;
+		}
+
 
 void buildCrop(){
 	const int bufferSize = 64;
@@ -1157,11 +1217,17 @@ void buildCrop(){
 			StaticJsonBuffer<bufferSize> sessionObjBuffer;
 			char sessionBuffer[bufferSize];
 			JsonObject& sessionSettings = sessionObjBuffer.createObject();
+			StaticJsonBuffer<200> dateBuffer;
+			StaticJsonBuffer<200> timeBuffer;
+			JsonArray& date = dateBuffer.createArray();
+			JsonArray& time = timeBuffer.createArray();
 
 			sessionSettings["id"] = j;
 			sessionSettings["channel"] = i;
 			sessionSettings["ammount"] = 80;
-			sessionSettings["start"] = sessionSettings["delay"] = sessionSettings["repeatIncrements"] = 0;
+			sessionSettings["date"] = date;
+			sessionSettings["time"] = time;
+			sessionSettings["delay"] = sessionSettings["repeatIncrements"] = 0;
 			sessionSettings["repeatCount"] = 1; //-2 never, -1 forever, 0 or greater is a fixed number 
 			makeNewFile(sessionName + "/session.dro", sessionSettings);
 		}
