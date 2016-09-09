@@ -39,7 +39,7 @@ int day;
 int month;
 int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-char* daysOfWeek[7] = {"Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"};
+const char* daysOfWeek[7] = {"Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"};
 char* meridiem;
 
 String sessionSuffix;
@@ -60,6 +60,8 @@ int currentCalibrationSize;
 int currentCalibrationRots;
 int currentSessionAmount;
 int currentSessionDelay;
+int currentSessionRepeat;
+int currentSessionRepeatBy;
 int currentSessionIndex;
 int currentAlphaIndex = 0;
 
@@ -88,6 +90,7 @@ const char* displayNames[17][3] = {
 	{ "RPT", "SESSION REPEAT", "CONFIGURATION" }
 };
 const char* months[12] = { "Jan", "Feb", "Mar", "Apl", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+const char* displayRepeats[5] = { "Hrly", "Daly", "Wkly", "Mtly", "Yrly" };
 
 byte upArrow[8] = {
 	B00000,
@@ -289,6 +292,15 @@ void loop()
 			screenMatrix();
 			delay(250);
 		}
+		if (screenName == "RPT"){
+			matrix = {
+				{ {13, 13} },
+				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
+			};
+			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
 	}
 	if (Key == 99) {
 		//Up
@@ -330,6 +342,10 @@ void loop()
 			setSessionDelay(1);
 			delay(250);
 		}
+		if (screenName == "RPT"){
+			setSessionRepeat(1);
+			delay(250);
+		}
 	}
 	if (Key == 255){
 		//Down
@@ -369,6 +385,10 @@ void loop()
 		}
 		if (screenName == "DLY"){
 			setSessionDelay(-1);
+			delay(250);
+		}
+		if (screenName == "RPT"){
+			setSessionRepeat(-1);
 			delay(250);
 		}
 	}
@@ -455,6 +475,15 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 			cursorX = cursorX + 1;
+			screenMatrix();
+			delay(250);
+		}
+		if (screenName == "RPT"){
+			matrix = {
+				{ { 13, 13 } },
+				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
+			};
+			cursorX = cursorX - 1;
 			screenMatrix();
 			delay(250);
 		}
@@ -572,6 +601,24 @@ void loop()
 					lcd.setCursor(0, 1);
 					lcd.print("<back>      <ok>");
 					cursorX = 2;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+					lcd.blink();
+				}
+				if (screenName == "RPT"){
+					lcd.clear();
+					lcd.home();
+					JsonObject& data = getSessionData();
+					currentSessionRepeat = data["repeat"];
+					currentSessionRepeatBy = data["repeatBy"];
+
+					String displayRepeat = (currentSessionRepeat >= 10 && currentSessionRepeat <= 99) ? "0" + String(currentSessionRepeat) : (currentSessionRepeat < 10 && currentSessionRepeat >= 0) ? "00" + String(currentSessionRepeat) : String(currentSessionRepeat);
+					String displayRepeatBy = displayRepeats[currentSessionRepeatBy];
+
+					lcd.print("Repeated: "+displayRepeatBy);
+					lcd.setCursor(0, 1);
+					lcd.print(displayRepeat+"x <back> <ok>");
+					cursorX = 13;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
 					lcd.blink();
@@ -735,6 +782,29 @@ void loop()
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 				currentSessionDelay = 0;
+				screenName = "";
+				menusHistory.pop_back();
+				menuIndex = 0;
+				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+				getDirectoryMenus(prevLvl);
+				lcd.clear();
+				lcd.noBlink();
+				prevLvl.close();
+				printDisplayNames(menus.front());
+				printScrollArrows();
+				delay(350);
+			}
+		}
+		if (screenName == "RPT"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getSessionData();
+				data["repeatBy"] = currentSessionRepeatBy;
+				data["repeat"] = currentSessionRepeat;
+				setSessionData(data);
+			}
+			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
+				currentSessionRepeatBy = 0;
+				currentSessionRepeat = 0;
 				screenName = "";
 				menusHistory.pop_back();
 				menuIndex = 0;
@@ -1234,6 +1304,32 @@ void setSessionDelay(int dir){
 	}
 }
 
+void setSessionRepeat(int dir) {
+	lcd.clear();
+	lcd.home();
+
+	if (cursorX == 13 && cursorY == 0){
+		currentSessionRepeatBy = currentSessionRepeatBy + dir;
+		if (currentSessionRepeatBy < 0 || currentSessionRepeatBy > 4){
+			currentSessionRepeatBy = 0;
+		}
+	}
+	if (cursorX == 2 && cursorY == 1){
+		currentSessionRepeat = currentSessionRepeat + dir;
+		if (currentSessionRepeat < 0 || currentSessionRepeat >= 1000){
+			currentSessionRepeat = 0;
+		}
+	}
+
+	String displayRepeat = (currentSessionRepeat >= 10 && currentSessionRepeat <= 99) ? "0" + String(currentSessionRepeat) : (currentSessionRepeat < 10 && currentSessionRepeat >= 0) ? "00" + String(currentSessionRepeat) : String(currentSessionRepeat);
+	String displayRepeatBy = displayRepeats[currentSessionRepeatBy];
+
+	lcd.print("Repeated: " + displayRepeatBy);
+	lcd.setCursor(0, 1);
+	lcd.print(displayRepeat + "x <back> <ok>");
+	lcd.setCursor(cursorX, cursorY);
+}
+
 void buildCrop(){
 	const int bufferSize = 64;
 	String channelName;
@@ -1312,8 +1408,9 @@ void buildCrop(){
 			sessionSettings["ammount"] = 80;
 			sessionSettings["date"] = date;
 			sessionSettings["time"] = time;
-			sessionSettings["delay"] = sessionSettings["repeatIncrements"] = 0;
-			sessionSettings["repeatCount"] = 1; //-2 never, -1 forever, 0 or greater is a fixed number 
+			sessionSettings["delay"] = 0;
+			sessionSettings["repeat"] = 0;
+			sessionSettings["repeatBy"] = 0; //0 none, 1 = hourly, 2 = daily, 3 = weekly, 4 = monthly, 5 = yearly
 			makeNewFile(sessionName + "/session.dro", sessionSettings);
 		}
 		
