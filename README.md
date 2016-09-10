@@ -17,7 +17,8 @@ This means no more time spent in large scale soil maintenance, crops can be summ
 alt="" width="240" height="180" border="10" /></a>
 
 However, the big down side to moving to vertical farming or hydroponics in general means you do have to learn a lot about nutrients, dosing regiments, regiment drifting, EC/PPM and PH testing etc etc.
-In steps the DRO-Matic OS, that takes care of all the heavy lifting in nutrient and PH dosing of hydroponic farms. Our goal is curve the time spent learning and maintaining hydroponic farms in hopes to better bring this much more efficient way of food production to a lot more farmers.
+
+In steps the DRO-Matic OS to take care of all the heavy lifting in hydroponic farming for you. Our goal is curve the time spent learning and maintaining hydroponic farms in hopes to better bring this much more efficient way of food production to a lot more farmers.
 
 Because of the sheer flexibility of the DRO-Matic OS, there is a lot of a screens to a single crop:
 
