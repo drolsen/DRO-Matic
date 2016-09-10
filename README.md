@@ -1,11 +1,25 @@
-# DRO<img src="https://raw.githubusercontent.com/devinrayolsen/DRO-Matic/development/images/hydro-hyphen.png" width="64">Matic
+# DRO<img src="https://raw.githubusercontent.com/devinrayolsen/DRO-Matic/development/images/hydro-hyphen.png" width="64">Matic OS
 
-The Arduino based Operating System built for serious hydroponic farmers who want to fully automate both nutrient and PH dosing. 
-The DRO-Matic (automatic hydroponics) has been built to allow users to create, configure and share what are called "crops" by building crops onto an external MicroSD card. 
+This is an Arduino (MicroController) based hydroponics Operating System built for any scale hydroponic farmer who wants to fully automate both nutrient and PH dosing. 
+The DRO-Matic (automatic hydroponics) has been built to allow users to create, configure and share projects called "crops" by interfacing with an external MicroSD card. 
 A single DRO-Matic crop disk size (SD card) can very, but in extreme instances large crop configurations were found to be under 3MB.
 
-DROMatic has been built to allow you be flexable in any way which you would like to configure the dosings of your hydroponic solutions. 
-Because of the sheer flexability of this dosing OS, there is a lot of a screens to a single crop:
+DROMatic has been built to allow you be flexible in any way which you would like to configure the dosings of your hydroponic solutions. 
+However, before we get into the settings and configuration of the OS, its important to ask our selfs why this even exists? 
+It's undoubtedly true across almost all cultures that agriculture and food growth is not only a necessity but also is expensive. 
+It's expensive in the amount of land we used, expensive on the amount energy consumed from veg to harvest, even expensive to be consistent with successful crops year after year.
+
+In steps hydroponics, and vertical farming. We now have the technology to begin moving farms into a hydroponic setup that stacks vertically. 
+This means no more time spent in large scale soil maintenance, crops can be summed up into much smaller spaces and thus operations can get bigger or rather concentrated if you will, and crop consistency is much easier to achieve.
+
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=BwgXb9h-Qgs
+" target="_blank"><img src="http://img.youtube.com/vi/BwgXb9h-Qgs/0.jpg" 
+alt="" width="240" height="180" border="10" /></a>
+
+However, the big down side to moving to vertical farming or hydroponics in general means you do have to learn a lot about nutrients, dosing regiments, regiment drifting, EC/PPM and PH testing etc etc.
+In steps the DRO-Matic OS, that takes care of all the heavy lifting in nutrient and PH dosing of hydroponic farms. Our goal is curve the time spent learning and maintaining hydroponic farms in hopes to better bring this much more efficient way of food production to a lot more farmers.
+
+Because of the sheer flexibility of the DRO-Matic OS, there is a lot of a screens to a single crop:
 
 ### <a href="https://github.com/devinrayolsen/DROmatic/wiki/1)-Getting-Started">Home Screen</a>
 - Displays current date/time, current PPM levels and current PH levels
