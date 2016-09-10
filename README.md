@@ -1,4 +1,4 @@
-# DRO-Matic
+# DRO<img src="https://d30y9cdsu7xlg0.cloudfront.net/png/83408-200.png" width="64">Matic
 
 The Arduino based Operating System built for serious hydroponic farmers who want to fully automate both nutrient and PH dosing. 
 The DRO-Matic (automatic hydroponics) has been built to allow users to create, configure and share what are called "crops" by building crops onto an external MicroSD card. 
