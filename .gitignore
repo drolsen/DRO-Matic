@@ -1,5 +1,13 @@
 /__vm/
 /Debug/
 /Release/
-
+*.sln
+*.suo
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.v12.suo
+*.TMP
+*.bkup
+*.bkup2
 !.gitignore
