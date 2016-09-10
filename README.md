@@ -1,7 +1,7 @@
 # DRO-Matic
 
 The Arduino based Operating System built for serious hydroponic farmers who want to fully automate both nutrient and PH dosing. 
-The DROMatic has been built to allow users to create, configure and share what are called "crops" by building crops onto an external MicroSD card. 
+The DRO-Matic has been built to allow users to create, configure and share what are called "crops" by building crops onto an external MicroSD card. 
 A single DRO-Matic crop disk size (SD card) can very, but in extreme instances large crop configurations were found to be under 3MB.
 
 DROMatic has been built to allow you be flexable in any way which you would like to configure the dosings of your hydroponic solutions. 
