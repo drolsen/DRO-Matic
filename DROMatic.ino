@@ -19,12 +19,9 @@ unsigned long previousMillis = 0;        // will store last time
 String cropName;
 String renameArry[15] = { "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
 String screenName;
-bool enterHomeFlag = false;
-long exitHomeWait = 0;
 int cursorX = 0;
 int cursorY = 0;
 int menuIndex = 0;
-int totalChannels = 0;
 int minPPM = 1200;
 int maxPPM = 1400;
 
@@ -39,7 +36,6 @@ int day;
 int month;
 int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-const char* daysOfWeek[7] = {"Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"};
 char* meridiem;
 
 String sessionSuffix;
@@ -55,14 +51,10 @@ int sessionYear;
 char* sessionMeridiem;
 
 int currentChannelIndex;
-int currentChannelSize;
-int currentCalibrationSize;
-int currentCalibrationRots;
-int currentSessionAmount;
-int currentSessionDelay;
-int currentSessionRepeat;
-int currentSessionRepeatBy;
 int currentSessionIndex;
+
+int tmpInts[2];
+float tmpFloats[2];
 int currentAlphaIndex = 0;
 
 const char* alphabet[37] = { 
@@ -70,13 +62,14 @@ const char* alphabet[37] = {
 	"N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", 
 	"1", "2", "3", "4", "5", "6", "7", "8", "9"
 };
-const char* displayNames[17][3] = {
+const char* displayNames[18][3] = {
 	{ "SYSCONF", "SYSTEM", "SETTINGS" },
 	{ "CHANNELS", "SYSTEM", "CHANNELS" },
 	{ "DATETIME", "DATE & TIME", "CONFIGURATION" },
 	{ "CHCONF", "CHANNEL", "SETTINGS" },
 	{ "CHNUM", "NUMBER OF", "CHANNELS" },
 	{ "PPM", "EC/PPM RANGE", "CONFIGURATION" },
+	{ "PH", "PH RANGE", "CONFIGURATION" },
 	{ "OPEN", "LOAD CROP" },
 	{ "NEW", "NEW CROP" },
 	{ "DELETE", "DELETE CROP" },
@@ -91,6 +84,7 @@ const char* displayNames[17][3] = {
 };
 const char* months[12] = { "Jan", "Feb", "Mar", "Apl", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 const char* displayRepeats[5] = { "Hrly", "Daly", "Wkly", "Mtly", "Yrly" };
+const char* daysOfWeek[7] = { "Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat" };
 
 byte upArrow[8] = {
 	B00000,
@@ -222,29 +216,32 @@ void loop()
 				{ { 0, 15 } },
 				{ { 11, 11 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
 			renameCrop(NULL);
 			lcd.blink();
-			delay(250);
 		}
 		if (screenName == "DATETIME"){
 			matrix = {
 				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, {13, 13} },
 				{ { 3, 3 }, { 6, 6 }, {13, 13} }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "PPM"){
 			matrix = {
 				{ { 3, 3 }, { 8, 8 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
+		}
+		if (screenName == "PH"){
+			matrix = {
+				{ { 3, 3 }, { 9, 9 } },
+				{ { 1, 1 }, { 11, 11 } }
+			};
+		}
+		if (screenName == "PHCHL"){
+			matrix = {
+				{ { 6, 6 }, { 14, 14 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
 		}
 		if (screenName == "CHNUM"){}
 		if (screenName == "CHSIZE"){
@@ -252,185 +249,154 @@ void loop()
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "CHCALIB"){
 			matrix = {
 				{ { 10, 10 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "AMT"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "STR"){
 			matrix = {
 				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "DLY"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "RPT"){
 			matrix = {
 				{ {13, 13} },
 				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
+		cursorX = cursorX + 1;
+		screenMatrix();
+		delay(250);
 	}
 	if (Key == 99) {
 		//Up
-		if (screenName == ""){
-			scrollMenus(1);
-		}
 		if (screenName == "NewCrop"){
 			renameCrop(1);
-			delay(250);
 		}
 		if (screenName == "PPM"){
 			setPPMRangeValues(1);
-			delay(250);
+		}
+		if (screenName == "PH"){
+			setPHRange(1);
+		}
+		if (screenName == "PHCHL"){
+			setPHChannels(1);
 		}
 		if (screenName == "DATETIME"){
 			setDateTime(1);
-			delay(250);
 		}
-		if (screenName == "CHNUM"){
-
-		}
+		if (screenName == "CHNUM"){}
 		if (screenName == "CHSIZE"){
 			setChannelSize(10);
-			delay(250);
 		}
 		if (screenName == "CHCALIB"){
 			setCalibrationSize(1);
-			delay(250);
 		}
 		if (screenName == "AMT"){
 			setSessionAmount(10);
-			delay(250);
 		}
 		if (screenName == "STR"){
 			setSessionDateTime(1);
-			delay(250);
 		}
 		if (screenName == "DLY"){
 			setSessionDelay(1);
-			delay(250);
 		}
 		if (screenName == "RPT"){
 			setSessionRepeat(1);
-			delay(250);
 		}
+		if (screenName == ""){
+			scrollMenus(1);
+		}
+		delay(250);
 	}
 	if (Key == 255){
 		//Down
-		if (screenName == ""){
-			scrollMenus(-1);
-		}
 		if (screenName == "NewCrop"){
 			renameCrop(-1);
-			delay(250);
 		}
 		if (screenName == "PPM"){
 			setPPMRangeValues(-1);
-			delay(250);
+		}
+		if (screenName == "PH"){
+			setPHRange(-1);
+		}
+		if (screenName == "PHCHL"){
+			setPHChannels(-1);
 		}
 		if (screenName == "DATETIME"){
 			setDateTime(-1);
-			delay(250);
 		}
-		if (screenName == "CHNUM"){
-			
-		}
+		if (screenName == "CHNUM"){}
 		if (screenName == "CHSIZE"){
 			setChannelSize(-10);
-			delay(250);
 		}
 		if (screenName == "CHCALIB"){
 			setCalibrationSize(-1);
-			delay(250);
 		}
 		if (screenName == "AMT"){
 			setSessionAmount(-10);
-			delay(250);
 		}
 		if (screenName == "STR"){
 			setSessionDateTime(-1);
-			delay(250);
 		}
 		if (screenName == "DLY"){
 			setSessionDelay(-1);
-			delay(250);
 		}
 		if (screenName == "RPT"){
 			setSessionRepeat(-1);
-			delay(250);
 		}
+		if (screenName == ""){
+			scrollMenus(-1);
+		}
+		delay(250);
 	}
 	if (Key == 408) {
 		//Left
-		if (screenName == ""){
-			menusHistory.pop_back();
-			menuIndex = 0;
-			File prevLvl = SD.open(cropName+"/"+getMenuHistory());
-			getDirectoryMenus(prevLvl);
-			lcd.clear();
-			prevLvl.close();
-			printDisplayNames(menus.front());
-			printScrollArrows();
-			delay(350);
-		}
 		if (screenName == "NewCrop"){
 			matrix = {
 				{ { 0, 15 },
 				{ 11, 11 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "DATETIME"){
 			matrix = {
 				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "PPM"){
 			matrix = {
 				{ { 3, 3 }, { 8, 8 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
+		}
+		if (screenName == "PH"){
+			matrix = {
+				{ { 3, 3 }, { 9, 9 } },
+				{ { 1, 1 }, { 11, 11 } }
+			};
+		}
+		if (screenName == "PHCHL"){
+			matrix = {
+				{ { 6, 6 }, { 14, 14 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
 		}
 		if (screenName == "CHNUM"){}
 		if (screenName == "CHSIZE"){
@@ -438,55 +404,51 @@ void loop()
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "CHCALIB"){
 			matrix = {
 				{ { 10, 10 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "AMT"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "STR"){
 			matrix = {
 				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
-			cursorX = cursorX - 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "DLY"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
-			cursorX = cursorX + 1;
-			screenMatrix();
-			delay(250);
 		}
 		if (screenName == "RPT"){
 			matrix = {
 				{ { 13, 13 } },
 				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
 			};
+		}
+		if (screenName == ""){
+			menusHistory.pop_back();
+			menuIndex = 0;
+			File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+			getDirectoryMenus(prevLvl);
+			lcd.clear();
+			prevLvl.close();
+			printDisplayNames(menus.front());
+			printScrollArrows();
+		} else {
 			cursorX = cursorX - 1;
 			screenMatrix();
-			delay(250);
 		}
+		delay(250);
 	}
 	if (Key == 639) {
 		//Select
@@ -524,6 +486,23 @@ void loop()
 					lcd.setCursor(3, 0);
 					cursorX = 3;
 				}
+				if (screenName == "PH"){
+					lcd.blink();
+					lcd.clear();
+					lcd.home();
+					JsonObject& data = getCropData();
+					tmpFloats[0] = data["minPH"];
+					tmpFloats[1] = data["maxPH"];
+					lcd.print(String(tmpFloats[0]));
+					lcd.write(byte(1));
+					lcd.print(+" " + String(tmpFloats[1]));
+					lcd.write(byte(0));
+					lcd.print(" PH");
+					lcd.setCursor(0, 1);
+					lcd.print("<back>    <next>");
+					cursorX = 3;
+					lcd.setCursor(3, 0);
+				}
 				if (screenName == "CHNUM"){
 					lcd.blink();
 					lcd.clear();
@@ -536,9 +515,9 @@ void loop()
 				if (screenName == "CHSIZE"){
 					lcd.clear();
 					JsonObject& data = getChannelData();
-					currentChannelSize = data["size"];
+					tmpInts[0] = data["size"];
 					lcd.clear();
-					String channelSize = (currentChannelSize < 100) ? (currentChannelSize < 10) ? "00" + String(currentChannelSize) : "0" + String(currentChannelSize) : String(currentChannelSize);
+					String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
 					lcd.print(channelSize+" (ml) volume");
 					lcd.setCursor(0, 1);
 					lcd.print("<back>      <ok>");
@@ -551,10 +530,10 @@ void loop()
 					lcd.clear();
 					lcd.home();
 					JsonObject& data = getChannelData();
-					currentCalibrationSize = data["size"];
-					currentCalibrationRots = data["calibration"];
-					String targetSize = (currentCalibrationSize >= 10 && currentCalibrationSize <= 99) ? "0" + String(currentCalibrationSize) : (currentCalibrationSize < 10 && currentCalibrationSize >= 0) ? "00" + String(currentCalibrationSize) : String(currentCalibrationSize);
-					String rotsSize = (currentCalibrationRots >= 10 && currentCalibrationRots <= 99) ? "0" + String(currentCalibrationRots) : (currentCalibrationRots < 10 && currentCalibrationRots >= 0) ? "00" + String(currentCalibrationRots) : String(currentCalibrationRots);
+					tmpInts[0] = data["size"];
+					tmpInts[1] = data["calibration"];
+					String targetSize = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
+					String rotsSize = (tmpInts[1] >= 10 && tmpInts[1] <= 99) ? "0" + String(tmpInts[1]) : (tmpInts[1] < 10 && tmpInts[1] >= 0) ? "00" + String(tmpInts[1]) : String(tmpInts[1]);
 					lcd.print(targetSize + "(ml) " + rotsSize + " rots");
 					lcd.setCursor(0,1);
 					lcd.print("<back>      <ok>");
@@ -567,8 +546,8 @@ void loop()
 					lcd.clear();
 					lcd.home();
 					JsonObject& data = getSessionData();
-					currentSessionAmount = data["amount"];
-					String displayAmount = (currentSessionAmount >= 10 && currentSessionAmount <= 99) ? "0" + String(currentSessionAmount) : (currentSessionAmount < 10 && currentSessionAmount >= 0) ? "00" + String(currentSessionAmount) : String(currentSessionAmount);
+					tmpInts[0] = data["amount"];
+					String displayAmount = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
 
 					lcd.print(displayAmount+"(ml) volume");
 					lcd.setCursor(0, 1);
@@ -594,8 +573,8 @@ void loop()
 					lcd.clear();
 					lcd.home();
 					JsonObject& data = getSessionData();
-					currentSessionDelay = data["delay"];
-					String displayDelay = (currentSessionDelay >= 10 && currentSessionDelay <= 99) ? "0" + String(currentSessionDelay) : (currentSessionDelay < 10 && currentSessionDelay >= 0) ? "00" + String(currentSessionDelay) : String(currentSessionDelay);
+					tmpInts[0] = data["delay"];
+					String displayDelay = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
 
 					lcd.print(displayDelay + "(sec)  delay");
 					lcd.setCursor(0, 1);
@@ -609,11 +588,11 @@ void loop()
 					lcd.clear();
 					lcd.home();
 					JsonObject& data = getSessionData();
-					currentSessionRepeat = data["repeat"];
-					currentSessionRepeatBy = data["repeatBy"];
+					tmpInts[0] = data["repeat"];
+					tmpInts[1] = data["repeatBy"];
 
-					String displayRepeat = (currentSessionRepeat >= 10 && currentSessionRepeat <= 99) ? "0" + String(currentSessionRepeat) : (currentSessionRepeat < 10 && currentSessionRepeat >= 0) ? "00" + String(currentSessionRepeat) : String(currentSessionRepeat);
-					String displayRepeatBy = displayRepeats[currentSessionRepeatBy];
+					String displayRepeat = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
+					String displayRepeatBy = displayRepeats[tmpInts[1]];
 
 					lcd.print("Repeated: "+displayRepeatBy);
 					lcd.setCursor(0, 1);
@@ -640,11 +619,58 @@ void loop()
 				setCropData(data);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				exitScreen();
+			}
+		}
+		if (screenName == "PH"){
+			if (cursorX == 11 && cursorY == 1){
+				JsonObject& data = getCropData();
+				data["minPH"] = tmpFloats[0];
+				data["maxPH"] = tmpFloats[1];
+				setCropData(data);
+				tmpFloats[0] = 0.0;
+				tmpFloats[1] = 0.0;
+				screenName = "PHCHL";
+				delay(250);
+
 				lcd.clear();
-				screenName = "";
 				lcd.home();
-				lcd.print(menus[menuIndex]);
-				printScrollArrows();
+				tmpInts[0] = data["PHUpChannel"];
+				tmpInts[1] = data["PHDownChannel"];
+
+				String UpDisplay;
+				String DownDisplay;
+				UpDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+				DownDisplay = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+				lcd.print("PH");
+				lcd.write(byte(1));
+				lcd.print("CH" + UpDisplay + " PH");
+				lcd.write(byte(0));
+				lcd.print("CH" + DownDisplay);
+				lcd.setCursor(0, 1);
+				lcd.print("<back>      <ok>");
+				cursorX = 6;
+				cursorY = 0;
+				lcd.setCursor(6, 0);
+			}
+			if (cursorX == 1 && cursorY == 1){
+				tmpFloats[0] = 0.0;
+				tmpFloats[1] = 0.0;
+				screenName = "";
+				exitScreen();
+			}
+		}
+		if (screenName == "PHCHL"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getCropData();
+				data["PHUpChannel"] = tmpInts[0];
+				data["PHDownChannel"] = tmpInts[1];
+				setCropData(data);
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = 0;
+				tmpInts[1] = 0;
+				exitScreen();
 			}
 		}
 		if (screenName == "DATETIME"){
@@ -653,83 +679,42 @@ void loop()
 				rtc.setDate(day, month, year);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				menusHistory.pop_back();
-				menuIndex = 0;
-				screenName = "";
-				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-				getDirectoryMenus(prevLvl);
-				lcd.clear();
-				lcd.noBlink();
-				prevLvl.close();
-				printDisplayNames(menus.front());
-				printScrollArrows();
-				delay(350);
+				exitScreen();
 			}
 		}
 		if (screenName == "CHNUM"){}
 		if (screenName == "CHSIZE"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getChannelData();
-				data["size"] = currentChannelSize;
+				data["size"] = tmpInts[0];
 				setChannelData(data);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				currentChannelSize = 0;
-				menusHistory.pop_back();
-				menuIndex = 0;
-				screenName = "";
-				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-				getDirectoryMenus(prevLvl);
-				lcd.clear();
-				lcd.noBlink();
-				prevLvl.close();
-				printDisplayNames(menus.front());
-				printScrollArrows();
-				delay(350);
+				tmpInts[0] = 0;
+				exitScreen();
 			}
 		}
 		if (screenName == "CHCALIB"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getChannelData();
-				data["calibration"] = currentCalibrationRots;
+				data["calibration"] = tmpInts[1];
 				setChannelData(data);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				currentChannelSize = 0;
-				screenName = "";
-				currentCalibrationRots = 0;
-				currentCalibrationSize = 0;
-				menusHistory.pop_back();
-				menuIndex = 0;
-				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-				getDirectoryMenus(prevLvl);
-				lcd.clear();
-				lcd.noBlink();
-				prevLvl.close();
-				printDisplayNames(menus.front());
-				printScrollArrows();
-				delay(350);
+				tmpInts[1] = 0;
+				tmpInts[0] = 0;
+				exitScreen();
 			}
 		}
 		if (screenName == "AMT"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getSessionData();
-				data["amount"] = currentSessionAmount;
+				data["amount"] = tmpInts[0];
 				setSessionData(data);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				currentSessionAmount = 0;
-				screenName = "";
-				menusHistory.pop_back();
-				menuIndex = 0;
-				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-				getDirectoryMenus(prevLvl);
-				lcd.clear();
-				lcd.noBlink();
-				prevLvl.close();
-				printDisplayNames(menus.front());
-				printScrollArrows();
-				delay(350);
+				tmpInts[0] = 0;
+				exitScreen();
 			}
 		}
 		if (screenName == "STR"){
@@ -777,54 +762,36 @@ void loop()
 		if (screenName == "DLY"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getSessionData();
-				data["delay"] = currentSessionDelay;
+				data["delay"] = tmpInts[0];
 				setSessionData(data);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				currentSessionDelay = 0;
-				screenName = "";
-				menusHistory.pop_back();
-				menuIndex = 0;
-				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-				getDirectoryMenus(prevLvl);
-				lcd.clear();
-				lcd.noBlink();
-				prevLvl.close();
-				printDisplayNames(menus.front());
-				printScrollArrows();
-				delay(350);
+				tmpInts[0] = 0;
+				exitScreen();
 			}
 		}
 		if (screenName == "RPT"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getSessionData();
-				data["repeatBy"] = currentSessionRepeatBy;
-				data["repeat"] = currentSessionRepeat;
+				data["repeatBy"] = tmpInts[1];
+				data["repeat"] = tmpInts[0];
 				setSessionData(data);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				currentSessionRepeatBy = 0;
-				currentSessionRepeat = 0;
-				screenName = "";
-				menusHistory.pop_back();
-				menuIndex = 0;
-				File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-				getDirectoryMenus(prevLvl);
-				lcd.clear();
-				lcd.noBlink();
-				prevLvl.close();
-				printDisplayNames(menus.front());
-				printScrollArrows();
-				delay(350);
+				tmpInts[1] = 0;
+				tmpInts[0] = 0;
+				exitScreen();
 			}
 		}
 	}
 
 }
+
 int division(int sum, int size)
 {
 	return sum / size;
 }
+
 void openHomeScreen(){
 	captureDateTime();
 	lcd.clear();
@@ -904,7 +871,6 @@ void coreInit(){
 			File cropFile = SD.open("/" + cropName);
 			getDirectoryMenus(cropFile);
 			JsonObject& cropData = parseCropData(cropFile);
-			totalChannels = cropData["totalChannels"];
 			cropFile.close();
 			openHomeScreen();
 		}else{
@@ -965,6 +931,19 @@ void scrollMenus(int dir){
 	}
 	lcd.clear();
 	printDisplayNames(menus[menuIndex]);
+	printScrollArrows();
+}
+
+void exitScreen(){
+	menusHistory.pop_back();
+	menuIndex = 0;
+	screenName = "";
+	File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+	getDirectoryMenus(prevLvl);
+	lcd.clear();
+	lcd.noBlink();
+	prevLvl.close();
+	printDisplayNames(menus.front());
 	printScrollArrows();
 	delay(350);
 }
@@ -1158,10 +1137,10 @@ void setDateTime(int dir){
 void setChannelSize(int dir){
 	if (cursorY == 0){
 		if (cursorX == 2){
-			currentChannelSize = currentChannelSize + dir;
+			tmpInts[0] = tmpInts[0] + dir;
 			lcd.clear();
-			currentChannelSize = (currentChannelSize < 0) ? 0 : (currentChannelSize > 500) ? 500 : currentChannelSize;
-			String channelSize = (currentChannelSize < 100) ? (currentChannelSize < 10) ? "00" + String(currentChannelSize) : "0" + String(currentChannelSize) : String(currentChannelSize);
+			tmpInts[0] = (tmpInts[0] < 0) ? 0 : (tmpInts[0] > 500) ? 500 : tmpInts[0];
+			String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
 			lcd.print(channelSize + " (ml) volume");
 			lcd.setCursor(0, 1);
 			lcd.print("<back>      <ok>");
@@ -1176,16 +1155,16 @@ void setCalibrationSize(int dir){
 		lcd.clear();
 		String displayRots = "00";
 		String displaySize = "00";
-		currentCalibrationRots = currentCalibrationRots + dir;
-		if (currentCalibrationRots < 0) { currentCalibrationRots = 0; }
-		if (currentCalibrationRots >= 10 && currentCalibrationRots < 100) { displayRots = "0"; }
-		if (currentCalibrationRots >= 100) { displayRots = ""; }
-		displayRots = displayRots + String(currentCalibrationRots);
+		tmpInts[1] = tmpInts[1] + dir;
+		if (tmpInts[1] < 0) { tmpInts[1] = 0; }
+		if (tmpInts[1] >= 10 && tmpInts[1] < 100) { displayRots = "0"; }
+		if (tmpInts[1] >= 100) { displayRots = ""; }
+		displayRots = displayRots + String(tmpInts[1]);
 
-		if (currentCalibrationSize < 0) { currentCalibrationSize = 0; }
-		if (currentCalibrationSize >= 10 && currentCalibrationSize < 100) { displaySize = "0"; }
-		if (currentCalibrationSize >= 100) { displaySize = ""; }
-		displaySize = displaySize + String(currentCalibrationSize);
+		if (tmpInts[0] < 0) { tmpInts[0] = 0; }
+		if (tmpInts[0] >= 10 && tmpInts[0] < 100) { displaySize = "0"; }
+		if (tmpInts[0] >= 100) { displaySize = ""; }
+		displaySize = displaySize + String(tmpInts[0]);
 
 		lcd.home();
 		lcd.print(displaySize+"(ml) " + displayRots + " rots");
@@ -1199,17 +1178,17 @@ void setSessionAmount(int dir){
 	if (cursorX == 2){
 		lcd.clear();
 		String prefix = "00";
-		currentSessionAmount = currentSessionAmount + dir;
-		if (currentSessionAmount < 10){
-			currentSessionAmount == 10;
+		tmpInts[0] = tmpInts[0] + dir;
+		if (tmpInts[0] < 10){
+			tmpInts[0] == 10;
 		}
-		if (currentSessionAmount >= 10 && currentSessionAmount < 100){
+		if (tmpInts[0] >= 10 && tmpInts[0] < 100){
 			prefix = "0";
 		}
-		if (currentSessionAmount >= 100){
+		if (tmpInts[0] >= 100){
 			prefix = "";
 		}
-		String displayAmount = prefix + String(currentSessionAmount);
+		String displayAmount = prefix + String(tmpInts[0]);
 		lcd.print(displayAmount + "(ml) volume");
 		lcd.setCursor(0, 1);
 		lcd.print("<back>      <ok>");
@@ -1286,17 +1265,17 @@ void setSessionDelay(int dir){
 	if (cursorX == 2){
 		lcd.clear();
 		String prefix = "00";
-		currentSessionDelay = currentSessionDelay + dir;
-		if (currentSessionDelay < 10){
-			currentSessionDelay == 10;
+		tmpInts[0] = tmpInts[0] + dir;
+		if (tmpInts[0] < 10){
+			tmpInts[0] == 10;
 		}
-		if (currentSessionDelay >= 10 && currentSessionDelay < 100){
+		if (tmpInts[0] >= 10 && tmpInts[0] < 100){
 			prefix = "0";
 		}
-		if (currentSessionDelay >= 100){
+		if (tmpInts[0] >= 100){
 			prefix = "";
 		}
-		String displayDelay = prefix + String(currentSessionDelay);
+		String displayDelay = prefix + String(tmpInts[0]);
 		lcd.print(displayDelay + "(sec)  delay");
 		lcd.setCursor(0, 1);
 		lcd.print("<back>      <ok>");
@@ -1309,26 +1288,73 @@ void setSessionRepeat(int dir) {
 	lcd.home();
 
 	if (cursorX == 13 && cursorY == 0){
-		currentSessionRepeatBy = currentSessionRepeatBy + dir;
-		if (currentSessionRepeatBy < 0 || currentSessionRepeatBy > 4){
-			currentSessionRepeatBy = 0;
+		tmpInts[1] = tmpInts[1] + dir;
+		if (tmpInts[1] < 0 || tmpInts[1] > 4){
+			tmpInts[1] = 0;
 		}
 	}
 	if (cursorX == 2 && cursorY == 1){
-		currentSessionRepeat = currentSessionRepeat + dir;
-		if (currentSessionRepeat < 0 || currentSessionRepeat >= 1000){
-			currentSessionRepeat = 0;
+		tmpInts[0] = tmpInts[0] + dir;
+		if (tmpInts[0] < 0 || tmpInts[0] >= 1000){
+			tmpInts[0] = 0;
 		}
 	}
 
-	String displayRepeat = (currentSessionRepeat >= 10 && currentSessionRepeat <= 99) ? "0" + String(currentSessionRepeat) : (currentSessionRepeat < 10 && currentSessionRepeat >= 0) ? "00" + String(currentSessionRepeat) : String(currentSessionRepeat);
-	String displayRepeatBy = displayRepeats[currentSessionRepeatBy];
+	String displayRepeat = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
+	String displayRepeatBy = displayRepeats[tmpInts[1]];
 
 	lcd.print("Repeated: " + displayRepeatBy);
 	lcd.setCursor(0, 1);
 	lcd.print(displayRepeat + "x <back> <ok>");
 	lcd.setCursor(cursorX, cursorY);
 }
+
+void setPHRange(double dir){
+	float minMaxDiff = 0.01;
+	if ((dir == 1) ? cursorX == 3 : cursorX == 9){
+		(dir == 1) ? tmpFloats[0] = tmpFloats[0] + minMaxDiff : tmpFloats[1] = tmpFloats[1] - minMaxDiff;
+		if ((dir == 1) ? tmpFloats[0] > (tmpFloats[1] - minMaxDiff) : tmpFloats[1] < (tmpFloats[0] + minMaxDiff)){
+			(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
+		}
+	}
+	if ((dir == 1) ? cursorX == 9 : cursorX == 3) {
+		(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
+	}
+
+	lcd.clear();
+	lcd.print(String(tmpFloats[0]));
+	lcd.write(byte(1));
+	lcd.print(+" " + String(tmpFloats[1]));
+	lcd.write(byte(0));
+	lcd.print(" PH");
+	lcd.setCursor(0, 1);
+	lcd.print("<back>      <ok>");
+	lcd.setCursor(cursorX, 0);
+}
+
+	void setPHChannels(int dir){
+		String UpDisplay;
+		String DownDisplay;
+		if (cursorX == 6 && cursorY == 0){
+			tmpInts[0] = (tmpInts[0] + dir < 1) ? 1 : (tmpInts[0] + dir > 10) ? 10 : tmpInts[0] + dir;
+		}
+		if (cursorX == 14 && cursorY == 0){
+			tmpInts[1] = (tmpInts[1] + dir < 1) ? 1 : (tmpInts[1] + dir > 10) ? 10 : tmpInts[1] + dir;
+		}
+		UpDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+		DownDisplay = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+
+		lcd.clear();
+		lcd.home();
+		lcd.print("PH");
+		lcd.write(byte(1));
+		lcd.print("CH"+UpDisplay+" PH");
+		lcd.write(byte(0));
+		lcd.print("CH"+DownDisplay);
+		lcd.setCursor(0, 1);
+		lcd.print("<back>      <ok>");
+		lcd.setCursor(cursorX, cursorY);
+	}
 
 void buildCrop(){
 	const int bufferSize = 64;
@@ -1353,6 +1379,7 @@ void buildCrop(){
 	SD.mkdir(cropName + "/SysConf/DateTime");
 	SD.mkdir(cropName + "/SysConf/ChNum");
 	SD.mkdir(cropName + "/SysConf/PPM");
+	SD.mkdir(cropName + "/SysConf/PH");
 	SD.mkdir(cropName + "/SysConf/Open");
 	SD.mkdir(cropName + "/SysConf/New");
 	SD.mkdir(cropName + "/SysConf/Delete");
@@ -1363,6 +1390,10 @@ void buildCrop(){
 	JsonObject& cropSettings = cropObjBuffer.createObject();
 	cropSettings["minPPM"] = 1200;
 	cropSettings["maxPPM"] = 1400;
+	cropSettings["minPH"] = 6.0;
+	cropSettings["maxPH"] = 7.0;
+	cropSettings["PHUpChannel"] = 8;
+	cropSettings["PHDownChannel"] = 9;
 	cropSettings["totalChannels"] = 10;
 	makeNewFile(cropName + "/crop.dro", cropSettings);
 
