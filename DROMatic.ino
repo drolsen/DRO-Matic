@@ -243,7 +243,12 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "CHNUM"){}
+		if (screenName == "CHNUM"){
+			matrix = {
+				{ { 1, 1 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
 		if (screenName == "CHSIZE"){
 			matrix = {
 				{ { 2, 2 } },
@@ -301,7 +306,9 @@ void loop()
 		if (screenName == "DATETIME"){
 			setDateTime(1);
 		}
-		if (screenName == "CHNUM"){}
+		if (screenName == "CHNUM"){
+			setChannelNumber(1);
+		}
 		if (screenName == "CHSIZE"){
 			setChannelSize(10);
 		}
@@ -342,7 +349,9 @@ void loop()
 		if (screenName == "DATETIME"){
 			setDateTime(-1);
 		}
-		if (screenName == "CHNUM"){}
+		if (screenName == "CHNUM"){
+			setChannelNumber(-1);
+		}
 		if (screenName == "CHSIZE"){
 			setChannelSize(-10);
 		}
@@ -398,7 +407,12 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "CHNUM"){}
+		if (screenName == "CHNUM"){
+			matrix = {
+				{ { 1, 1 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
 		if (screenName == "CHSIZE"){
 			matrix = {
 				{ { 2, 2 } },
@@ -504,13 +518,20 @@ void loop()
 					lcd.setCursor(3, 0);
 				}
 				if (screenName == "CHNUM"){
-					lcd.blink();
 					lcd.clear();
 					lcd.home();
-					lcd.print(10 + " CHANNELS");
-					lcd.setCursor(10,1);
-					lcd.print("<save>");
-					lcd.setCursor(1,0);
+					cursorX = 1;
+					cursorY = 0;
+					JsonObject& data = getCropData();
+					tmpInts[0] = data["totalChannels"];
+					String totalDisplay;
+					totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+					lcd.print(totalDisplay + " CHANNELS");
+					lcd.setCursor(0, 1);
+					lcd.print("<back>      <ok>");
+					//delay(5000);
+					lcd.setCursor(cursorX, cursorY);
+					lcd.blink();
 				}
 				if (screenName == "CHSIZE"){
 					lcd.clear();
@@ -558,7 +579,6 @@ void loop()
 					lcd.blink();
 				}
 				if (screenName == "STR"){
-					lcd.blink();
 					lcd.clear();
 					lcd.home();
 					captureSessionDateTime();
@@ -568,6 +588,7 @@ void loop()
 					lcd.setCursor(1, 0);
 					cursorX = 1;
 					cursorY = 0;
+					lcd.blink();
 				}
 				if (screenName == "DLY"){
 					lcd.clear();
@@ -682,7 +703,17 @@ void loop()
 				exitScreen();
 			}
 		}
-		if (screenName == "CHNUM"){}
+		if (screenName == "CHNUM"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getCropData();
+				data["totalChannels"] = tmpInts[0];
+				setCropData(data);
+			}
+			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = 0;
+				exitScreen();
+			}
+		}
 		if (screenName == "CHSIZE"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getChannelData();
@@ -1355,6 +1386,21 @@ void setPHRange(double dir){
 		lcd.print("<back>      <ok>");
 		lcd.setCursor(cursorX, cursorY);
 	}
+
+void setChannelNumber(int dir){
+	String totalDisplay;
+	if (cursorX == 1 && cursorY == 0){
+		tmpInts[0] = tmpInts[0] + dir;
+		if (tmpInts[0] > 10){ tmpInts[0] = 10; }
+		if (tmpInts[0] < 1){ tmpInts[0] = 1; }
+	}
+	lcd.clear();
+	totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+	lcd.print(totalDisplay + " CHANNELS");
+	lcd.setCursor(0, 1);
+	lcd.print("<back>      <ok>");
+	lcd.setCursor(1, 0);
+}
 
 void buildCrop(){
 	const int bufferSize = 64;
