@@ -21,7 +21,8 @@ However, the big down side to moving to vertical farming or hydroponics in gener
 
 In steps the DRO-Matic OS to take care of all the heavy lifting in hydroponic farming for you. Our goal is curve the time spent learning and maintaining hydroponic farms in hopes to better bring this much more efficient way of food production to a lot more farmers.
 
-Because of the sheer flexibility of the DRO-Matic OS, there is a lot of a screens to a single crop:
+##OS Overview
+Because of the sheer flexibility of the DRO-Matic OS, there is a lot of a screens to a single crop. Below is a quick overview of the availble OS features, but for a more indepth look please <a href="https://github.com/devinrayolsen/DRO-Matic/wiki/1)-Getting-Started">visit the wiki page</a>.
 
 ### <a href="https://github.com/devinrayolsen/DROmatic/wiki/1)-Getting-Started">Home Screen</a>
 - Displays current date/time, current PPM levels and current PH levels
