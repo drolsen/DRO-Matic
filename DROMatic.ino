@@ -205,15 +205,17 @@ void loop()
 		openHomeScreen();
 	}
 
-	if (Key == 0){
-		//Right
+	if (Key == 0 || Key == 408){
+		//Right & Left
 		if (screenName == "NewCrop"){
 			matrix = {
 				{ { 0, 15 } },
 				{ { 11, 11 } }
 			};
-			renameCrop(NULL);
-			lcd.blink();
+			if (Key == 0){
+				renameCrop(NULL);
+				lcd.blink();
+			}
 		}
 		if (screenName == "DATETIME"){
 			matrix = {
@@ -287,8 +289,20 @@ void loop()
 				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
 			};
 		}
-		cursorX = cursorX + 1;
-		screenMatrix();
+		cursorX = (Key == 0) ? cursorX + 1 : cursorX - 1;
+		if (Key == 408 && screenName == ""){
+			menusHistory.pop_back();
+			menuIndex = 0;
+			File prevLvl = SD.open(cropName + "/" + getMenuHistory());
+			getDirectoryMenus(prevLvl);
+			lcd.clear();
+			prevLvl.close();
+			printDisplayNames(menus.front());
+			printScrollArrows();
+		}
+		if (Key == 0 || Key == 408 && screenName != ""){
+			screenMatrix();
+		}
 		delay(250);
 	}
 	if (Key == 99) {
@@ -383,101 +397,7 @@ void loop()
 		}
 		delay(250);
 	}
-	if (Key == 408) {
-		//Left
-		if (screenName == "NewCrop"){
-			matrix = {
-				{ { 0, 15 },
-				{ 11, 11 } }
-			};
-		}
-		if (screenName == "DATETIME"){
-			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
-				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "PPM"){
-			matrix = {
-				{ { 3, 3 }, { 8, 8 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "PH"){
-			matrix = {
-				{ { 3, 3 }, { 9, 9 } },
-				{ { 1, 1 }, { 11, 11 } }
-			};
-		}
-		if (screenName == "PHCHL"){
-			matrix = {
-				{ { 6, 6 }, { 14, 14 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "CHNUM"){
-			matrix = {
-				{ { 1, 1 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "CHDOSES"){
-			matrix = {
-				{ { 1, 1 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "CHSIZE"){
-			matrix = {
-				{ { 2, 2 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "CHCALIB"){
-			matrix = {
-				{ { 10, 10 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "AMT"){
-			matrix = {
-				{ { 2, 2 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "STR"){
-			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
-				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "DLY"){
-			matrix = {
-				{ { 2, 2 } },
-				{ { 1, 1 }, { 13, 13 } }
-			};
-		}
-		if (screenName == "RPT"){
-			matrix = {
-				{ { 13, 13 } },
-				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
-			};
-		}
-		if (screenName == ""){
-			menusHistory.pop_back();
-			menuIndex = 0;
-			File prevLvl = SD.open(cropName + "/" + getMenuHistory());
-			getDirectoryMenus(prevLvl);
-			lcd.clear();
-			prevLvl.close();
-			printDisplayNames(menus.front());
-			printScrollArrows();
-		} else {
-			cursorX = cursorX - 1;
-			screenMatrix();
-		}
-		delay(250);
-	}
+
 	if (Key == 639) {
 		//Select
 		if (screenName == ""){
