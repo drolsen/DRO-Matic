@@ -1,3 +1,10 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - September 11, 2016
+*  devin@devinrolsen.com
+*/
+
 #include <LiquidCrystal.h>
 #include <SPI.h>
 #include <SD.h>
@@ -14,7 +21,7 @@ using namespace std;
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 int Key;
 const int chipSelect = 4;
-unsigned long previousMillis = 0;        // will store last time
+unsigned long previousMillis = 0;  //stores last time
 
 String cropName;
 String renameArry[15] = { "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
@@ -26,10 +33,6 @@ int minPPM = 1200;
 int maxPPM = 1400;
 
 
-//String suffix;
-String displayHour;
-String displayMin;
-String displayDay;
 int hour;
 int minute;
 int sec;
@@ -39,10 +42,6 @@ int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 char* meridiem;
 
-//String sessionSuffix;
-String displaySessionHour;
-String displaySessionMin;
-String displaySessionDay;
 int sessionHour;
 int sessionMinute;
 int sessionSec;
@@ -56,7 +55,7 @@ int currentSessionIndex;
 
 int tmpInts[2];
 float tmpFloats[2];
-String tmpDisplay[6];
+String tmpDisplay[4]; //suffix, hour, min, day
 int currentAlphaIndex = 0;
 
 const char* alphabet[37] = { 
@@ -498,7 +497,7 @@ void loop()
 					lcd.clear();
 					lcd.home();
 					captureDateTime();
-					lcd.print(String(displayHour) + ":" + String(displayMin) + meridiem + " " + String(months[month]) + " " + String(displayDay));
+					lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + meridiem + " " + String(months[month]) + " " + String(tmpDisplay[3]));
 					lcd.setCursor(0, 1);
 					lcd.print(String(year)+" <back> <ok>");
 					lcd.setCursor(1, 0);
@@ -614,7 +613,7 @@ void loop()
 					lcd.clear();
 					lcd.home();
 					captureSessionDateTime();
-					lcd.print(String(displaySessionHour) + ":" + String(displaySessionMin) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(displaySessionDay));
+					lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(tmpDisplay[3]));
 					lcd.setCursor(0, 1);
 					lcd.print(String(sessionYear) + " <back> <ok>");
 					lcd.setCursor(1, 0);
@@ -732,7 +731,10 @@ void loop()
 				rtc.setDate(day, month, year);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				tmpDisplay[6] = "";
+				tmpDisplay[0] = ""; //suffix
+				tmpDisplay[1] = ""; //hour
+				tmpDisplay[2] = ""; //min
+				tmpDisplay[3] = ""; //day
 				exitScreen();
 			}
 		}
@@ -829,7 +831,10 @@ void loop()
 				data["date"] = date;
 				data["time"] = time;
 				setSessionData(data);
-				tmpDisplay[6]; //reset suffix
+				tmpDisplay[0] = ""; //suffix
+				tmpDisplay[1] = ""; //hour
+				tmpDisplay[2] = ""; //min
+				tmpDisplay[3] = ""; //day
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				menusHistory.pop_back();
@@ -881,7 +886,7 @@ int division(int sum, int size)
 void openHomeScreen(){
 	captureDateTime();
 	lcd.clear();
-	lcd.print(displayHour + ":" + displayMin + meridiem + " " + months[rtc.getTime().mon] + " " + displayDay);
+	lcd.print(tmpDisplay[1] + ":" + tmpDisplay[2] + meridiem + " " + months[rtc.getTime().mon] + " " + tmpDisplay[3]);
 	lcd.setCursor(0, 1);
 	lcd.print("PPM:1275 PH:6.0");
 	lcd.home();
@@ -1204,7 +1209,7 @@ void setDateTime(int dir){
 	lcd.clear();
 	captureDateTimeDisplays();
 
-	lcd.print(String(displayHour) + ":" + String(displayMin) + meridiem +" " + String(months[month]) + " " + String(displayDay));
+	lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + meridiem + " " + String(months[month]) + " " + String(tmpDisplay[3]));
 	lcd.setCursor(0, 1);
 	lcd.print(String(year)+" <back> <ok>");
 	lcd.setCursor(cursorX, cursorY);
@@ -1236,10 +1241,10 @@ void setDateTime(int dir){
 			}
 
 			meridiem = (hour >= 12 && hour < 24) ? "PM" : "AM";
-			tmpDisplay[6] = (day == 1 || day == 21 || day == 31) ? "st" : (day == 2 || day == 22) ? "nd" : (day == 3 || day == 23) ? "rd" : "th";
-			displayHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
-			displayMin = (minute < 10) ? "0" + String(minute) : String(minute);
-			displayDay = (day < 10) ? "0" + String(day) + tmpDisplay[6] : String(day) + tmpDisplay[6];
+			tmpDisplay[0] = (day == 1 || day == 21 || day == 31) ? "st" : (day == 2 || day == 22) ? "nd" : (day == 3 || day == 23) ? "rd" : "th";
+			tmpDisplay[1] = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
+			tmpDisplay[2] = (minute < 10) ? "0" + String(minute) : String(minute);
+			tmpDisplay[3] = (day < 10) ? "0" + String(day) + tmpDisplay[0] : String(day) + tmpDisplay[0];
 			
 		}
 
@@ -1331,7 +1336,7 @@ void setSessionDateTime(int dir){
 	lcd.clear();
 	captureSessionDateTimeDisplays();
 
-	lcd.print(String(displaySessionHour) + ":" + String(displaySessionMin) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(displaySessionDay));
+	lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + sessionMeridiem + " " + String(months[sessionMonth]) + " " + String(tmpDisplay[3]));
 	lcd.setCursor(0, 1);
 	lcd.print(String(sessionYear) + " <back> <ok>");
 	lcd.setCursor(cursorX, cursorY);
@@ -1364,10 +1369,10 @@ void setSessionDateTime(int dir){
 			}
 
 			sessionMeridiem = (sessionHour >= 12 && sessionHour < 24) ? "PM" : "AM";
-			tmpDisplay[6] = (sessionDay == 1 || sessionDay == 21 || sessionDay == 31) ? "st" : (sessionDay == 2 || sessionDay == 22) ? "nd" : (sessionDay == 3 || sessionDay == 23) ? "rd" : "th";
-			displaySessionHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
-			displaySessionMin = (sessionMinute < 10) ? "0" + String(sessionMinute) : String(sessionMinute);
-			displaySessionDay = (sessionDay < 10) ? "0" + String(sessionDay) + tmpDisplay[6] : String(sessionDay) + tmpDisplay[6];
+			tmpDisplay[0] = (sessionDay == 1 || sessionDay == 21 || sessionDay == 31) ? "st" : (sessionDay == 2 || sessionDay == 22) ? "nd" : (sessionDay == 3 || sessionDay == 23) ? "rd" : "th";
+			tmpDisplay[1] = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
+			tmpDisplay[2] = (sessionMinute < 10) ? "0" + String(sessionMinute) : String(sessionMinute);
+			tmpDisplay[3] = (sessionDay < 10) ? "0" + String(sessionDay) + tmpDisplay[0] : String(sessionDay) + tmpDisplay[0];
 		}
 
 void setSessionDelay(int dir){
