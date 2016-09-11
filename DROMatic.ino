@@ -127,8 +127,8 @@ void setCoreData(JsonObject& data){
 }
 
 JsonObject& getCropData(){
-	StaticJsonBuffer<512> buffer;
-	File crop = SD.open(getCropName() + "/crop.dro");
+	StaticJsonBuffer<256> buffer;
+	File crop = SD.open(cropName + "/crop.dro");
 	return buffer.parseObject(crop.readString());
 }
 
@@ -143,7 +143,7 @@ String getCropName(){
 }
 
 void setCropData(JsonObject& data){
-	char buffer[128];
+	char buffer[512];
 	File crop = SD.open(cropName + "/crop.dro", O_WRITE | O_TRUNC);
 	data.printTo(buffer, sizeof(buffer));
 	crop.print(buffer);
@@ -255,6 +255,12 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
+		if (screenName == "CHDOSES"){
+			matrix = {
+				{ { 1, 1 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
 		if (screenName == "CHCALIB"){
 			matrix = {
 				{ { 10, 10 } },
@@ -309,6 +315,9 @@ void loop()
 		if (screenName == "CHNUM"){
 			setChannelNumber(1);
 		}
+		if (screenName == "CHDOSES"){
+			setSessionNumber(1);
+		}
 		if (screenName == "CHSIZE"){
 			setChannelSize(10);
 		}
@@ -351,6 +360,9 @@ void loop()
 		}
 		if (screenName == "CHNUM"){
 			setChannelNumber(-1);
+		}
+		if (screenName == "CHDOSES"){
+			setSessionNumber(-1);
 		}
 		if (screenName == "CHSIZE"){
 			setChannelSize(-10);
@@ -408,6 +420,12 @@ void loop()
 			};
 		}
 		if (screenName == "CHNUM"){
+			matrix = {
+				{ { 1, 1 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "CHDOSES"){
 			matrix = {
 				{ { 1, 1 } },
 				{ { 1, 1 }, { 13, 13 } }
@@ -523,10 +541,27 @@ void loop()
 					cursorX = 1;
 					cursorY = 0;
 					JsonObject& data = getCropData();
-					tmpInts[0] = data["totalChannels"];
+					int total = data["totalChannels"];
+					tmpInts[0] = total;
 					String totalDisplay;
 					totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
 					lcd.print(totalDisplay + " CHANNELS");
+					lcd.setCursor(0, 1);
+					lcd.print("<back>      <ok>");
+					//delay(5000);
+					lcd.setCursor(cursorX, cursorY);
+					lcd.blink();
+				}
+				if (screenName == "CHDOSES"){
+					lcd.clear();
+					lcd.home();
+					cursorX = 1;
+					cursorY = 0;
+					JsonObject& data = getChannelData();
+					tmpInts[0] = data["sessionsTotal"];
+					String totalDisplay;
+					totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+					lcd.print(totalDisplay + " # OF SESSIONS");
 					lcd.setCursor(0, 1);
 					lcd.print("<back>      <ok>");
 					//delay(5000);
@@ -706,8 +741,30 @@ void loop()
 		if (screenName == "CHNUM"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getCropData();
+				int total = data["totalChannels"];
 				data["totalChannels"] = tmpInts[0];
 				setCropData(data);
+				if (total+1 > tmpInts[0]){	trimChannels(total+1, tmpInts[0]);	}
+				if (total < tmpInts[0]){	addChannels(total+1, tmpInts[0]);	}
+			}
+			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = 0;
+				exitScreen();
+			}
+		}
+		if (screenName == "CHDOSES"){
+			if (cursorX == 13 && cursorY == 1){
+				JsonObject& data = getChannelData();
+				if (data["sessionsTotal"] > tmpInts[0]){
+					//we are adding sessions
+					trimChannelSessions(data["sessionsTotal"], tmpInts[0]);
+				}
+				if (data["sessionsTotal"] < tmpInts[0]){
+					//we are removing sessions
+					addChannelSessions(data["sessionsTotal"], tmpInts[0]);
+				}
+				data["sessionsTotal"] = tmpInts[0];
+				setChannelData(data);
 			}
 			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
 				tmpInts[0] = 0;
@@ -1061,6 +1118,29 @@ void printDisplayNames(String menu){
 	}
 }
 
+void removeDirectory(String path) {
+	StaticJsonBuffer<256> buffer;
+	File channelFile = SD.open(path + "/channel.dro");
+	JsonObject& data = buffer.parseObject(channelFile.readString());
+	int sessionTotal = data["sessionsTotal"];
+	SD.rmdir(path + "/ChConf/ChCalib");
+	SD.rmdir(path + "/ChConf/ChDoses");
+	SD.rmdir(path + "/ChConf/ChSize");
+	SD.rmdir(path + "/ChConf");
+	SD.remove(path + "/Channel.dro");
+	for (int i = 0; i < sessionTotal; i++){
+		int number = i + 1;
+		SD.rmdir(path + "/Sessions/ChSes" + number + "/Amt");
+		SD.rmdir(path + "/Sessions/ChSes" + number + "/Dly");
+		SD.rmdir(path + "/Sessions/ChSes" + number + "/Rpt");
+		SD.rmdir(path + "/Sessions/ChSes" + number + "/Str");
+		SD.remove(path + "/Sessions/ChSes" + number + "/Session.dro");
+		SD.rmdir(path + "/Sessions/ChSes" + number);
+	}
+	SD.rmdir(path + "/Sessions");
+	SD.rmdir(path);
+}
+
 void renameCrop(int dir){
 	cropName = "";
 	if (dir != NULL){
@@ -1402,10 +1482,61 @@ void setChannelNumber(int dir){
 	lcd.setCursor(1, 0);
 }
 
+void setSessionNumber(int dir){
+	String totalDisplay;
+	if (cursorX == 1 && cursorY == 0){
+		tmpInts[0] = tmpInts[0] + dir;
+		if (tmpInts[0] < 1){ tmpInts[0] = 1; }
+	}
+	lcd.clear();
+	totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+	lcd.print(totalDisplay + " # OF SESSIONS");
+	lcd.setCursor(0, 1);
+	lcd.print("<back>      <ok>");
+	lcd.setCursor(1, 0);
+}
+
+void trimChannelSessions(int currentSize, int trimAmount){
+	for (int i = 0; i < currentSize; i++){
+		if (i > trimAmount){
+			SD.remove(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + i);
+			lcd.print("*");
+		}
+		Serial.flush();
+	}
+}
+void addChannelSessions(int currentSize, int addAmount){
+	int loopAmount = addAmount - currentSize;
+	for (int i = 0; i < loopAmount; i++){
+		makeSession(cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES" + i, currentChannelIndex, currentSize+i);
+		lcd.print("*");
+		Serial.flush();
+	}
+}
+
+void trimChannels(int currentSize, int trimAmount){
+	lcd.clear();
+	for (int i = 0; i < currentSize; i++){
+		if (i > trimAmount){
+			removeDirectory(cropName + "/CHANNELS/SYSCH" + String(i));
+			lcd.print("*");
+		}
+		Serial.flush();
+	}
+}
+void addChannels(int currentSize, int addAmount){
+	lcd.clear();
+	int loopAmount = (addAmount - currentSize) + 1;
+	for (int i = 0; i < loopAmount; i++){
+		makeChannel(cropName + "/CHANNELS/SYSCH" + String(currentSize + i), i, 4);
+		lcd.print("*");
+		Serial.flush();
+	}
+}
+
 void buildCrop(){
-	const int bufferSize = 64;
 	String channelName;
-	String sessionName;
+	
 	File channelSettingsFile;
 	File sessionSettingsFile;
 	int defaultChannelSize = 10;
@@ -1432,7 +1563,7 @@ void buildCrop(){
 	SD.mkdir(cropName + "/Channels");
 
 	//Build Crop Settings File
-	StaticJsonBuffer<bufferSize> cropObjBuffer;
+	StaticJsonBuffer<256> cropObjBuffer;
 	JsonObject& cropSettings = cropObjBuffer.createObject();
 	cropSettings["minPPM"] = 1200;
 	cropSettings["maxPPM"] = 1400;
@@ -1446,53 +1577,8 @@ void buildCrop(){
 	//Build Channels and their sub sessions
 	lcd.setCursor(0, 1);
 	for (int i = 0; i < defaultChannelSize; i++){
-		channelName = cropName + "/Channels/SysCh" + String(i + 1);
-		SD.mkdir(channelName);
-		SD.mkdir(channelName + "/ChConf");
-		SD.mkdir(channelName + "/ChConf/ChDoses");
-		SD.mkdir(channelName + "/ChConf/ChSize");
-		SD.mkdir(channelName + "/ChConf/ChCalib");
-
-		//Build Channels Settings File
-		StaticJsonBuffer<bufferSize> channelObjBuffer;
-		JsonObject& channelSettings = channelObjBuffer.createObject();
-		channelSettings["id"] = i;
-		channelSettings["size"] = 80;
-		channelSettings["sessionsTotal"] = 4;
-		channelSettings["calibration"] = 0;
-
-		makeNewFile(channelName + "/channel.dro", channelSettings);
-
-		for (int j = 0; j < defaultSessionSize; j++){
-			sessionName = channelName + "/Sessions/ChSes" + String(j + 1);
-			SD.mkdir(sessionName);
-			SD.mkdir(sessionName + "/Amt");
-			SD.mkdir(sessionName + "/Str");
-			SD.mkdir(sessionName + "/Dly");
-			SD.mkdir(sessionName + "/Rpt");
-
-			//Build Session's settings file
-			StaticJsonBuffer<bufferSize> sessionObjBuffer;
-			char sessionBuffer[bufferSize];
-			JsonObject& sessionSettings = sessionObjBuffer.createObject();
-			StaticJsonBuffer<200> dateBuffer;
-			StaticJsonBuffer<200> timeBuffer;
-			JsonArray& date = dateBuffer.createArray();
-			JsonArray& time = timeBuffer.createArray();
-
-			sessionSettings["id"] = j;
-			sessionSettings["channel"] = i;
-			sessionSettings["ammount"] = 80;
-			sessionSettings["date"] = date;
-			sessionSettings["time"] = time;
-			sessionSettings["delay"] = 0;
-			sessionSettings["repeat"] = 0;
-			sessionSettings["repeatBy"] = 0; //0 none, 1 = hourly, 2 = daily, 3 = weekly, 4 = monthly, 5 = yearly
-			makeNewFile(sessionName + "/session.dro", sessionSettings);
-		}
-		
+		makeChannel(cropName + "/Channels/SysCh" + String(i + 1), i, 4);
 		lcd.print("*");
-		Serial.flush();
 	}
 	screenName = "";
 	lcd.noBlink();
@@ -1504,4 +1590,59 @@ void buildCrop(){
 	getDirectoryMenus(root);
 	root.close();
 	openHomeScreen();
+}
+
+void makeChannel(String path, int channelId, int numberOfSessions){
+	const int bufferSize = 64;
+	String channelName = path; 
+	SD.mkdir(channelName);
+	SD.mkdir(channelName + "/ChConf");
+	SD.mkdir(channelName + "/ChConf/ChDoses");
+	SD.mkdir(channelName + "/ChConf/ChSize");
+	SD.mkdir(channelName + "/ChConf/ChCalib");
+
+	//Build Channels Settings File
+	StaticJsonBuffer<bufferSize> channelObjBuffer;
+	JsonObject& channelSettings = channelObjBuffer.createObject();
+	channelSettings["id"] = channelId;
+	channelSettings["size"] = 80;
+	channelSettings["sessionsTotal"] = 4;
+	channelSettings["calibration"] = 0;
+
+	makeNewFile(channelName + "/channel.dro", channelSettings);
+
+	for (int j = 0; j < numberOfSessions; j++){
+		makeSession(channelName + "/Sessions/ChSes" + String(j + 1), channelId, j);
+	}
+	Serial.flush();
+}
+
+void makeSession(String path, int channelId, int sessionId){
+	const int bufferSize = 64;
+	String sessionName;
+	sessionName = path;
+	SD.mkdir(sessionName);
+	SD.mkdir(sessionName + "/Amt");
+	SD.mkdir(sessionName + "/Str");
+	SD.mkdir(sessionName + "/Dly");
+	SD.mkdir(sessionName + "/Rpt");
+
+	//Build Session's settings file
+	StaticJsonBuffer<bufferSize> sessionObjBuffer;
+	char sessionBuffer[bufferSize];
+	JsonObject& sessionSettings = sessionObjBuffer.createObject();
+	StaticJsonBuffer<200> dateBuffer;
+	StaticJsonBuffer<200> timeBuffer;
+	JsonArray& date = dateBuffer.createArray();
+	JsonArray& time = timeBuffer.createArray();
+
+	sessionSettings["id"] = sessionId;
+	sessionSettings["channel"] = channelId;
+	sessionSettings["ammount"] = 80;
+	sessionSettings["date"] = date;
+	sessionSettings["time"] = time;
+	sessionSettings["delay"] = 0;
+	sessionSettings["repeat"] = 0;
+	sessionSettings["repeatBy"] = 0; //0 none, 1 = hourly, 2 = daily, 3 = weekly, 4 = monthly, 5 = yearly
+	makeNewFile(sessionName + "/session.dro", sessionSettings);
 }
