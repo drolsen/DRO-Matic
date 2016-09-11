@@ -25,7 +25,8 @@ int menuIndex = 0;
 int minPPM = 1200;
 int maxPPM = 1400;
 
-String suffix;
+
+//String suffix;
 String displayHour;
 String displayMin;
 String displayDay;
@@ -38,7 +39,7 @@ int year;
 int days[12] = { 31, ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 char* meridiem;
 
-String sessionSuffix;
+//String sessionSuffix;
 String displaySessionHour;
 String displaySessionMin;
 String displaySessionDay;
@@ -55,6 +56,7 @@ int currentSessionIndex;
 
 int tmpInts[2];
 float tmpFloats[2];
+String tmpDisplay[6];
 int currentAlphaIndex = 0;
 
 const char* alphabet[37] = { 
@@ -137,11 +139,6 @@ JsonObject& parseCropData(File cropFile){
 	return buffer.parseObject(cropFile.readString());
 }
 
-String getCropName(){
-	JsonObject& data = getCoreData();
-	return data["crop"];
-}
-
 void setCropData(JsonObject& data){
 	char buffer[512];
 	File crop = SD.open(cropName + "/crop.dro", O_WRITE | O_TRUNC);
@@ -221,7 +218,7 @@ void loop()
 		}
 		if (screenName == "DATETIME"){
 			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, {13, 13} },
+				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, {13, 13} },
 				{ { 3, 3 }, { 6, 6 }, {13, 13} }
 			};
 		}
@@ -275,7 +272,7 @@ void loop()
 		}
 		if (screenName == "STR"){
 			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
+				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
 		}
@@ -397,7 +394,7 @@ void loop()
 		}
 		if (screenName == "DATETIME"){
 			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
+				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
 		}
@@ -451,7 +448,7 @@ void loop()
 		}
 		if (screenName == "STR"){
 			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 6, 6 }, { 10, 10 }, { 13, 13 } },
+				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
 				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
 			};
 		}
@@ -735,6 +732,7 @@ void loop()
 				rtc.setDate(day, month, year);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
+				tmpDisplay[6] = "";
 				exitScreen();
 			}
 		}
@@ -831,7 +829,7 @@ void loop()
 				data["date"] = date;
 				data["time"] = time;
 				setSessionData(data);
-
+				tmpDisplay[6]; //reset suffix
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				menusHistory.pop_back();
@@ -941,7 +939,7 @@ int getChannelsTotal(){
 
 int getSessionTotal(){
 	StaticJsonBuffer<512> buffer;
-	File session = SD.open(getCropName() + "/Channels/Channel" + String(currentChannelIndex) + "/channel.dro");
+	File session = SD.open(cropName + "/Channels/Channel" + String(currentChannelIndex) + "/channel.dro");
 	JsonObject& data = buffer.parseObject(session.readString());
 	return data["sessionsTotal"];
 }
@@ -1238,10 +1236,10 @@ void setDateTime(int dir){
 			}
 
 			meridiem = (hour >= 12 && hour < 24) ? "PM" : "AM";
-			suffix = (day == 1 || day == 21 || day == 31) ? "st" : (day == 2 || day == 22) ? "nd" : (day == 3 || day == 23) ? "rd" : "th";
+			tmpDisplay[6] = (day == 1 || day == 21 || day == 31) ? "st" : (day == 2 || day == 22) ? "nd" : (day == 3 || day == 23) ? "rd" : "th";
 			displayHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
 			displayMin = (minute < 10) ? "0" + String(minute) : String(minute);
-			displayDay = (day < 10) ? "0" + String(day) + suffix : String(day) + suffix;
+			displayDay = (day < 10) ? "0" + String(day) + tmpDisplay[6] : String(day) + tmpDisplay[6];
 			
 		}
 
@@ -1366,10 +1364,10 @@ void setSessionDateTime(int dir){
 			}
 
 			sessionMeridiem = (sessionHour >= 12 && sessionHour < 24) ? "PM" : "AM";
-			sessionSuffix = (sessionDay == 1 || sessionDay == 21 || sessionDay == 31) ? "st" : (sessionDay == 2 || sessionDay == 22) ? "nd" : (sessionDay == 3 || sessionDay == 23) ? "rd" : "th";
+			tmpDisplay[6] = (sessionDay == 1 || sessionDay == 21 || sessionDay == 31) ? "st" : (sessionDay == 2 || sessionDay == 22) ? "nd" : (sessionDay == 3 || sessionDay == 23) ? "rd" : "th";
 			displaySessionHour = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
 			displaySessionMin = (sessionMinute < 10) ? "0" + String(sessionMinute) : String(sessionMinute);
-			displaySessionDay = (sessionDay < 10) ? "0" + String(sessionDay) + sessionSuffix : String(sessionDay) + sessionSuffix;
+			displaySessionDay = (sessionDay < 10) ? "0" + String(sessionDay) + tmpDisplay[6] : String(sessionDay) + tmpDisplay[6];
 		}
 
 void setSessionDelay(int dir){
@@ -1618,7 +1616,7 @@ void makeChannel(String path, int channelId, int numberOfSessions){
 }
 
 void makeSession(String path, int channelId, int sessionId){
-	const int bufferSize = 64;
+	const int bufferSize = 128;
 	String sessionName;
 	sessionName = path;
 	SD.mkdir(sessionName);
@@ -1631,13 +1629,18 @@ void makeSession(String path, int channelId, int sessionId){
 	StaticJsonBuffer<bufferSize> sessionObjBuffer;
 	char sessionBuffer[bufferSize];
 	JsonObject& sessionSettings = sessionObjBuffer.createObject();
-	StaticJsonBuffer<200> dateBuffer;
-	StaticJsonBuffer<200> timeBuffer;
+	StaticJsonBuffer<128> dateBuffer;
+	StaticJsonBuffer<128> timeBuffer;
 	JsonArray& date = dateBuffer.createArray();
+	date.add(rtc.getTime().date); //day
+	date.add((rtc.getTime().mon + 1)); //month
+	date.add(rtc.getTime().year); //year
 	JsonArray& time = timeBuffer.createArray();
-
-	sessionSettings["id"] = sessionId;
-	sessionSettings["channel"] = channelId;
+	time.add(0); //hour
+	time.add(0); //min
+	time.add(0); //sec
+	sessionSettings["id"] = (sessionId+1);
+	sessionSettings["channel"] = (channelId+1);
 	sessionSettings["ammount"] = 80;
 	sessionSettings["date"] = date;
 	sessionSettings["time"] = time;
