@@ -731,7 +731,7 @@ void loop()
 		}
 		if (screenName == "DATETIME"){
 			if (cursorX == 13 && cursorY == 1){
-				rtc.setTime(hour, minute, sec);
+				rtc.setTime(hour, minute, 0);
 				rtc.setDate(day, month, year);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
