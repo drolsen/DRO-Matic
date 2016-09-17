@@ -2,13 +2,13 @@
 
 This is an Arduino (MicroController) based hydroponics Operating System built for any scale hydroponic farm that wants to fully automate nutrient and PH dosing. 
 The DRO-Matic (automatic hydroponics) has been built to allow users to create, configure and share projects called "crops" by interfacing with an external MicroSD card. 
-A single DRO-Matic crop disk size (SD card) can very, but in extreme instances large crop configurations were found to be under 3MB.
+A single DRO-Matic crop disk size (SD card) can very, but in very extreme crop configurations (10 channels, 100 weeks of dosing sessions per channel) were found to be just under 5MB.
 
 ##Why?
 DROMatic has been built to allow you be flexible in any way which you would like to configure the dosings of your hydroponic solutions. 
 However, before we get into the settings and configuration of the OS, its important to ask our selfs why this even exists? 
-It's undoubtedly true across almost all cultures that agriculture and food growth is not only a necessity but also is expensive. 
-It's expensive in the amount of land we used, expensive on the amount energy consumed from veg to harvest, even expensive to be consistent with successful crops year after year.
+It's undoubtedly true across almost all cultures that agriculture and food growth is not only a necessity but also expensive. 
+Agriculture is expensive in the amount of land used, energy spent to get to harvest, and even time spent consistency with successful crops year after year.
 
 In steps hydroponics, and vertical farming. We now have the technology to begin moving farms into a hydroponic setup that stacks vertically. 
 This means no more time spent in large scale soil maintenance, crops can be summed up into much smaller spaces and thus operations can get bigger (concentrated spaces if you will), and crop consistency is much easier to achieve.
