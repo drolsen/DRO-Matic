@@ -14,7 +14,6 @@
 #include <ArduinoJson\ArduinoJson.h>
 #include <DS3231.h>
 #include <avr/pgmspace.h>
-#include <MemoryFree.h>
 DS3231  rtc(SDA, SCL);
 using namespace std;
 
