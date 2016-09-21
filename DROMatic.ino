@@ -83,8 +83,10 @@ const char eight[2] PROGMEM = "8";
 const char nine[2] PROGMEM = "9";
 
 
-const char* const alphabet[37] PROGMEM = {
-	blank, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, zero, one, two, three, four, five, six, seven, eight, nine
+const char* const alphabet[37] PROGMEM = { 
+	blank, a, b, c, d, e, f, g, h, i, j, k, l, m, 
+	n, o, p, q, r, s, t, u, v, w, x, y, z, zero, 
+	one, two, three, four, five, six, seven, eight, nine 
 };
 
 const char sysconf[8] PROGMEM = "SYSCONF";
@@ -114,7 +116,7 @@ const char chnum[6] PROGMEM = "CHNUM";
 const char ppm[4] PROGMEM = "PPM";
 const char ph[3] PROGMEM = "PH";
 const char Open[5] PROGMEM = "OPEN";
-const char New[4] PROGMEM = "NEW";
+const char New[8] PROGMEM = "NEWCROP";
 const char Delete[7] PROGMEM = "DELETE";
 const char chdoses[8] PROGMEM = "CHDOSES";
 const char chcalib[8] PROGMEM = "CHCALIB";
@@ -132,9 +134,9 @@ const char* const displayNames[18][3] PROGMEM = {
 	{ chnum, numberOf, channels },
 	{ ppm, ppmRange, configuration },
 	{ ph, phRange, configuration },
-	{ Open, cropLoad },
-	{ New, newCrop },
-	{ Delete, deleteCrop },
+	{ Open, cropLoad, blank },
+	{ New, newCrop, blank },
+	{ Delete, deleteCrop, blank },
 	{ chdoses, numberOf, sessions },
 	{ chsize, sizeMl, channel },
 	{ chcalib, channel, calibration },
@@ -432,10 +434,8 @@ void loop()
 				lcd.clear();
 				tmpFile.close();
 				printDisplayNames(menus.front());
-				
 				printScrollArrows();
-			}
-			else{
+			} else {
 				screenName = menusHistory.back();
 				if (screenName == "DATETIME"){
 					lcd.blink();
@@ -450,6 +450,17 @@ void loop()
 					lcd.setCursor(1, 0);
 					cursorX = 1;
 					cursorY = 0;
+				}
+				if (screenName == "NEWCROP"){
+					startNewCrop();
+					menus.clear();
+					menusHistory.clear();
+					currentAlphaIndex = 0;
+					currentChannelIndex = 0;
+					currentSessionIndex = 0;
+					menuIndex = 0;
+					cursorX = cursorY = 0;
+					lcd.home();
 				}
 				if (screenName == "PPM"){
 					lcd.blink();
@@ -892,22 +903,22 @@ void coreInit(){
 		if (SD.exists(cropName)){
 			//Loading up exisiting core file's crop directory
 			screenName = "";
+			loadCrop();
 			File cropFile = SD.open("/" + cropName);
 			getDirectoryMenus(cropFile);
 			cropFile.close();
-			loadCrop();
 		}
 		else{
 			//we have core file with crop, but no crop directory. //VERY CORNER CASE!
 			startNewCrop();
 		}
-	}
-	else{ //else, setup new crop
+	} else { //else, setup new crop
 		tmpFile = SD.open("core.dro", FILE_WRITE);
 		char buffer[32];
 		DynamicJsonBuffer coreBuffer;
 		JsonObject& settings = coreBuffer.createObject();
 		settings["crop"];
+		settings.createNestedArray("crops");
 		settings.printTo(buffer, sizeof(buffer));
 		tmpFile.print(buffer);
 		tmpFile.close();
@@ -1041,13 +1052,12 @@ void printDisplayNames(String menu){
 			String match1 = strcpy_P(match1Buffer, (char*)pgm_read_word(&(displayNames[i][0])));
 			String match2 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(displayNames[i][1])));
 			String match3 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(displayNames[i][2])));
+			
 			if (menu == match1){
 				hasMatch = true;
 				lcd.print(match2);
-				if (match3) {
-					lcd.setCursor(0, 1);
-					lcd.print(match3);
-				}
+				lcd.setCursor(0, 1);
+				lcd.print(match3);
 				break;
 			}
 		}
@@ -1324,7 +1334,6 @@ void setPHChannels(int dir){
 	lcd.setCursor(cursorX, cursorY);
 }
 
-
 void setChannelNumber(int dir){
 	String totalDisplay;
 	if (cursorX == 1 && cursorY == 0){
@@ -1530,7 +1539,6 @@ void addSessions(int currentSize, int addAmount){
 	}
 }
 
-
 void buildCrop(){
 	String channelName;
 	File channelSettingsFile;
@@ -1542,6 +1550,7 @@ void buildCrop(){
 	//Parse core file object
 	JsonObject& core = getCoreData();
 	core["crop"] = cropName;
+	core["crops"].asArray().add(cropName);
 	setCoreData(core);
 	String path = cropName + "/Channels/SysCh";
 
@@ -1554,7 +1563,7 @@ void buildCrop(){
 	SD.mkdir(cropName + "/SysConf/PPM");
 	SD.mkdir(cropName + "/SysConf/PH");
 	SD.mkdir(cropName + "/SysConf/Open");
-	SD.mkdir(cropName + "/SysConf/New");
+	SD.mkdir(cropName + "/SysConf/NewCrop");
 	SD.mkdir(cropName + "/SysConf/Delete");
 	SD.mkdir(cropName + "/Channels");
 
