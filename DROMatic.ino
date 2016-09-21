@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
 *  DROMatic OS Core
-*  Devin R. Olsen - September 11, 2016
+*  Devin R. Olsen - September 21, 2016
 *  devin@devinrolsen.com
 */
 
@@ -209,7 +209,7 @@ JsonObject& getCoreData(){
 }
 
 void setCoreData(JsonObject& d){
-	char b[128];
+	char b[512];
 	tmpFile = SD.open("core.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
@@ -308,6 +308,12 @@ void loop()
 				lcd.blink();
 			}
 		}
+		if (screenName == "OPEN"){
+			matrix = {
+				{ {0, 0} },
+				{ {1, 1}, {9, 9} }
+			};
+		}
 		if (screenName == "DATETIME" || screenName == "STR"){
 			matrix = {
 				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
@@ -378,6 +384,15 @@ void loop()
 		int lgdir = (Key == 99) ? 10 : -10;
 		if (screenName == "NewCrop"){
 			renameCrop(dir);
+		}
+		if (screenName == "OPEN"){
+			if (cursorX == 0 && cursorY == 0){
+				lcd.clear();
+				scrollMenus(dir);
+				lcd.setCursor(0, 1);
+				lcd.print("<back>  <open>");
+				lcd.home();
+			}
 		}
 		if (screenName == "PPM"){
 			setPPMRangeValues(dir);
@@ -460,6 +475,23 @@ void loop()
 					currentSessionIndex = 0;
 					menuIndex = 0;
 					cursorX = cursorY = 0;
+					lcd.home();
+				}
+				if (screenName == "OPEN"){
+					lcd.blink();
+					lcd.clear();
+					lcd.setCursor(0, 1);
+					lcd.print(F("<back>  <open>"));
+					lcd.home();
+					cursorX = cursorY = 0;
+					menus.clear();
+					JsonObject& crops = getCoreData();
+					for (int i = 0; i < crops["crops"].size(); i++){
+						menus.push_back(crops["crops"][i].asString());
+					}
+					menuIndex = 0;
+					lcd.print(menus[menuIndex]);
+					printScrollArrows();
 					lcd.home();
 				}
 				if (screenName == "PPM"){
@@ -621,6 +653,18 @@ void loop()
 		if (screenName == "NewCrop"){
 			if (cursorX == 11 && cursorY == 1){
 				buildCrop();
+			}
+		}
+		if (screenName == "OPEN"){
+			if (cursorX == 9 && cursorY == 1){
+				if (menus[menuIndex] != cropName){ 
+					changeCrop(); 
+				}else{
+					exitScreen();
+				}
+			}
+			if (cursorX == 1 && cursorY == 1){
+				exitScreen();
 			}
 		}
 		if (screenName == "PPM"){
@@ -829,6 +873,23 @@ void loop()
 			}
 		}
 	}
+}
+
+void changeCrop(){
+	lcd.clear();
+	lcd.noBlink();
+	lcd.home();
+	lcd.print(F(" LOADING  CROP  "));
+	DynamicJsonBuffer b;
+	tmpFile = SD.open("core.dro");
+	JsonObject& core = b.parseObject(tmpFile.readString());
+	core["crop"] = menus[menuIndex];
+	tmpFile.close();
+	setCoreData(core);
+	menuIndex = currentChannelIndex = currentSessionIndex = currentAlphaIndex = 0;
+	menus.clear();
+	menusHistory.clear();
+	coreInit();
 }
 
 void openHomeScreen(){
