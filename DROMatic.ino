@@ -14,34 +14,47 @@
 #include <ArduinoJson\ArduinoJson.h>
 #include <DS3231.h>
 #include <avr/pgmspace.h>
+#include <Stepper.h>
+
+
+
+Stepper myStepper(200, 15, 14);
+#define MS1 16
+#define MS2 17
+#define RELAY1  22
+#define RELAY2  23
+#define RELAY3  24
+#define RELAY4  25
+#define RELAY5  26
+#define RELAY6  27
+#define RELAY7  28
+#define RELAY8  29
+#define RELAY9  30
+#define RELAY10 31
+
 DS3231  rtc(SDA, SCL);
 using namespace std;
 
 //Global vars
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-
-int tmpInts[6];
-float tmpFloats[2];
-String tmpDisplay[4]; //suffix, hour, min, day
-
 int Key;
 unsigned long previousMillis = 0;  //stores last time
 
 String cropName;
 String nameArry[15];
 String screenName;
-int cursorX;
-int cursorY;
-int menuIndex;
-int minPPM;
-int maxPPM;
-
-int days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-char* meridiem;
-
-int currentChannelIndex;
-int currentSessionIndex;
-int currentAlphaIndex = 0;
+int tmpInts[6];
+float tmpFloats[2];
+String tmpDisplay[5]; //suffix, hour, min, day
+byte cursorX;
+byte cursorY;
+byte menuIndex;
+byte days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+byte currentChannelIndex;
+byte currentSessionIndex;
+byte currentAlphaIndex = 0;
+int minPPM = 1200;
+int maxPPM = 1600;
 
 const char blank[2] PROGMEM = " ";
 const char a[2] PROGMEM = "A";
@@ -80,7 +93,6 @@ const char six[2] PROGMEM = "6";
 const char seven[2] PROGMEM = "7";
 const char eight[2] PROGMEM = "8";
 const char nine[2] PROGMEM = "9";
-
 
 const char* const alphabet[37] PROGMEM = { 
 	blank, a, b, c, d, e, f, g, h, i, j, k, l, m, 
@@ -146,18 +158,18 @@ const char* const displayNames[18][3] PROGMEM = {
 	{ rpt, sessionRepeat, configuration }
 };
 
-const char jan[] PROGMEM = "Jan";
-const char feb[] PROGMEM = "Feb";
-const char mar[] PROGMEM = "Mar";
-const char apl[] PROGMEM = "Apl";
-const char may[] PROGMEM = "May";
-const char jun[] PROGMEM = "Jun";
-const char jul[] PROGMEM = "Jul";
-const char aug[] PROGMEM = "Aug";
-const char sep[] PROGMEM = "Sep";
-const char oct[] PROGMEM = "Oct";
-const char nov[] PROGMEM = "Nov";
-const char dec[] PROGMEM = "Dec";
+const char jan[4] PROGMEM = "Jan";
+const char feb[4] PROGMEM = "Feb";
+const char mar[4] PROGMEM = "Mar";
+const char apl[4] PROGMEM = "Apl";
+const char may[4] PROGMEM = "May";
+const char jun[4] PROGMEM = "Jun";
+const char jul[4] PROGMEM = "Jul";
+const char aug[4] PROGMEM = "Aug";
+const char sep[4] PROGMEM = "Sep";
+const char oct[4] PROGMEM = "Oct";
+const char nov[4] PROGMEM = "Nov";
+const char dec[4] PROGMEM = "Dec";
 
 const char* const months[12] PROGMEM = { jan, feb, mar, apl, may, jun, jul, aug, sep, oct, nov, dec };
 
@@ -169,6 +181,7 @@ const char mly[5] PROGMEM = "Mtly";
 const char yrl[5] PROGMEM = "Yrly";
 
 const char* const displayRepeats[5] PROGMEM = { hly, daly, wly, mly, yrl };
+
 
 byte upArrow[8] = {
 	B00000,
@@ -193,23 +206,23 @@ byte downArrow[8] = {
 
 vector<String> menus;
 vector<String> menusHistory;
-vector<vector<vector<int>>> matrix;
-int sessionValues[10][12];
+vector<vector<vector<byte>>> matrix;
+int loadedSessions[10][12];
 File tmpFile;
 
 
 //Data passing functions for core and crop
 JsonObject& getCoreData(){
 	StaticJsonBuffer<512> b;
-	tmpFile = SD.open("core.dro");
+	tmpFile = SD.open("dromatic/core.dro");
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
 
 void setCoreData(JsonObject& d){
-	char b[512];
-	tmpFile = SD.open("core.dro", O_WRITE | O_TRUNC);
+	char b[128];
+	tmpFile = SD.open("dromatic/core.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -217,15 +230,15 @@ void setCoreData(JsonObject& d){
 
 JsonObject& getCropData(){
 	DynamicJsonBuffer b;
-	tmpFile = SD.open(cropName + "/crop.dro");
+	tmpFile = SD.open("dromatic/"+ cropName + "/crop.dro");
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
 
 void setCropData(JsonObject& d){
-	char b[256];
-	tmpFile = SD.open(cropName + "/crop.dro", O_WRITE | O_TRUNC);
+	char b[512];
+	tmpFile = SD.open("dromatic/" + cropName + "/crop.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -233,7 +246,7 @@ void setCropData(JsonObject& d){
 
 JsonObject& getChannelData(){
 	DynamicJsonBuffer b;
-	tmpFile = SD.open(cropName + "/channels/sysch" + currentChannelIndex + "/channel.dro", FILE_READ);
+	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + currentChannelIndex + "/channel.dro", FILE_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
@@ -241,7 +254,7 @@ JsonObject& getChannelData(){
 
 void setChannelData(JsonObject& d){
 	char b[256];
-	tmpFile = SD.open(cropName + "/channels/sysch" + currentChannelIndex + "/channel.dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + currentChannelIndex + "/channel.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -249,7 +262,7 @@ void setChannelData(JsonObject& d){
 
 JsonObject& getSessionData(){
 	DynamicJsonBuffer b;
-	tmpFile = SD.open(cropName + "/channels/sysch" + currentChannelIndex + "/sessions/chses" + currentSessionIndex + "/session.dro", FILE_READ);
+	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + currentChannelIndex + "/sessions/chses" + currentSessionIndex + "/session.dro", FILE_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
@@ -257,7 +270,7 @@ JsonObject& getSessionData(){
 
 void setSessionData(JsonObject& d){
 	char b[256];
-	tmpFile = SD.open(cropName + "/channels/sysch" + currentChannelIndex + "/sessions/chses" + currentSessionIndex + "/session.dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + currentChannelIndex + "/sessions/chses" + currentSessionIndex + "/session.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -265,12 +278,41 @@ void setSessionData(JsonObject& d){
 
 void setup()
 {
+	
 	lcd.createChar(0, upArrow);
 	lcd.createChar(1, downArrow);
 	lcd.begin(16, 2);
 	Serial.begin(9600);
 	rtc.begin();
 	captureDateTime();
+	String relayName;
+	myStepper.setSpeed(2800);
+
+	pinMode(MS1, OUTPUT);
+	pinMode(MS2, OUTPUT);
+	pinMode(RELAY1, OUTPUT);
+	pinMode(RELAY2, OUTPUT);
+	pinMode(RELAY3, OUTPUT);
+	pinMode(RELAY4, OUTPUT);
+	pinMode(RELAY5, OUTPUT);
+	pinMode(RELAY6, OUTPUT);
+	pinMode(RELAY7, OUTPUT);
+	pinMode(RELAY8, OUTPUT);
+	pinMode(RELAY9, OUTPUT);
+	pinMode(RELAY10, OUTPUT);
+
+	digitalWrite(MS1, LOW);
+	digitalWrite(MS2, LOW);
+	digitalWrite(RELAY1, HIGH);
+	digitalWrite(RELAY2, HIGH);
+	digitalWrite(RELAY3, HIGH);
+	digitalWrite(RELAY4, HIGH);
+	digitalWrite(RELAY5, HIGH);
+	digitalWrite(RELAY6, HIGH);
+	digitalWrite(RELAY7, HIGH);
+	digitalWrite(RELAY8, HIGH);
+	digitalWrite(RELAY9, HIGH);
+	digitalWrite(RELAY10, HIGH);
 
 	if (!SD.begin(53)){
 		lcd.print(F("SD Card Required"));
@@ -292,7 +334,6 @@ void loop()
 	if (currentMillis - previousMillis >= 10000 && screenName == "") {
 		previousMillis = currentMillis;
 		openHomeScreen();
-		//turing();
 	}
 
 	if (Key == 0 || Key == 408){
@@ -361,11 +402,12 @@ void loop()
 				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
 			};
 		}
+		
 		cursorX = (Key == 0) ? cursorX + 1 : cursorX - 1;
 		if (Key == 408 && screenName == ""){
 			menusHistory.pop_back();
 			menuIndex = 0;
-			tmpFile = SD.open(cropName + "/" + getMenuHistory());
+			tmpFile = SD.open("dromatic/" + cropName + "/" + getMenuHistory());
 			getDirectoryMenus(tmpFile);
 			tmpFile.close();
 			lcd.clear();
@@ -389,7 +431,7 @@ void loop()
 				lcd.clear();
 				scrollMenus(dir);
 				lcd.setCursor(0, 1);
-				lcd.print("<back>  <open>");
+				lcd.print(F("<back>  <open>"));
 				lcd.home();
 			}
 		}
@@ -439,34 +481,31 @@ void loop()
 		if (screenName == ""){
 			lcd.clear();
 			String history = getMenuHistory();
-			tmpFile = SD.open(cropName + "/" + history + "/" + menus[menuIndex]);
+			tmpFile = SD.open("dromatic/" + cropName + "/" + history + "/" + menus[menuIndex]);
 			menusHistory.push_back(menus[menuIndex]);
 			getDirectoryMenus(tmpFile);
 			tmpFile.close();
 			if (menus.size() > 0){
 				menuIndex = 0;
-				lcd.clear();
 				tmpFile.close();
 				printDisplayNames(menus.front());
 				printScrollArrows();
 			} else {
 				screenName = menusHistory.back();
+				lcd.blink();
+				lcd.home();
 				if (screenName == "DATETIME"){
-					lcd.blink();
-					lcd.clear();
-					lcd.home();
 					captureDateTime();
 					char monthsBuffer[8];
 					
-					lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + meridiem + " " + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[4]]))) + " " + String(tmpDisplay[3]));
+					lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
 					lcd.setCursor(0, 1);
-					lcd.print(String(tmpInts[5]) + F(" <back> <ok>"));
+					lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
 					lcd.setCursor(1, 0);
 					cursorX = 1;
 					cursorY = 0;
 				}
 				if (screenName == "NEWCROP"){
-					startNewCrop();
 					menus.clear();
 					menusHistory.clear();
 					currentAlphaIndex = 0;
@@ -474,30 +513,22 @@ void loop()
 					currentSessionIndex = 0;
 					menuIndex = 0;
 					cursorX = cursorY = 0;
-					lcd.home();
+					startNewCrop();
 				}
 				if (screenName == "OPEN"){
-					lcd.blink();
-					lcd.clear();
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>  <open>"));
 					lcd.home();
 					cursorX = cursorY = 0;
-					menus.clear();
-					JsonObject& crops = getCoreData();
-					for (int i = 0; i < crops["crops"].size(); i++){
-						menus.push_back(crops["crops"][i].asString());
-					}
+					tmpFile = SD.open("dromatic/");
+					getDirectoryMenus(tmpFile);
 					menuIndex = 0;
 					lcd.print(menus[menuIndex]);
 					printScrollArrows();
 					lcd.home();
 				}
 				if (screenName == "PPM"){
-					lcd.blink();
-					lcd.clear();
-					lcd.home();
-					lcd.print(String(minPPM) + "-" + String(maxPPM) + F(" EC/PPM"));
+					lcd.print(String(minPPM) + F("-") + String(maxPPM) + F(" EC/PPM"));
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>      <ok>"));
 					lcd.setCursor(3, 0);
@@ -505,15 +536,12 @@ void loop()
 					cursorY = 0;
 				}
 				if (screenName == "PH"){
-					lcd.blink();
-					lcd.clear();
-					lcd.home();
 					JsonObject& data = getCropData();
 					tmpFloats[0] = data["ph"].asArray()[0];
 					tmpFloats[1] = data["ph"].asArray()[1];
 					lcd.print(String(tmpFloats[0]));
 					lcd.write(byte(1));
-					lcd.print(" " + String(tmpFloats[1]));
+					lcd.print(String(F(" ")) + String(tmpFloats[1]));
 					lcd.write(byte(0));
 					lcd.print(F(" PH"));
 					lcd.setCursor(0, 1);
@@ -523,8 +551,6 @@ void loop()
 					cursorY = 0;
 				}
 				if (screenName == "CHNUM"){
-					lcd.clear();
-					lcd.home();
 					cursorX = 1;
 					cursorY = 0;
 					JsonObject& data = getCropData();
@@ -536,11 +562,8 @@ void loop()
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>      <ok>"));
 					lcd.setCursor(cursorX, cursorY);
-					lcd.blink();
 				}
 				if (screenName == "CHDOSES"){
-					lcd.clear();
-					lcd.home();
 					cursorX = 1;
 					cursorY = 0;
 					JsonObject& data = getChannelData();
@@ -550,15 +573,11 @@ void loop()
 					lcd.print(totalDisplay + F(" # OF SESSIONS"));
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>      <ok>"));
-					//delay(5000);
 					lcd.setCursor(cursorX, cursorY);
-					lcd.blink();
 				}
 				if (screenName == "CHSIZE"){
-					lcd.clear();
 					JsonObject& data = getChannelData();
 					tmpInts[0] = data["size"];
-					lcd.clear();
 					String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
 					lcd.print(channelSize + F(" (ml) volume"));
 					lcd.setCursor(0, 1);
@@ -566,11 +585,8 @@ void loop()
 					cursorX = 2;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
-					lcd.blink();
 				}
 				if (screenName == "CHCALIB"){
-					lcd.clear();
-					lcd.home();
 					JsonObject& data = getChannelData();
 					tmpInts[0] = data["size"];
 					tmpInts[1] = data["calibration"];
@@ -579,14 +595,11 @@ void loop()
 					lcd.print(targetSize + F("(ml) ") + rotsSize + F(" rots"));
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>      <ok>"));
-					lcd.blink();
 					cursorX = 10;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
 				}
 				if (screenName == "AMT"){
-					lcd.clear();
-					lcd.home();
 					JsonObject& data = getSessionData();
 					tmpInts[0] = data["amount"];
 					String displayAmount = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
@@ -597,24 +610,18 @@ void loop()
 					cursorX = 2;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
-					lcd.blink();
 				}
 				if (screenName == "STR"){
-					lcd.clear();
-					lcd.home();
-					captureDateTime();
+					captureSessionDateTime();
 					char monthsBuffer[8];
-					lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + meridiem + " " + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[4]]))) + " " + String(tmpDisplay[3]));
+					lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
 					lcd.setCursor(0, 1);
-					lcd.print(String(tmpInts[5]) + F(" <back> <ok>"));
+					lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
 					lcd.setCursor(1, 0);
 					cursorX = 1;
 					cursorY = 0;
-					lcd.blink();
 				}
 				if (screenName == "DLY"){
-					lcd.clear();
-					lcd.home();
 					JsonObject& data = getSessionData();
 					tmpInts[0] = data["delay"];
 					String displayDelay = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
@@ -625,11 +632,8 @@ void loop()
 					cursorX = 2;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
-					lcd.blink();
 				}
 				if (screenName == "RPT"){
-					lcd.clear();
-					lcd.home();
 					JsonObject& data = getSessionData();
 					tmpInts[0] = data["repeat"];
 					tmpInts[1] = data["repeatBy"];
@@ -637,13 +641,12 @@ void loop()
 					String displayRepeat = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
 					String displayRepeatBy = displayRepeats[tmpInts[1]];
 
-					lcd.print("Repeated: " + displayRepeatBy);
+					lcd.print(String(F("Repeated: ")) + displayRepeatBy);
 					lcd.setCursor(0, 1);
 					lcd.print(displayRepeat + F("x <back> <ok>"));
 					cursorX = 13;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
-					lcd.blink();
 				}
 			}
 			delay(350);
@@ -651,7 +654,38 @@ void loop()
 		//Saves
 		if (screenName == "NewCrop"){
 			if (cursorX == 11 && cursorY == 1){
-				buildCrop();
+				String nameConfirm;
+				for (int i = 0; i < 15; i++){
+					nameConfirm = nameConfirm + nameArry[i];
+				}
+				if (nameConfirm == ""){
+					lcd.clear();
+					lcd.home();
+					lcd.print(F("Sorry, No Blank"));
+					lcd.setCursor(0, 1);
+					lcd.print(F("Crop Names"));
+					delay(3000);
+					lcd.clear();
+					lcd.setCursor(0, 1);
+					lcd.print(F("Crop Name <done>"));
+					cursorX = cursorY = 0;
+					lcd.home();
+				}else if (SD.exists("dromatic/" + nameConfirm)){
+					lcd.clear();
+					lcd.home();
+					lcd.print(F("Sorry, Crop"));
+					lcd.setCursor(0, 1);
+					lcd.print(F("Already Exists"));
+					delay(3000);
+					lcd.clear();
+					lcd.print(nameConfirm);
+					lcd.setCursor(0, 1);
+					lcd.print(F("Crop Name <done>"));
+					cursorX = cursorY = 0;
+					lcd.home();
+				} else {
+					buildCrop();
+				}
 			}
 		}
 		if (screenName == "OPEN"){
@@ -679,9 +713,11 @@ void loop()
 		}
 		if (screenName == "PH"){
 			if (cursorX == 11 && cursorY == 1){
+
 				JsonObject& data = getCropData();
-				data["minPH"] = tmpFloats[0];
-				data["maxPH"] = tmpFloats[1];
+				data["ph"].asArray()[0].set(tmpFloats[0]);
+				data["ph"].asArray()[1].set(tmpFloats[1]);
+
 				setCropData(data);
 				tmpFloats[0] = tmpFloats[1] = 0.0;
 				screenName = "PHCHL";
@@ -689,20 +725,20 @@ void loop()
 
 				lcd.clear();
 				lcd.home();
+
 				tmpInts[0] = data["phChannels"].asArray()[0];
 				tmpInts[1] = data["phChannels"].asArray()[1];
 
-				String UpDisplay;
-				String DownDisplay;
-				UpDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
-				DownDisplay = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+				String UpDisplay = (tmpInts[0] < 10) ? String(F("0")) + String(tmpInts[0]) : String(tmpInts[0]);
+				String DownDisplay = (tmpInts[1] < 10) ? String(F("0")) + String(tmpInts[1]) : String(tmpInts[1]);
+
 				lcd.print(F("PH"));
 				lcd.write(byte(1));
 				lcd.print(F("CH"));
 				lcd.print(UpDisplay);
 				lcd.print(F(" PH"));
 				lcd.write(byte(0));
-				lcd.print("CH" + DownDisplay);
+				lcd.print(String(F("CH")) + DownDisplay);
 				lcd.setCursor(0, 1);
 				lcd.print(F("<back>      <ok>"));
 				cursorX = 6;
@@ -729,8 +765,10 @@ void loop()
 		}
 		if (screenName == "DATETIME"){
 			if (cursorX == 13 && cursorY == 1){
-				rtc.setTime(tmpInts[2], tmpInts[1], 0);
-				rtc.setDate(tmpInts[3], tmpInts[4], tmpInts[5]);
+				//hour, min, seconds
+				rtc.setTime(tmpInts[4], tmpInts[5], 0);
+				//day, month, year
+				rtc.setDate(tmpInts[2], tmpInts[1], tmpInts[0]);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				tmpDisplay[0] = ""; //suffix
@@ -811,33 +849,50 @@ void loop()
 		if (screenName == "STR"){
 			if (cursorX == 13 && cursorY == 1){
 				JsonObject& data = getSessionData();
-				data.createNestedArray("date");
-				data.createNestedArray("time");
-				JsonArray& time = data["time"];
-				JsonArray& date = data["date"];
 
-				time.add(tmpInts[0]);
-				time.add(tmpInts[1]);
-				time.add(tmpInts[2]);
+				data["date"].asArray()[0] = tmpInts[0]; //year
+				data["date"].asArray()[1] = tmpInts[1]; //month
+				data["date"].asArray()[3] = tmpInts[2]; //day
+				data["date"].asArray()[4] = tmpInts[3]; //day of week
+				data["time"].asArray()[0] = tmpInts[4]; //hour
+				data["time"].asArray()[1] = tmpInts[5]; //min
 
-				date.add(tmpInts[3]);
-				date.add(tmpInts[4]);
-				date.add(tmpInts[5]);
-
-				tm time_in = { tmpInts[0], tmpInts[1], tmpInts[2], // second, minute, hour
-					tmpInts[3], tmpInts[4], tmpInts[5] - tmpInts[5] }; // 1-based day, 0-based month, year since 1900
+				//Leap year help
+				tm time_in = { 
+					0,			// second
+					tmpInts[4], // minute
+					tmpInts[3], // hour
+					tmpInts[2], // 1-based day
+					tmpInts[1], // 0-based month
+					tmpInts[0] - tmpInts[0] //year since 1900
+				};
 				time_t time_temp = mktime(&time_in);
 				tm const *time_out = localtime(&time_temp);
-				date.add(time_out->tm_wday);
-				setSessionData(data);
-				tmpDisplay[0] = tmpDisplay[1] = tmpDisplay[2] = tmpDisplay[3] = ""; //suffix hour min day
+				data["date"].asArray()[3] = time_out->tm_wday;
 
+				//Update session in memory (only if this session is loaded in memory waiting to be peroformed).
+				for (int i = 0; i < sizeof(loadedSessions) / sizeof(loadedSessions); i++){
+					if (loadedSessions[i][8] == currentSessionIndex){
+						loadedSessions[currentChannelIndex][0] = tmpInts[0];	//year
+						loadedSessions[currentChannelIndex][1] = tmpInts[1];	//month
+						loadedSessions[currentChannelIndex][2] = tmpInts[2];	//day
+						loadedSessions[currentChannelIndex][3] = tmpInts[3];	//day of week
+						loadedSessions[currentChannelIndex][4] = tmpInts[4];	//hour
+						loadedSessions[currentChannelIndex][5] = tmpInts[5];	//min
+						break;
+					}
+				}
+				//Clear out tmpDisplays
+				tmpDisplay[0] = tmpDisplay[1] = tmpDisplay[2] = tmpDisplay[3] = "";
+
+				//Save changes
+				setSessionData(data);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				menusHistory.pop_back();
 				menuIndex = 0;
 				screenName = "";
-				tmpFile = SD.open(cropName + "/" + getMenuHistory());
+				tmpFile = SD.open("dromatic/" + cropName + "/" + getMenuHistory());
 				getDirectoryMenus(tmpFile);
 				lcd.clear();
 				lcd.noBlink();
@@ -880,7 +935,7 @@ void changeCrop(){
 	lcd.home();
 	lcd.print(F(" LOADING  CROP  "));
 	DynamicJsonBuffer b;
-	tmpFile = SD.open("core.dro");
+	tmpFile = SD.open("dromatic/core.dro");
 	JsonObject& core = b.parseObject(tmpFile.readString());
 	core["crop"] = menus[menuIndex];
 	tmpFile.close();
@@ -895,27 +950,27 @@ void openHomeScreen(){
 	captureDateTime();
 	lcd.clear();
 	char monthsBuffer[8];
-	
-	lcd.print(tmpDisplay[1] + ":" + tmpDisplay[2] + meridiem + " " + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon]))) + " " + tmpDisplay[3]);
+				//hour					//minute		  //AM/PM											//Month														//Day
+	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon]))) + F(" ") + tmpDisplay[1]);
 	lcd.setCursor(0, 1);
 	lcd.print(F("PPM:"));
-	lcd.print(String(analogRead(9)));
+	lcd.print(String((analogRead(9) / 100) * 1000));
 	lcd.print(F(" PH:"));
-	lcd.print(String(analogRead(10)));
+	lcd.print(String(analogRead(9)* 14.00 / 1024, 2));
 	lcd.home();
 	lcd.noBlink();
 	turing(); //the heart of it all, thank you Allen
 }
 
 void screenMatrix(){
-	int row0Size = matrix[0].size();
-	int row1Size = matrix[1].size();
+	byte row0Size = matrix[0].size();
+	byte row1Size = matrix[1].size();
 
-	int frontFrontFront = matrix.front().front().front();
-	int frontBackBack = matrix.front().back().back();
+	byte frontFrontFront = matrix.front().front().front();
+	byte frontBackBack = matrix.front().back().back();
 
-	int backBackBack = matrix.back().back().back();
-	int backFrontFront = matrix.back().front().front();
+	byte backBackBack = matrix.back().back().back();
+	byte backFrontFront = matrix.back().front().front();
 	//Check Top Row
 	if (cursorY == 0){
 		if (cursorX < frontFrontFront){
@@ -957,39 +1012,37 @@ void screenMatrix(){
 }
 
 void coreInit(){
-	JsonObject& coreData = getCoreData();
-	if (coreData.success()){ //load core settings / crop
+	if (SD.exists("dromatic")){ //has OS already been setup?
+		JsonObject& coreData = getCoreData();
 		cropName = coreData["crop"].asString();
-		if (SD.exists(cropName)){
-			//Loading up exisiting core file's crop directory
+		if (cropName != "" && SD.exists("dromatic/" + cropName)){ //Loading up exisiting core file's crop directory
 			screenName = "";
 			loadCrop();
-			File cropFile = SD.open("/" + cropName);
+			File cropFile = SD.open("dromatic/" + cropName);
 			getDirectoryMenus(cropFile);
 			cropFile.close();
-		}
-		else{
-			//we have core file with crop, but no crop directory. //VERY CORNER CASE!
+		}else{ //we have core file with crop, but no crop directory. //VERY CORNER CASE!
 			startNewCrop();
 		}
-	} else { //else, setup new crop
-		tmpFile = SD.open("core.dro", FILE_WRITE);
-		char buffer[32];
+	} else { //if OS has not been setup, lets build out core OS file / directory
+		SD.mkdir("dromatic");
+		lcd.print(F("New Drive Found!"));
+		lcd.setCursor(0, 1);
+		lcd.print(F(" Please Hold... "));
+		tmpFile = SD.open("dromatic/core.dro", FILE_WRITE);
+		char buffer[64];
 		DynamicJsonBuffer coreBuffer;
 		JsonObject& settings = coreBuffer.createObject();
-		settings["crop"];
-		settings.createNestedArray("crops");
+		settings["crop"] = "";
 		settings.printTo(buffer, sizeof(buffer));
 		tmpFile.print(buffer);
 		tmpFile.close();
 
-		lcd.print(F("New Drive Found!"));
-		lcd.setCursor(0, 1);
-		lcd.print(F(" Please Hold... "));
-		delay(1000);
 		lcd.clear();
 		lcd.home();
-		lcd.print(F("Setup New Crop"));
+		lcd.print(F("New Crop Setup"));
+		lcd.setCursor(0, 1);
+		lcd.print(F(" Please Hold... "));
 		delay(1000);
 		lcd.clear();
 		startNewCrop();
@@ -1037,7 +1090,7 @@ void exitScreen(){
 	menusHistory.pop_back();
 	menuIndex = 0;
 	screenName = "";
-	tmpFile = SD.open(cropName + "/" + getMenuHistory());
+	tmpFile = SD.open("dromatic/" + cropName + "/" + getMenuHistory());
 	getDirectoryMenus(tmpFile);
 	lcd.clear();
 	lcd.noBlink();
@@ -1055,12 +1108,11 @@ void printScrollArrows(){
 	lcd.home();
 }
 
-void getDirectoryMenus(File dir) {
+void getDirectoryMenus(File directory) {
 	menus.clear();
 	while (true) {
-		tmpFile = dir.openNextFile();
-		if (!tmpFile) {
-			// no more files
+		tmpFile = directory.openNextFile();
+		if (!tmpFile) { // no more files
 			break;
 		}
 		if (tmpFile.isDirectory()){
@@ -1070,21 +1122,35 @@ void getDirectoryMenus(File dir) {
 	}
 }
 
+int getCropCount(){
+	File crops = SD.open("dromatic/");
+	int count = 0;
+	while (true) {
+		tmpFile = crops.openNextFile();
+		if (!tmpFile) { break; }
+		if (tmpFile.isDirectory()){
+			count = count + 1;
+		}
+		tmpFile.close();
+	}
+	return count;
+}
+
 String getMenuHistory(){
+	byte i, size;
 	String join;
-	int size = menusHistory.size();
-	for (int i = 0; i < size; i++){
+	size = menusHistory.size();
+	for (i = 0; i < size; i++){
 		join = join + "/" + menusHistory.at(i);
 	}
-	delay(10); //fixes race condtion with PROGMEM strings
 	return join;
 }
 
 void printDisplayNames(String menu){
 	lcd.home();
 	bool hasMatch = false;
-	const int isChannel = strstr(menu.c_str(), "SYSCH") != NULL;
-	const int isSession = strstr(menu.c_str(), "CHSES") != NULL;
+	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL;
+	const byte isSession = strstr(menu.c_str(), "CHSES") != NULL;
 	const String index = String(menuIndex + 1);
 	if (isChannel){
 		lcd.print(F("SYSTEM"));
@@ -1094,8 +1160,7 @@ void printDisplayNames(String menu){
 		currentChannelIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
-	}
-	else if (isSession){
+	} else if (isSession) {
 		lcd.print(F("CHANNEL"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("SESSION "));
@@ -1103,9 +1168,9 @@ void printDisplayNames(String menu){
 		currentSessionIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
-	}
-	else{
-		for (int i = 0; i < 18; i++){
+	} else {
+		byte i;
+		for (i = 0; i < 18; i++){
 			char match1Buffer[18];
 			char match2Buffer[18];
 			char match3Buffer[18];
@@ -1128,6 +1193,7 @@ void printDisplayNames(String menu){
 }
 
 void renameCrop(int dir){
+	byte i;
 	cropName = "";
 	if (dir != NULL){
 		scrollAlpha(dir);
@@ -1135,14 +1201,14 @@ void renameCrop(int dir){
 		nameArry[cursorX] = strcpy_P(alphaBuffer, (char*)pgm_read_word(&(alphabet[currentAlphaIndex])));
 	}
 	//Compile/Collapse
-	for (int i = 0; i < 15; i++){
+	for (i = 0; i < 15; i++){
 		cropName = cropName + nameArry[i];
 	}
 	lcd.setCursor(cursorX, cursorY);
 }
 
 void makeNewFile(String path, JsonObject& data){
-	char buffer[512];
+	char buffer[1024];
 	tmpFile = SD.open(path, FILE_WRITE);
 	data.printTo(buffer, sizeof(buffer));
 	tmpFile.print(buffer);
@@ -1162,32 +1228,37 @@ void setPPMRangeValues(int dir){
 	}
 
 	lcd.clear();
-	lcd.print(String(minPPM) + "-" + String(maxPPM) + F(" EC/PPM"));
+	lcd.print(String(minPPM) + F("-") + String(maxPPM) + F(" EC/PPM"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
 }
 
 void setDateTime(int dir){
-	int maxDaysInMonth = days[tmpInts[4]];
+	int maxDaysInMonth = days[tmpInts[1]];
 	if (cursorY == 0){
-		if (cursorX == 1){
-			(dir == 1) ? (tmpInts[2] = (tmpInts[2] + 1 > 24) ? 1 : tmpInts[2] + 1) : (tmpInts[2] = (tmpInts[2] - 1 < 1) ? 24 : tmpInts[2] - 1);
-		}
-		if (cursorX == 4){
-			(dir == 1) ? (tmpInts[1] = (tmpInts[1] + 1 > 59) ? 0 : tmpInts[1] + 1) : (tmpInts[1] = (tmpInts[1] - 1 < 0) ? 59 : tmpInts[1] - 1);
-		}
 		if (cursorX == 10){
-			(dir == 1) ? (tmpInts[4] = (tmpInts[4] + 1 > 11) ? 0 : tmpInts[4] + 1) : (tmpInts[4] = (tmpInts[4] - 1 < 0) ? 11 : tmpInts[4] - 1);
-			tmpInts[3] = 1;
+			//Month
+			(dir == 1) ? (tmpInts[1] = (tmpInts[1] + 1 > 11) ? 0 : tmpInts[1] + 1) : (tmpInts[1] = (tmpInts[1] - 1 < 0) ? 11 : tmpInts[1] - 1);
+			tmpInts[2] = 1;
 		}
 		if (cursorX == 13){
-			(dir == 1) ? (tmpInts[3] = (tmpInts[3] + 1 > maxDaysInMonth) ? 1 : tmpInts[3] + 1) : (tmpInts[3] = (tmpInts[3] - 1 < 1) ? maxDaysInMonth : tmpInts[3] - 1);
+			//Day
+			(dir == 1) ? (tmpInts[2] = (tmpInts[2] + 1 > maxDaysInMonth) ? 1 : tmpInts[2] + 1) : (tmpInts[2] = (tmpInts[2] - 1 < 1) ? maxDaysInMonth : tmpInts[2] - 1);
+		}
+		if (cursorX == 1){
+			//Hour
+			(dir == 1) ? (tmpInts[4] = (tmpInts[4] + 1 > 24) ? 1 : tmpInts[4] + 1) : (tmpInts[4] = (tmpInts[4] - 1 < 1) ? 24 : tmpInts[4] - 1);
+		}
+		if (cursorX == 4){
+			//Min
+			(dir == 1) ? (tmpInts[5] = (tmpInts[5] + 1 > 59) ? 0 : tmpInts[5] + 1) : (tmpInts[5] = (tmpInts[5] - 1 < 0) ? 59 : tmpInts[5] - 1);
 		}
 	}
 	else{
 		if (cursorX == 3){
-			tmpInts[5] = (dir == 1) ? tmpInts[5] + 1 : tmpInts[5] - 1;
+			//Year
+			tmpInts[0] = (dir == 1) ? tmpInts[0] + 1 : tmpInts[0] - 1;
 		}
 	}
 
@@ -1195,43 +1266,106 @@ void setDateTime(int dir){
 	captureDateTimeDisplays();
 	char monthsBuffer[8];
 	
-	lcd.print(String(tmpDisplay[1]) + ":" + String(tmpDisplay[2]) + meridiem + " " + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[4]]))) + " " + String(tmpDisplay[3]));
+	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
 	lcd.setCursor(0, 1);
-	lcd.print(String(tmpInts[5]) + F(" <back> <ok>"));
+	lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
 	lcd.setCursor(cursorX, cursorY);
 }
 
 void captureDateTime(){
-	tmpInts[2] = rtc.getTime().hour;
-	tmpInts[1] = rtc.getTime().min;
-	tmpInts[0] = rtc.getTime().sec;
-	tmpInts[3] = rtc.getTime().date;
-	tmpInts[4] = rtc.getTime().mon;
-	tmpInts[5] = rtc.getTime().year;
+	Time current = rtc.getTime();
+	tmpInts[0] = current.year;
+	tmpInts[1] = current.mon;
+	tmpInts[2] = current.date;
+	tmpInts[3] = current.dow;
+	tmpInts[4] = current.hour;
+	tmpInts[5] = current.min;
+	captureDateTimeDisplays();
+}
+
+void captureSessionDateTime(){
+	JsonObject& sessionData = getSessionData();
+	JsonArray& date = sessionData["date"].asArray();
+	JsonArray& time = sessionData["time"].asArray();
+
+	tmpInts[0] = date[0]; //year
+	tmpInts[1] = date[1]; //month
+	tmpInts[2] = date[2]; //day
+	tmpInts[3] = time[4]; //hour
+	tmpInts[4] = time[5]; //min
 	captureDateTimeDisplays();
 }
 
 void captureDateTimeDisplays(){
-	int hourConversion = (tmpInts[2] == 0) ? 12 : tmpInts[2];
+	byte i, maxDaysInMonth, hourConversion;
+
+	maxDaysInMonth = days[tmpInts[1]];
+	hourConversion = (tmpInts[4] == 0) ? 12 : tmpInts[4];
 
 	//Thanks Romans...
 	int hoursKey[12][2] = {
 		{ 13, 1 }, { 14, 2 }, { 15, 3 }, { 16, 4 }, { 17, 5 }, { 18, 6 }, { 19, 7 }, { 20, 8 }, { 21, 9 }, { 22, 10 }, { 23, 11 }, { 24, 12 }
 	};
 	if (hourConversion > 12){
-		for (int i = 0; i < 12; i++){
+		for (i = 0; i < 12; i++){
 			if (hourConversion == hoursKey[i][0]){
 				hourConversion = hoursKey[i][1];
 			}
 		}
 	}
+	
+	//day suffix
+	tmpDisplay[0] = (tmpInts[2] == 1 || tmpInts[2] == 21 || tmpInts[2] == 31) ? "st" : (tmpInts[2] == 2 || tmpInts[2] == 22) ? "nd" : (tmpInts[2] == 3 || tmpInts[2] == 23) ? "rd" : "th";
+	//day
+	tmpDisplay[1] = (tmpInts[2] > maxDaysInMonth) ? "01" + String(tmpDisplay[0]) : (tmpInts[2] < 10) ? "0" + String(tmpInts[2]) + String(tmpDisplay[0]) : String(tmpInts[2]) + String(tmpDisplay[0]);
+	//hour
+	tmpDisplay[2] = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
+	//minute
+	tmpDisplay[3] = (tmpInts[5] < 10) ? "0" + String(tmpInts[5]) : String(tmpInts[5]);
+	//AM/PM
+	tmpDisplay[4] = (tmpInts[4] >= 12 && tmpInts[4] < 24) ? "PM" : "AM";
+}
 
-	meridiem = (tmpInts[2] >= 12 && tmpInts[2] < 24) ? "PM" : "AM";
-	tmpDisplay[0] = (tmpInts[3] == 1 || tmpInts[3] == 21 || tmpInts[3] == 31) ? "st" : (tmpInts[3] == 2 || tmpInts[3] == 22) ? "nd" : (tmpInts[3] == 3 || tmpInts[3] == 23) ? "rd" : "th";
-	tmpDisplay[1] = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
-	tmpDisplay[2] = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
-	tmpDisplay[3] = (tmpInts[3] < 10) ? "0" + String(tmpInts[3]) + tmpDisplay[0] : String(tmpInts[3]) + tmpDisplay[0];
+int calculateDayOfYear(int day, int month, int year) {
 
+	// Given a day, month, and year (4 digit), returns 
+	// the day of year. Errors return 999.
+	byte i;
+	byte daysInMonth[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+	// Verify we got a 4-digit year
+	if (year < 1000) {
+		return 999;
+	}
+
+	// Check if it is a leap year, this is confusing business
+	if (year % 4 == 0) {
+		if (year % 100 != 0) {
+			daysInMonth[1] = 29;
+		}
+		else {
+			if (year % 400 == 0) {
+				daysInMonth[1] = 29;
+			}
+		}
+	}
+
+	// Make sure we are on a valid day of the month
+	if (day < 1)
+	{
+		return 999;
+	}
+	else if (day > daysInMonth[month - 1]) {
+		return 999;
+	}
+
+	byte doy = 0;
+	for (i = 0; i < month - 1; i++) {
+		doy += daysInMonth[i];
+	}
+
+	doy += day;
+	return doy;
 }
 
 void setChannelSize(int dir){
@@ -1239,13 +1373,12 @@ void setChannelSize(int dir){
 		if (cursorX == 2){
 			tmpInts[0] = tmpInts[0] + dir;
 			lcd.clear();
-			tmpInts[0] = (tmpInts[0] < 0) ? 0 : (tmpInts[0] > 500) ? 500 : tmpInts[0];
+			tmpInts[0] = (tmpInts[0] < 0) ? 0 : (tmpInts[0] > 500) ? 500 : tmpInts[0]; //we must cap channel max size to 500ml
 			String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
 			lcd.print(channelSize + F(" (ml) volume"));
 			lcd.setCursor(0, 1);
 			lcd.print(F("<back>      <ok>"));
 			lcd.setCursor(cursorX, cursorY);
-
 		}
 	}
 }
@@ -1253,8 +1386,9 @@ void setChannelSize(int dir){
 void setCalibrationSize(int dir){
 	if (cursorX == 10){
 		lcd.clear();
-		String displayRots = "00";
-		String displaySize = "00";
+		String displayRots, displaySize;
+		displayRots = displaySize = "00";
+
 		tmpInts[1] = tmpInts[1] + dir;
 		if (tmpInts[1] < 0) { tmpInts[1] = 0; }
 		if (tmpInts[1] >= 10 && tmpInts[1] < 100) { displayRots = "0"; }
@@ -1271,13 +1405,82 @@ void setCalibrationSize(int dir){
 		lcd.setCursor(0, 1);
 		lcd.print(F("<back>      <ok>"));
 		lcd.setCursor(cursorX, cursorY);
+		float timeTurning = 31.5;
+		switch (currentChannelIndex){
+			case 1: 
+				digitalWrite(RELAY1, LOW);
+				break;
+			case 2: 
+				digitalWrite(RELAY2, LOW);
+				break;
+			case 3: 
+				digitalWrite(RELAY3, LOW);
+				break;
+			case 4: 
+				digitalWrite(RELAY4, LOW);
+				break;
+			case 5: 
+				digitalWrite(RELAY5, LOW);
+				break;
+			case 6: 
+				digitalWrite(RELAY6, LOW);
+				break;
+			case 7: 
+				digitalWrite(RELAY7, LOW);
+				break;
+			case 8: 
+				digitalWrite(RELAY8, LOW);
+				break;
+			case 9: 
+				digitalWrite(RELAY9, LOW);
+				break;
+			case 10: 
+				digitalWrite(RELAY10, LOW);
+				break;
+		}
+		myStepper.step(((dir == 1) ? 5000000 : -5000000 ));
+
+		switch (currentChannelIndex){
+		case 1:
+			digitalWrite(RELAY1, HIGH);
+			break;
+		case 2:
+			digitalWrite(RELAY2, HIGH);
+			break;
+		case 3:
+			digitalWrite(RELAY3, HIGH);
+			break;
+		case 4:
+			digitalWrite(RELAY4, HIGH);
+			break;
+		case 5:
+			digitalWrite(RELAY5, HIGH);
+			break;
+		case 6:
+			digitalWrite(RELAY6, HIGH);
+			break;
+		case 7:
+			digitalWrite(RELAY7, HIGH);
+			break;
+		case 8:
+			digitalWrite(RELAY8, HIGH);
+			break;
+		case 9:
+			digitalWrite(RELAY9, HIGH);
+			break;
+		case 10:
+			digitalWrite(RELAY10, HIGH);
+			break;
+		}
+
 	}
 }
 
 void setSessionAmount(int dir){
 	if (cursorX == 2){
 		lcd.clear();
-		String prefix = "00";
+		String prefix, displayAmount;
+		prefix = "00";
 		tmpInts[0] = tmpInts[0] + dir;
 		if (tmpInts[0] < 10){
 			tmpInts[0] == 10;
@@ -1288,7 +1491,7 @@ void setSessionAmount(int dir){
 		if (tmpInts[0] >= 100){
 			prefix = "";
 		}
-		String displayAmount = prefix + String(tmpInts[0]);
+		displayAmount = prefix + String(tmpInts[0]);
 		lcd.print(displayAmount + F("(ml) volume"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("<back>      <ok>"));
@@ -1299,7 +1502,9 @@ void setSessionAmount(int dir){
 void setSessionDelay(int dir){
 	if (cursorX == 2){
 		lcd.clear();
-		String prefix = "00";
+		String prefix, displayDelay;
+
+		prefix = "00";
 		tmpInts[0] = tmpInts[0] + dir;
 		if (tmpInts[0] < 10){
 			tmpInts[0] == 10;
@@ -1310,7 +1515,7 @@ void setSessionDelay(int dir){
 		if (tmpInts[0] >= 100){
 			prefix = "";
 		}
-		String displayDelay = prefix + String(tmpInts[0]);
+		displayDelay = prefix + String(tmpInts[0]);
 		lcd.print(displayDelay + F("(sec)  delay"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("<back>      <ok>"));
@@ -1319,6 +1524,7 @@ void setSessionDelay(int dir){
 }
 
 void setSessionRepeat(int dir) {
+	String displayRepeat, displayRepeatBy;
 	lcd.clear();
 	lcd.home();
 
@@ -1335,8 +1541,8 @@ void setSessionRepeat(int dir) {
 		}
 	}
 
-	String displayRepeat = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
-	String displayRepeatBy = displayRepeats[tmpInts[1]];
+	displayRepeat = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
+	displayRepeatBy = displayRepeats[tmpInts[1]];
 
 	lcd.print(F("Repeated: "));
 	lcd.print(displayRepeatBy);
@@ -1346,7 +1552,9 @@ void setSessionRepeat(int dir) {
 }
 
 void setPHRange(double dir){
+	String min, max;
 	float minMaxDiff = 0.01;
+
 	if ((dir == 1) ? cursorX == 3 : cursorX == 9){
 		(dir == 1) ? tmpFloats[0] = tmpFloats[0] + minMaxDiff : tmpFloats[1] = tmpFloats[1] - minMaxDiff;
 		if ((dir == 1) ? tmpFloats[0] > (tmpFloats[1] - minMaxDiff) : tmpFloats[1] < (tmpFloats[0] + minMaxDiff)){
@@ -1356,39 +1564,42 @@ void setPHRange(double dir){
 	if ((dir == 1) ? cursorX == 9 : cursorX == 3) {
 		(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
 	}
+	min = String(tmpFloats[0]);
+	max = String(tmpFloats[1]);
 
 	lcd.clear();
-	lcd.print(String(tmpFloats[0]));
+	lcd.print(min);
 	lcd.write(byte(1));
 	lcd.print(F(" "));
-	lcd.print(String(tmpFloats[1]));
+	lcd.print(max);
 	lcd.write(byte(0));
 	lcd.print(F(" PH"));
 	lcd.setCursor(0, 1);
-	lcd.print(F("<back>      <ok>"));
+	lcd.print(F("<back>    <next>"));
 	lcd.setCursor(cursorX, 0);
 }
 
 void setPHChannels(int dir){
+	String up, down;
 	if (cursorX == 6 && cursorY == 0){
 		tmpInts[0] = (tmpInts[0] + dir < 1) ? 1 : (tmpInts[0] + dir > 10) ? 10 : tmpInts[0] + dir;
 	}
 	if (cursorX == 14 && cursorY == 0){
 		tmpInts[1] = (tmpInts[1] + dir < 1) ? 1 : (tmpInts[1] + dir > 10) ? 10 : tmpInts[1] + dir;
 	}
-	String Up = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
-	String Down = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+	up = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+	down = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
 
 	lcd.clear();
 	lcd.home();
 	lcd.print(F("PH"));
 	lcd.write(byte(1));
 	lcd.print(F("CH"));
-	lcd.print(Up);
+	lcd.print(up);
 	lcd.print(F(" PH"));
 	lcd.write(byte(0));
 	lcd.print(F("CH"));
-	lcd.print(Down);
+	lcd.print(down);
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, cursorY);
@@ -1396,10 +1607,11 @@ void setPHChannels(int dir){
 
 void setChannelNumber(int dir){
 	String totalDisplay;
+	byte min, max;
+	min = 2; max = 10;
 	if (cursorX == 1 && cursorY == 0){
-		tmpInts[0] = tmpInts[0] + dir;
-		if (tmpInts[0] > 10){ tmpInts[0] = 10; }
-		if (tmpInts[0] < 2){ tmpInts[0] = 2; }
+		//Min / max checking
+		tmpInts[0] = (tmpInts[0] + dir > max)? max : (tmpInts[0] + dir < min) ? min : tmpInts[0] + dir;
 	}
 	lcd.clear();
 	totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
@@ -1409,17 +1621,19 @@ void setChannelNumber(int dir){
 	lcd.setCursor(1, 0);
 }
 
-void makeChannel(String path, int channelId, int numberOfSessions, JsonObject& channelData, JsonObject& sessionData){
+void makeChannel(String path, int numberOfSessions, JsonObject& channelData, JsonObject& sessionData){
+	byte j;
 	String channelName = path;
 	SD.mkdir(channelName);
 	SD.mkdir(channelName + "/ChConf");
 	SD.mkdir(channelName + "/ChConf/ChDoses");
 	SD.mkdir(channelName + "/ChConf/ChSize");
 	SD.mkdir(channelName + "/ChConf/ChCalib");
-
 	makeNewFile(channelName + "/channel.dro", channelData);
 
-	for (int j = 0; j < numberOfSessions; j++){
+	for (j = 0; j < numberOfSessions; j++){
+		sessionData["id"] = j;
+		sessionData["outof"] = numberOfSessions;
 		makeSession(channelName + "/Sessions/ChSes" + String(j + 1), sessionData);
 		Serial.flush();
 	}
@@ -1427,42 +1641,49 @@ void makeChannel(String path, int channelId, int numberOfSessions, JsonObject& c
 }
 
 void removeChannel(String path) {
+	byte i, sessionTotal;
+	String loopedPath;
 	StaticJsonBuffer<256> buffer;
-	File channelFile = SD.open(path + "/channel.dro");
-	JsonObject& data = buffer.parseObject(channelFile.readString());
-	int sessionTotal = data["sessionsTotal"];
+
+	tmpFile = SD.open(path + "/channel.dro");
+	JsonObject& data = buffer.parseObject(tmpFile.readString());
+	tmpFile.close();
+	
+	sessionTotal = data["sessionsTotal"];
 	SD.rmdir(path + "/ChConf/ChCalib");
 	SD.rmdir(path + "/ChConf/ChDoses");
 	SD.rmdir(path + "/ChConf/ChSize");
 	SD.rmdir(path + "/ChConf");
 	SD.remove(path + "/Channel.dro");
-	for (int i = 0; i < sessionTotal; i++){
-		int number = i + 1;
-		SD.rmdir(path + "/Sessions/ChSes" + number + "/Amt");
-		SD.rmdir(path + "/Sessions/ChSes" + number + "/Dly");
-		SD.rmdir(path + "/Sessions/ChSes" + number + "/Rpt");
-		SD.rmdir(path + "/Sessions/ChSes" + number + "/Str");
-		SD.remove(path + "/Sessions/ChSes" + number + "/Session.dro");
-		SD.rmdir(path + "/Sessions/ChSes" + number);
+
+	for (i = 0; i < sessionTotal; i++){
+		loopedPath = path + "/Sessions/ChSes" + String(i + 1);
+		SD.rmdir(loopedPath + "/Amt");
+		SD.rmdir(loopedPath + "/Dly");
+		SD.rmdir(loopedPath + "/Rpt");
+		SD.rmdir(loopedPath + "/Str");
+		SD.remove(loopedPath + "/Session.dro");
+		SD.rmdir(loopedPath);
 	}
+
 	SD.rmdir(path + "/Sessions");
 	SD.rmdir(path);
 }
 
 void trimChannels(int currentSize, int trimAmount){
+	byte length, i;
 	lcd.clear();
 	lcd.print(F("TRIMMING CHANNEL"));
 	lcd.setCursor(0, 1);
 	lcd.print(F(" PLEASE HOLD... "));
-
 	JsonObject& data = getCropData();
 	JsonArray& arry = data["sessionIds"].asArray();
-	int length = (arry.size() - 1);
-	String path = cropName + "/CHANNELS/SYSCH";
+	length = (arry.size() - 1);
+	String path = "dromatic/" + cropName + "/channels/sysch";
 
-	for (int i = 0; i < currentSize; i++){
+	for (i = 0; i < currentSize; i++){
 		if (i > trimAmount){
-			removeChannel(path + String(i));
+			removeChannel(path + i);
 			arry[length].asArray()[0] = -1;
 			arry[length].asArray()[1] = -1;
 			length = length - 1;
@@ -1473,15 +1694,15 @@ void trimChannels(int currentSize, int trimAmount){
 }
 
 void addChannels(int currentSize, int addAmount){
+	byte j, index, loopAmount;
 	lcd.clear();
 	lcd.print(F(" ADDING CHANNEL "));
 	lcd.setCursor(0, 1);
 	lcd.print(F(" PLEASE HOLD... "));
-	int loopAmount = (addAmount - currentSize) + 1;
-
+	loopAmount = (addAmount - currentSize) + 1;
 	JsonObject& data = getCropData();
-	for (int j = 0; j < loopAmount; j++){
-		int index = (currentSize - 1) + j;
+	for (j = 0; j < loopAmount; j++){
+		index = (currentSize - 1) + j;
 		data["sessionIds"].asArray()[index].asArray()[0] = 0;
 		data["sessionIds"].asArray()[index].asArray()[1] = 2;
 	}
@@ -1496,24 +1717,24 @@ void addChannels(int currentSize, int addAmount){
 	channelData["calibration"] = 0;
 
 	//Build Session's settings file
-	StaticJsonBuffer<165> buffer; //DO NOT LOWER THAN 512 (buildCrop() can get away with this at 128, but not addSessions() )
+	StaticJsonBuffer<185> buffer; //DO NOT LOWER THAN 512 (buildCrop() can get away with this at 128, but not addSessions() )
 	JsonObject& sessionData = buffer.createObject();
 	sessionData.createNestedArray("date");
 	sessionData.createNestedArray("time");
 	sessionData["channel"] = currentChannelIndex;
 	sessionData["amount"] = 80;
-	sessionData["date"].asArray().add(rtc.getTime().date);
-	sessionData["date"].asArray().add(rtc.getTime().mon + 1);
 	sessionData["date"].asArray().add(rtc.getTime().year);
-	sessionData["time"].asArray().add(0);
-	sessionData["time"].asArray().add(0);
-	sessionData["time"].asArray().add(0);
+	sessionData["date"].asArray().add(rtc.getTime().mon + 1);
+	sessionData["date"].asArray().add(rtc.getTime().date);
+	sessionData["date"].asArray().add(rtc.getTime().dow);
+	sessionData["time"].asArray().add(rtc.getTime().hour);
+	sessionData["time"].asArray().add(rtc.getTime().min);
 	sessionData["delay"] = sessionData["repeat"] = sessionData["repeatBy"] = 0;
 
-	for (int i = 0; i < loopAmount; i++){
-		int index = currentSize + i;
+	for (j = 0; j < loopAmount; j++){
+		index = currentSize + j;
 		sessionData["channel"] = index;
-		makeChannel(cropName + "/CHANNELS/SYSCH" + String(index), i, 4, channelData, sessionData);
+		makeChannel("dromatic/" + cropName + "/channels/sysch" + String(index), 2, channelData, sessionData);
 		Serial.flush();
 	}
 }
@@ -1524,8 +1745,9 @@ void setSessionNumber(int dir){
 		tmpInts[0] = tmpInts[0] + dir;
 		if (tmpInts[0] < 1){ tmpInts[0] = 1; }
 	}
-	lcd.clear();
 	totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+
+	lcd.clear();
 	lcd.print(totalDisplay + F(" # OF SESSIONS"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
@@ -1544,31 +1766,32 @@ void makeSession(String path, JsonObject& data){
 	data.printTo(buffer, sizeof(buffer));
 	tmpFile.print(buffer);
 	tmpFile.close();
-
 	Serial.flush();
 }
 
 void trimSessions(int currentSize, int trimAmount){
+	byte i;
 	lcd.clear();
 	lcd.home();
 	lcd.print(F(" TRIM SESSIONS "));
 	lcd.setCursor(0, 1);
 	lcd.print(F(" PLEASE HOLD... "));
-	String path = cropName + "/CHANNELS/SYSCH" + currentChannelIndex + "/SESSIONS/CHSES";
-	for (int i = 0; i <= currentSize; i++){
+	String path = "dromatic/" + cropName + "/CHANNELS/SYSCH" + String(currentChannelIndex) + "/SESSIONS/CHSES";
+	for (i = 0; i <= currentSize; i++){
 		if (i > trimAmount){
-			SD.rmdir(path + String(i) + "/AMT");
-			SD.rmdir(path + String(i) + "/DLY");
-			SD.rmdir(path + String(i) + "/RPT");
-			SD.rmdir(path + String(i) + "/STR");
-			SD.remove(path + String(i) + "/SESSION.DRO");
-			SD.rmdir(path + String(i));
+			SD.rmdir(path + i + "/AMT");
+			SD.rmdir(path + i + "/DLY");
+			SD.rmdir(path + i + "/RPT");
+			SD.rmdir(path + i + "/STR");
+			SD.remove(path + i + "/SESSION.DRO");
+			SD.rmdir(path + i);
 		}
 		Serial.flush();
 	}
 }
 
 void addSessions(int currentSize, int addAmount){
+	byte i;
 	lcd.clear();
 	lcd.home();
 	lcd.print(F("ADDING SESSIONS"));
@@ -1578,22 +1801,27 @@ void addSessions(int currentSize, int addAmount){
 	//Build Session's settings file
 	StaticJsonBuffer<165> buffer; //DO NOT LOWER THAN 512 (buildCrop() can get away with this at 128, but not addSessions() )
 	JsonObject& sessionData = buffer.createObject();
-	sessionData.createNestedArray("date");
-	sessionData.createNestedArray("time");
+	JsonArray& date = sessionData.createNestedArray("date");
+	JsonArray& time = sessionData.createNestedArray("time");
 	sessionData["channel"] = currentChannelIndex;
 	sessionData["amount"] = 80;
-	sessionData["date"].asArray().add(rtc.getTime().date);
-	sessionData["date"].asArray().add(rtc.getTime().mon + 1);
-	sessionData["date"].asArray().add(rtc.getTime().year);
-	sessionData["time"].asArray().add(0);
-	sessionData["time"].asArray().add(0);
-	sessionData["time"].asArray().add(0);
-	sessionData["delay"] = sessionData["repeat"] = sessionData["repeatBy"] = 0;
 
+	date.add(rtc.getTime().year);		//year
+	date.add(rtc.getTime().mon + 1);	//month
+	date.add(rtc.getTime().date);		//day
+	date.add(rtc.getTime().dow);		//day of week
+	
+	time.add(0); //hour
+	time.add(0); //min
+	time.add(0); //sec
+
+	sessionData["delay"] = sessionData["repeat"] = sessionData["repeatBy"] = 0;
+	
+	//repeatBy developer key
 	//0 none, 1 = hourly, 2 = daily, 3 = weekly, 4 = monthly, 5 = yearly
-	for (int i = 0; i <= addAmount; i++){
+	for (i = 0; i <= addAmount; i++){
 		if (i > currentSize){
-			makeSession(cropName + "/channels/sysch" + currentChannelIndex + "/sessions/chses" + String(i), sessionData);
+			makeSession("dromatic/" + cropName + "/channels/sysch" + String(currentChannelIndex) + "/sessions/chses" + String(i), sessionData);
 		}
 		Serial.flush();
 	}
@@ -1603,189 +1831,246 @@ void buildCrop(){
 	String channelName;
 	File channelSettingsFile;
 	File sessionSettingsFile;
-	int defaultChannelSize = 10;
-	int defaultSessionSize = 3;
-	int i;
+	byte i, defaultChannelSize, defaultSessionSize;
+	defaultChannelSize = 10;
+	defaultSessionSize = 3;
 
 	//Parse core file object
 	JsonObject& core = getCoreData();
 	core["crop"] = cropName;
-	core["crops"].asArray().add(cropName);
 	setCoreData(core);
-	String path = cropName + "/Channels/SysCh";
+
+	String path = "dromatic/" + cropName + "/channels/sysch";
 
 	lcd.clear();
 	lcd.home();
 	lcd.print(F("Building Crop..."));
-	SD.mkdir(cropName + "/SysConf");
-	SD.mkdir(cropName + "/SysConf/DateTime");
-	SD.mkdir(cropName + "/SysConf/ChNum");
-	SD.mkdir(cropName + "/SysConf/PPM");
-	SD.mkdir(cropName + "/SysConf/PH");
-	SD.mkdir(cropName + "/SysConf/Open");
-	SD.mkdir(cropName + "/SysConf/NewCrop");
-	SD.mkdir(cropName + "/SysConf/Delete");
-	SD.mkdir(cropName + "/Channels");
+	SD.mkdir("dromatic/" + cropName + "/SysConf");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/DateTime");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/ChNum");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/PPM");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/PH");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/Open");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/NewCrop");
+	SD.mkdir("dromatic/" + cropName + "/SysConf/Delete");
+	SD.mkdir("dromatic/" + cropName + "/Channels");
 
-	//Build Crop Settings File
-	StaticJsonBuffer<415> cropObjBuffer;
-	JsonObject& cropSettings = cropObjBuffer.createObject();
-	JsonArray& sessionIds = cropSettings.createNestedArray("sessionIds");
-	JsonArray& ppmRange = cropSettings.createNestedArray("ppm");
-	JsonArray& phRange = cropSettings.createNestedArray("ph");
-	JsonArray& phChannels = cropSettings.createNestedArray("phChannels");
-	ppmRange.add(1200);
-	ppmRange.add(1600);
+	///////////////////
+	//Build Crop file//
+	///////////////////
+	StaticJsonBuffer<1024> cropBuffer;
+	JsonObject& crop = cropBuffer.createObject();
+	JsonArray& ecRange = crop.createNestedArray("ec");
+	JsonArray& phRange = crop.createNestedArray("ph");
+	JsonArray& phChannels = crop.createNestedArray("phChannels");
+	JsonArray& cropSessions = crop.createNestedArray("sessions");
+
+	//Defualt EC Range
+	ecRange.add(1200);
+	ecRange.add(1600);
+
+	//Default PH Range
 	phRange.add(5.6);
 	phRange.add(6.2);
-	phChannels.add(8);
-	phChannels.add(9);
-	cropSettings["totalChannels"] = 10;
-	//Build Channels and their sub sessions
+
+	//Default PH channels
+	phChannels.add(1);
+	phChannels.add(2);
+
+	crop["totalChannels"] = 10;
 	lcd.setCursor(0, 1);
 
-	//Build Channels Settings File
-	StaticJsonBuffer<64> channelObjBuffer;
-	JsonObject& channelData = channelObjBuffer.createObject();
-	channelData["size"] = 80;
-	channelData["sessionsTotal"] = 3;
-	channelData["id"] = channelData["calibration"] = 0;
+	///////////////////////
+	//Build Channels file//
+	///////////////////////
+	StaticJsonBuffer<64> channelBuffer;
+	JsonObject& channel = channelBuffer.createObject();
+	channel["size"] = 80;
+	channel["sessionsTotal"] = 2;
+	channel["id"] = channel["calibration"] = 0;
 
-	//Build Session's settings file
-	StaticJsonBuffer<165> buffer; //DO NOT LOWER THAN 512 (buildCrop() can get away with this at 128, but not addSessions() )
-	JsonObject& sessionData = buffer.createObject();
-	sessionData.createNestedArray("date");
-	sessionData.createNestedArray("time");
-	sessionData["amount"] = 80;
-	sessionData["date"].asArray().add(rtc.getTime().date);
-	sessionData["date"].asArray().add(rtc.getTime().mon + 1);
-	sessionData["date"].asArray().add(rtc.getTime().year);
-	sessionData["time"].asArray().add(0);
-	sessionData["time"].asArray().add(0);
-	sessionData["time"].asArray().add(0);
-	sessionData["channel"] = sessionData["delay"] = sessionData["repeat"] = sessionData["repeatBy"] = 0;
+	////////////////////////
+	//Build Session's file//
+	////////////////////////
+	StaticJsonBuffer<165> sessionBuffer; 
+	JsonObject& session = sessionBuffer.createObject();
+	JsonArray& date = session.createNestedArray("date");
+	JsonArray& time = session.createNestedArray("time");
+	session["amount"] = 80;
+	captureDateTime();
 
+	date.add(tmpInts[0]);		//year
+	date.add(tmpInts[1] + 1);	//month
+	date.add(tmpInts[2]);		//day
+	date.add(tmpInts[3]);		//day of week
+	time.add(tmpInts[4]);		//hour
+	time.add(tmpInts[5]);		//min
+
+	session["channel"] = session["delay"] = session["repeat"] = session["repeatBy"] = 0;
+	
 	for (i = 0; i < defaultChannelSize; i++){
-		int index = i + 1;
-		JsonArray& sessionIdRecord = sessionIds.createNestedArray();
-		sessionIdRecord.add(1); //session id
-		sessionIdRecord.add(defaultSessionSize);// out of
-		channelData["id"] = sessionData["channel"] = index;
-		makeChannel(path + String(index), index, defaultSessionSize, channelData, sessionData);
+
+		channel["id"] = session["channel"] = i;
+		
+		//Fillup crop data with first available sessions
+		JsonArray& cropSessionData = cropSessions.createNestedArray();
+		cropSessionData.add(tmpInts[0]);		//year
+		cropSessionData.add(tmpInts[1] + 1);	//month
+		cropSessionData.add(tmpInts[2]);		//day
+		cropSessionData.add(tmpInts[3]);		//day of week
+		cropSessionData.add(tmpInts[4]);		//hour
+		cropSessionData.add(tmpInts[5]);		//min
+		cropSessionData.add(0); //repeat count
+		cropSessionData.add(0); //repeat by
+		cropSessionData.add(0);	//current session id
+		cropSessionData.add(2);	//total number of sessions
+
+		makeChannel(path + (i + 1), defaultSessionSize, channel, session);
 		lcd.print(F("*"));
 		Serial.flush();
 	}
 	//makeNewFile must happen after for loop cause we are gathering session ids
-	makeNewFile(cropName + "/crop.dro", cropSettings);
+	makeNewFile("dromatic/" + cropName + "/crop.dro", crop);
 	screenName = "";
 	lcd.noBlink();
 	lcd.clear();
-	File root = SD.open("/" + cropName);
+	File root = SD.open("dromatic/" + cropName);
 	getDirectoryMenus(root);
 	root.close();
 	loadCrop();
 }
 
 void loadCrop(){
+	JsonObject& crop = getCropData();
+	JsonArray& cropSessions = crop["sessions"];
+	byte cropSessionSize, i;
+
+	lcd.clear();
 	lcd.home();
-
-	JsonObject& cropData = getCropData();
-	JsonArray& sessionIds = cropData["sessionIds"].asArray();
-	int numberOfChannels = sessionIds.size();
-	int id;
-	for (int i = 0; i < numberOfChannels; i++){
-		id = sessionIds[i].asArray()[0];
-		tmpFile = SD.open(cropName + "/channels/sysch" + String(i + 1) + "/sessions/chses" + String(id + 1) + "/session.dro");
-		DynamicJsonBuffer buffer;
-		JsonObject& sessionData = buffer.parseObject(tmpFile.readString());
-		tmpFile.close();
-
-		sessionValues[i][0] = id;
-		sessionValues[i][1] = sessionIds[i].asArray()[1];
-		sessionValues[i][2] = sessionData["channel"];
-		sessionValues[i][3] = sessionData["amount"];
-		sessionValues[i][4] = sessionData["time"][0];
-		sessionValues[i][5] = sessionData["time"][1];
-		sessionValues[i][6] = sessionData["time"][2];
-		sessionValues[i][7] = sessionData["date"][0];
-		sessionValues[i][8] = sessionData["date"][1];
-		sessionValues[i][9] = sessionData["date"][2];
-		sessionValues[i][10] = sessionData["delay"];
-		sessionValues[i][11] = sessionData["repeat"];
-		sessionValues[i][12] = sessionData["repeatBy"];
-
-
-		lcd.clear();
-		lcd.home();
-		lcd.print(F(" LOADING  CROP "));
-		lcd.setCursor(0, 1);
-		//lcd.clear();
-		//lcd.print(freeMemory());
-		//delay(1000);
-		for (int k = 0; k < i; k++){
-			lcd.setCursor(k, 1);
-			lcd.print(F("*"));
-		}
-		if (i == numberOfChannels){
-			openHomeScreen();
-		}
-		Serial.flush();
+	lcd.print(F("Loading  Crop..."));
+	lcd.setCursor(0, 1);
+	lcd.print(F("*"));
+	cropSessionSize = cropSessions.size();
+	for (i = 0; i < cropSessionSize; i++){
+		loadedSessions[i][0] = cropSessions[0];		//year
+		loadedSessions[i][1] = cropSessions[1];		//month
+		loadedSessions[i][2] = cropSessions[2];		//day
+		loadedSessions[i][3] = cropSessions[3];		//day of week
+		loadedSessions[i][4] = cropSessions[4];		//hour
+		loadedSessions[i][5] = cropSessions[5];		//min
+		loadedSessions[i][6] = cropSessions[6];		//repeat number
+		loadedSessions[i][7] = cropSessions[7];		//repeat by
+		loadedSessions[i][8] = cropSessions[8];		//id
+		loadedSessions[i][9] = cropSessions[9];		//out of
+		lcd.print(F("*"));
+		delay(150);
 	}
+	openHomeScreen();
 }
 
 void turing(){
-	int sessionSize = sizeof(&sessionValues) / sizeof(&sessionValues);
-	for (int i = 0; i < sessionSize; i++){
-		//do stuff
-		//int repeatBy = sessionValues[i][12];
-		//int repeat = sessionValues[i][11];
-		//int delay = sessionValues[i][10];
-		//int amount = sessionValues[i][3];
-		//int channelId = sessionValues[i][2];
-		//int outof = sessionValues[i][1];
-		//int sessionId = sessionValues[i][0];
+	captureDateTime();
+	bool valid;
+	byte i, setDOY, currentDOY, repeatType, 
+		setYear, currentYear,
+		setMonth, currentMonth, 
+		setDay, currentDay,
+		setDOW, currentDOW,
+		setHour, currentHour,
+		setMin, currentMin;
 
-		if (sessionValues[i][9] == rtc.getTime().year){
-			if (sessionValues[i][8] == rtc.getTime().mon){
-				if (sessionValues[i][7] == rtc.getTime().date){
-					if (sessionValues[i][4] == rtc.getTime().hour){
-						if (sessionValues[i][5] == rtc.getTime().min){
-							lcd.clear();
-							lcd.print(F("Session"));
-							lcd.print(String(sessionValues[i][0]));
-							lcd.print(F(" Dose"));
-							if (sessionValues[i][0] < sessionValues[i][1]){
-								setNextSession(sessionValues[i][0] + 1, sessionValues[i][2]);
-							}
+	for (i = 0; i < (sizeof(loadedSessions)/sizeof(loadedSessions)); i++){
+		valid = true;
+		repeatType = loadedSessions[i][5];
+
+		setYear = loadedSessions[i][0];
+		setMonth = loadedSessions[i][1];
+		setDay = loadedSessions[i][2];
+		setDOW = loadedSessions[i][3];
+		setHour = loadedSessions[i][4];
+		setMin = loadedSessions[i][5];
+
+		currentYear = tmpInts[0];
+		currentMonth = tmpInts[1];
+		currentDay = tmpInts[2];
+		currentDOW = tmpInts[3];
+		currentHour = tmpInts[4];
+		currentMin = tmpInts[5];
+
+		if (setYear != currentYear){	//year
+			if (repeatType != 5){		//should it repeat yearly?
+				valid = false;
+			}
+			else
+			{
+				//Ok we should repeat this yearly, but has 365 days passed since last dosing?
+				setDOY = calculateDayOfYear(loadedSessions[i][2], loadedSessions[i][1], loadedSessions[i][0]);
+				currentDOY = calculateDayOfYear(tmpInts[3], tmpInts[4], tmpInts[5]);
+				if (setDOY != currentDOY) { //if not, then again we must stop this dosing?
+					valid = false;
+				}
+			}
+		}
+
+		if (setMonth != (currentMonth + 1)){	//month
+			if (repeatType != 4){				//should it repeat monthly OR weekly?
+				valid = false;
+			}else{
+				//Ok we should repeat this monthly, but has 1 month passed since last dosing?
+			}
+		}
+		
+		if (setDay != currentDay){	//day
+			if (repeatType != 3 && repeatType != 2){	//should it repeat weekly OR daily?
+				valid = false;
+			}else{
+				//Ok we should repeat this weekly, but has 7 days passed since last dosing OR has 24 hours passed since last dosing?
+				if ((setDOW == currentDOW) || (setHour == currentHour)){//we have a match
+					if (setMonth == currentMonth && repeatType == 2){ //daily
+						if (setDay == currentDay){
+							valid = false;
 						}
 					}
 				}
 			}
 		}
+		
+		if (setHour != currentHour){	//hour
+			if (repeatType != 1){
+				valid = false;
+			}
+		}
+		
+		if (setMin != currentMin){	//min (sorry, in no right setup would you ever need a dose to happen every minute)
+			valid = false;
+		}
+
+		//LET TO DOSING BEGIN!!
+		if (valid){
+			//Do Dosing!
+			lcd.print("DOSING");
+			delay(2000);
+			lcd.clear();
+			if (loadedSessions[i][6] > 0){ //should it repeat?
+				loadedSessions[i][6] = loadedSessions[i][6] - 1;
+			}else{
+				if (loadedSessions[i][6] <= loadedSessions[i][7]){ //does this channel have more sessions?
+					//Turn over next session
+					currentChannelIndex = i;
+					currentSessionIndex = loadedSessions[i][7] + 1; //increase repeat by
+					JsonObject& nextSession = getSessionData();
+
+					loadedSessions[i][0] = nextSession["date"].asArray()[3];	//year
+					loadedSessions[i][1] = nextSession["date"].asArray()[2];	//month
+					loadedSessions[i][2] = nextSession["date"].asArray()[1];	//day
+					loadedSessions[i][3] = nextSession["date"].asArray()[0];	//day of week
+					loadedSessions[i][4] = nextSession["time"].asArray()[0];	//hour
+					loadedSessions[i][5] = nextSession["time"].asArray()[1];	//min
+					loadedSessions[i][6] = nextSession["repeat"];				//repeat number
+					loadedSessions[i][7] = nextSession["repeatBy"];				//repeat by
+					loadedSessions[i][8] = loadedSessions[i][8] + 1;			//id
+				}
+			}
+		}
 	}
-	delay(250);
-}
-
-void setNextSession(int sessionId, int channelId){
-	tmpFile = SD.open(cropName + "/channels/sysch" + channelId + "/sessions/chses" + sessionId + "/session.dro");
-	DynamicJsonBuffer buffer;
-	JsonObject& sessionData = buffer.parseObject(tmpFile.readString());
-	tmpFile.close();
-
-	sessionValues[channelId][0] = sessionData["id"];
-	sessionValues[channelId][1] = sessionData["channel"];
-	sessionValues[channelId][2] = sessionData["amount"];
-	sessionValues[channelId][3] = sessionData["time"][0];
-	sessionValues[channelId][4] = sessionData["time"][1];
-	sessionValues[channelId][5] = sessionData["time"][2];
-	sessionValues[channelId][6] = sessionData["date"][0];
-	sessionValues[channelId][7] = sessionData["date"][1];
-	sessionValues[channelId][8] = sessionData["date"][2];
-	sessionValues[channelId][9] = sessionData["delay"];
-	sessionValues[channelId][10] = sessionData["repeat"];
-	sessionValues[channelId][11] = sessionData["repeatBy"];
-
-	JsonObject& data = getCropData();
-	data["sessionIds"].asArray()[channelId] = sessionId;
-	setCropData(data);
 }
