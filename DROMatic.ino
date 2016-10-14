@@ -5,16 +5,16 @@
 *  devin@devinrolsen.com
 */
 
-#include <LiquidCrystal.h>
-#include <SPI.h>
-#include <SD.h>
-#include <StandardCplusplus.h>
-#include <StandardCplusplus\vector>
-#include <StandardCplusplus\ctime>
-#include <ArduinoJson\ArduinoJson.h>
-#include <DS3231.h>
-#include <avr/pgmspace.h>
-#include <Stepper.h>
+#include <LiquidCrystal.h> //lib for interfacing with LCD screen
+#include <SPI.h> //Suppoting lib for SD card
+#include <SD.h> //SD card API
+#include <StandardCplusplus.h> //STD
+#include <StandardCplusplus\vector> //Vectors
+#include <StandardCplusplus\ctime> //Time helper
+#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+#include <DS3231.h> //Real time clock lib
+#include <avr/pgmspace.h> //native to arduino no lib
+#include <Stepper.h> //Stepper motoer lib
 
 
 
