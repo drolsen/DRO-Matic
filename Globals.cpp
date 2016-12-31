@@ -1,59 +1,19 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Globals.h"
 #include "Channels.h"
 #include "Sessions.h"
 #include "Menus.h"
-#include "DateTime.h"
-
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-DS3231  rtc(SDA, SCL);
-Stepper myStepper(stepsPerRevolution, 15, 14);
 
 File tmpFile;
-String cropName, screenName;
-String nameArry[15];
-String tmpDisplay[5]; //suffix, hour, min, day
-vector<String> menus;
-vector<String> menusHistory;
-vector<vector<vector<byte>>> matrix;
-
-
-const int stepsPerRevolution = 100;
-const int stepperSpeed = 800;
-
-unsigned long previousMillis, currentMillis;  //stores last time
-
-int Key, menuIndex, currentMinute;
-int minPPM = 1200;
-int maxPPM = 1600;
+String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 int tmpInts[6];
 float tmpFloats[2];
-int days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
-int cursorX, cursorY;
-int currentChannelIndex, currentSessionIndex;
-int currentAlphaIndex = 0;
-
-byte upArrow[8] = {
-	B00000,
-	B00100,
-	B01110,
-	B11111,
-	B00100,
-	B00100,
-	B00100,
-	B00000
-};
-
-byte downArrow[8] = {
-	B00000,
-	B00100,
-	B00100,
-	B00100,
-	B11111,
-	B01110,
-	B00100,
-	B00000
-};
 
 const char blank[2] PROGMEM = " ";
 const char a[2] PROGMEM = "A";
@@ -180,13 +140,3 @@ const char monthly[8] PROGMEM = "Monthly";
 const char yearly[7] PROGMEM = "Yearly";
 
 const char* const displayRepeats[6] PROGMEM = { none, hourly, daily, weekly, monthly, yearly };
-
-
-void makeNewFile(String path, JsonObject& data){
-	char buffer[1024];
-	tmpFile = SD.open(path, FILE_WRITE);
-	data.printTo(buffer, sizeof(buffer));
-	tmpFile.print(buffer);
-	tmpFile.close();
-	Serial.flush();
-}

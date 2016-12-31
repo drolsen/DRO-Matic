@@ -1,5 +1,17 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Sessions.h"
+#include "Core.h"
 #include "Screens.h"
+#include "Crops.h"
+#include "Channels.h"
+
+int currentSessionIndex;
 
 JsonObject& getSessionData(JsonBuffer& b, int channelIndex = currentChannelIndex, int sessionIndex = currentSessionIndex){
 	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + channelIndex + "/sessions/chses" + sessionIndex + "/session.dro", O_READ);

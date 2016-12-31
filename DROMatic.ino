@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
 *  DROMatic OS Core
-*  Devin R. Olsen - Dec 30, 2016
+*  Devin R. Olsen - Dec 31, 2016
 *  devin@devinrolsen.com
 */
 #include <LiquidCrystal.h> //lib for interfacing with LCD screen
@@ -13,15 +13,16 @@
 #include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
 #include <DS3231.h> //Real time clock lib
 #include <Stepper.h> //Stepper motoer lib
-#include "Globals.h"
-#include "Core.h"
-#include "Crops.h"
-#include "Channels.h"
-#include "Sessions.h"
-#include "Screens.h"
-#include "Menus.h"
-#include "DatesTime.h"
+#include "Globals.h" //All temp and PROGMEM global variables
+#include "Core.h" //All core functions and variables
+#include "Crops.h" //All crop functions and variables
+#include "Channels.h" //All channel functions and variables
+#include "Sessions.h" //All session functions and variables
+#include "Screens.h" //All screen functions and variables
+#include "Menus.h" //All menu functions and variables
+#include "DatesTime.h" //All date & time functions and variables
 
+//Our main setup function
 void setup()
 {
 	lcd.createChar(0, upArrow);
@@ -70,6 +71,7 @@ void setup()
 	}
 }
 
+//Our runtime loop function
 void loop()
 {
 	Key = analogRead(0);

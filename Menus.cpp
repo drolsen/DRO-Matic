@@ -1,6 +1,17 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Menus.h"
+#include "Core.h"
 #include "Screens.h"
 #include "DatesTime.h"
+
+int menuIndex;
+vector<String> menus, menusHistory;
 
 String getMenuHistory(){
 	byte i, size;

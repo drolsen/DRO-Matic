@@ -1,3 +1,10 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Core.h"
 #include "Crops.h"
 #include "Channels.h"
@@ -5,6 +12,16 @@
 #include "Menus.h"
 #include "Screens.h"
 #include "DatesTime.h"
+
+int Key;
+const int stepsPerRevolution = 100;
+const int stepperSpeed = 800;
+Stepper myStepper(stepsPerRevolution, 15, 14);
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+DS3231  rtc(SDA, SCL);
+
+int minPPM = 1200;
+int maxPPM = 1600;
 
 JsonObject& getCoreData(JsonBuffer& b){
 	tmpFile = SD.open("dromatic/core.dro");
@@ -107,6 +124,15 @@ void setPPMRangeValues(int dir){
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
+}
+
+void makeNewFile(String path, JsonObject& data){
+	char buffer[1024];
+	tmpFile = SD.open(path, FILE_WRITE);
+	data.printTo(buffer, sizeof(buffer));
+	tmpFile.print(buffer);
+	tmpFile.close();
+	Serial.flush();
 }
 
 //Pump Functions

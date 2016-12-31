@@ -1,7 +1,22 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
 // Globals.h
 
 #ifndef _GLOBALS_h
 #define _GLOBALS_h
+
+#include <avr/pgmspace.h> //native to arduino no lib
+#include <SPI.h> //Suppoting lib for SD card
+#include <SD.h> //SD card API
+#include <StandardCplusplus.h> //STD
+#include <StandardCplusplus\vector> //Vectors
+using namespace std; //Prefence of developer, I don't like typing std:: everywhere.
+
+//Pin Configuration For Power Relay
 #define MS1MS2  16
 #define RELAY1  22
 #define RELAY2  23
@@ -14,42 +29,10 @@
 #define RELAY9  30
 #define RELAY10 31
 
-#include <Arduino.h>
-#include <avr/pgmspace.h> //native to arduino no lib
-#include <math.h>
-#include <LiquidCrystal.h> //lib for interfacing with LCD screen
-#include <SPI.h> //Suppoting lib for SD card
-#include <SD.h> //SD card API
-#include <StandardCplusplus.h> //STD
-#include <StandardCplusplus\vector> //Vectors
-#include <StandardCplusplus\ctime> //Time helper
-#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
-#include <DS3231.h> //Real time clock lib
-#include <Stepper.h> //Stepper motoer lib
-
-using namespace std;
-extern LiquidCrystal lcd;
-extern DS3231  rtc;
-extern Stepper myStepper;
-
-extern File tmpFile;
-extern String cropName, screenName;
-extern String nameArry[15];
-extern String tmpDisplay[5]; //suffix, hour, min, day
-
-extern vector<String> menus;
-extern vector<String> menusHistory;
-extern vector<vector<vector<byte>>> matrix;
-
-extern const int stepsPerRevolution, stepperSpeed;
-extern unsigned long previousMillis, currentMillis;  //stores last time
-
-extern int Key, menuIndex, currentMinute, minPPM, maxPPM, cursorX, cursorY, currentAlphaIndex, currentChannelIndex, currentSessionIndex;
+extern File tmpFile; //Single location to store file data when interfacting with SD card files
+extern String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 extern int tmpInts[6];
 extern float tmpFloats[2];
-extern int days[12];
-
-extern byte upArrow[8], downArrow[8];
 
 extern const char blank[2] PROGMEM;
 extern const char a[2] PROGMEM;
@@ -153,10 +136,6 @@ extern const char monthly[8] PROGMEM;
 extern const char yearly[7] PROGMEM;
 
 extern const char* const displayRepeats[6] PROGMEM;
-
-
-//Global Functions
-extern void makeNewFile(String path, JsonObject& data);
 
 #endif
 

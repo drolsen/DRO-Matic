@@ -1,3 +1,10 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Crops.h"
 #include "Globals.h"
 #include "Core.h"
@@ -5,6 +12,9 @@
 #include "Menus.h"
 #include "DatesTime.h"
 #include "Screens.h"
+#include "Sessions.h"
+
+String cropName;
 
 JsonObject& getCropData(JsonBuffer& b){
 	tmpFile = SD.open("dromatic/" + cropName + "/crop.dro", O_READ);

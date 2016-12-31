@@ -1,7 +1,43 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Screens.h"
 #include "Core.h"
 #include "Menus.h"
 #include "DatesTime.h"
+#include "Crops.h"
+#include "Sessions.h"
+
+String screenName;
+vector<vector<vector<byte>>> matrix;
+int cursorX, cursorY;
+int currentAlphaIndex = 0;
+
+byte upArrow[8] = {
+	B00000,
+	B00100,
+	B01110,
+	B11111,
+	B00100,
+	B00100,
+	B00100,
+	B00000
+};
+
+byte downArrow[8] = {
+	B00000,
+	B00100,
+	B00100,
+	B00100,
+	B11111,
+	B01110,
+	B00100,
+	B00000
+};
 
 void exitScreen(){
 	menusHistory.pop_back();

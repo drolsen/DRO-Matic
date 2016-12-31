@@ -1,7 +1,17 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "Channels.h"
 #include "Core.h"
 #include "Sessions.h"
 #include "Screens.h"
+#include "Crops.h"
+
+int currentChannelIndex;
 
 JsonObject& getChannelData(JsonBuffer& b, int channelIndex = currentChannelIndex){
 	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + channelIndex + "/channel.dro", O_READ);

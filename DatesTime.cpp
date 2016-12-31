@@ -1,5 +1,18 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Core
+*  Devin R. Olsen - Dec 31, 2016
+*  devin@devinrolsen.com
+*/
+
 #include "DatesTime.h"
+#include "Core.h"
 #include "Sessions.h"
+#include "Screens.h"
+
+int currentMinute;
+int days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+unsigned long previousMillis, currentMillis;  //stores last time
 
 void captureDateTime(){
 	Time current = rtc.getTime();
