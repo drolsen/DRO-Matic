@@ -47,9 +47,9 @@ void coreInit(){
 		if (cropName != "" && SD.exists("dromatic/" + cropName)){ //Loading up exisiting core file's crop directory
 			screenName = "";
 			openHomeScreen();
-			File cropFile = SD.open("dromatic/" + cropName);
-			getDirectoryMenus(cropFile);
-			cropFile.close();
+			tmpFile = SD.open("dromatic/" + cropName);
+			getDirectoryMenus(tmpFile);
+			tmpFile.close();
 		}
 		else{ //we have core file with crop, but no crop directory. //VERY CORNER CASE!
 			startNewCrop();
@@ -137,9 +137,9 @@ void makeNewFile(String path, JsonObject& data){
 
 //Pump Functions
 void turing(){
-	bool debug = false;
 	captureDateTime();
-	bool valid;
+	byte valid = 1;
+	byte progressSession = 0;
 	int i, j,
 		setDOY, currentDOY,
 		setYear, currentYear,
@@ -149,11 +149,15 @@ void turing(){
 		setHour, currentHour,
 		setMin, currentMin,
 		repeatCount, repeatedCount, repeatType,
-		setAmount, setCalibration, setSize, setDelay,
-		id, outof, calib, direction;
+		setAmount, setCalibration, setSize,
+		id, calib, direction, totalChannels;
+
+	StaticJsonBuffer<256> cropBuffer;
+	JsonObject& cropData = getCropData(cropBuffer);
+	totalChannels = cropData["totalChannels"];
 
 	//We start by looping over channesl
-	for (i = 1; i < 10; i++){
+	for (i = 1; i < totalChannels; i++){
 		if (analogRead(0) >= 0 && analogRead(0) <= 650){
 			break;
 		}
@@ -165,18 +169,19 @@ void turing(){
 				break;
 			}
 			valid = true; //set a validation flag to true
-			StaticJsonBuffer<512> sessionBuffer;
+			StaticJsonBuffer<256> sessionBuffer;
 			JsonObject& session = getSessionData(sessionBuffer, i, j);
 			JsonArray& sessionDate = session["date"];
 			JsonArray& sessionTime = session["time"];
 
-			if (session["expried"] != false) continue; //lets skip this session if it has already expired.
+			if (session["expried"] == true) continue; //lets skip this session if it has already expired.
 
 			//Capture session's set data
 			setYear = sessionDate[0];
 			setMonth = sessionDate[1];
 			setDay = sessionDate[2];
 			setDOW = sessionDate[3];
+			setDOY = calculateDayOfYear(setDay, setMonth, setYear);
 			setHour = sessionTime[0];
 			setMin = sessionTime[1];
 			setAmount = session["amount"];
@@ -185,128 +190,115 @@ void turing(){
 			repeatCount = session["repeat"];
 			repeatedCount = session["repeated"];
 			repeatType = session["repeatBy"];
-			setDelay = session["delay"];
 			id = session["id"];
-			outof = session["outof"];
 
 			//Capture current date/time data
 			currentYear = tmpInts[0];
 			currentMonth = tmpInts[1];
 			currentDay = tmpInts[2];
 			currentDOW = tmpInts[3];
+			currentDOY = calculateDayOfYear(currentDay, currentMonth, currentYear);
 			currentHour = tmpInts[4];
 			currentMin = tmpInts[5];
-			lcd.home();
+			
+			lcd.home(); //move lcd cursor to 0,0
 
-			//Validation of set data vs current data
-			//Year
-			if (setYear != currentYear){	//year
-				if (repeatType != 5){		//should it repeat yearly?
-					valid = false;
-					if (debug == true){
-						lcd.clear();
-						lcd.print("Year not valid");
-						lcd.setCursor(0, 1);
-						lcd.print("Ch");
-						lcd.print(i);
-						lcd.print(" ");
-						lcd.print(setYear);
-						lcd.home();
-						delay(1000);
+			//Validation of session date time
+			if (repeatType > 0){ //if session is set to repeat, we validate uniquely per repeatType
+				if (repeatType == 1){ //hourly
+					if (currentHour != setHour && currentMin < setMin){
+						valid = 0;
+					}
+				}
+				if (repeatType == 2){ //daily
+					if (currentDay != setDay && currentHour != setHour && currentMin < setMin){
+						valid = 0;
+					}
+				}
+				if (repeatType == 3){ //weekly
+					if (currentDOW != setDOW && currentHour != setHour && currentMin < setMin){
+						valid = 0;
+					}
+				}
+				if (repeatType == 4){ //monthly
+					if (currentMonth != setMonth && currentDay != setDay && currentHour != setHour && currentMin < setMin){
+						valid = 0;
+					}
+				}
+				if (repeatType == 5){ //yearly
+					if (currentDOY != setDOY && currentHour != setHour && currentMin < setMin){
+						valid = 0;
 					}
 				}
 			}
-
-			//Month
-			if (setMonth != currentMonth){		//month
-				if (repeatType != 4){			//should it repeat monthly OR weekly?
-					valid = false;
-					if (debug == true){
-						lcd.clear();
-						lcd.print("Month not valid");
-						lcd.setCursor(0, 1);
-						lcd.print("Ch");
-						lcd.print(i);
-						lcd.print(" ");
-						lcd.print(setMonth);
-						lcd.home();
-						delay(1000);
-					}
+			else{ //if no repeat type is set, validation is little simpler
+				if (setYear < currentYear){	//year
+					valid = 0;
 				}
-			}
 
-			//Day
-			if (setDay != currentDay){						//day
-				if (repeatType != 3 || repeatType != 2){	//should it repeat weekly OR daily?
-					valid = false;
-					if (debug == true){
-						lcd.clear();
-						lcd.print("Day not valid");
-						lcd.setCursor(0, 1);
-						lcd.print("Ch");
-						lcd.print(i);
-						lcd.print(" ");
-						lcd.print(setDay);
-						lcd.home();
-						delay(1000);
-					}
+				if (setMonth < currentMonth){ //month
+					valid = 0;
 				}
-			}
 
-			//Hour
-			if (setHour != currentHour){	//hour
-				if (repeatType != 1){		//should it repeat hourly?
-					valid = false;
-					if (debug == true){
-						lcd.clear();
-						lcd.print("Hour not valid");
-						lcd.setCursor(0, 1);
-						lcd.print("Ch");
-						lcd.print(i);
-						lcd.print(" ");
-						lcd.print(setHour);
-						lcd.home();
-						delay(1000);
-					}
+				if (setDay < currentDay){     //day
+					valid = 0;
 				}
-			}
 
-			//Min
-			if (setMin != currentMin){	//min (in no right setup would you ever need a dose to repeat, nor is the physicaly possible every minute)
-				valid = false;
-				if (debug == true){
-					lcd.clear();
-					lcd.print("Min not valid");
-					lcd.setCursor(0, 1);
-					lcd.print("Ch");
-					lcd.print(i);
-					lcd.print(" ");
-					lcd.print(setMin);
-					lcd.home();
-					delay(1000);
+				if (setHour < currentHour){	  //hour
+					valid = 0;
+				}
+
+				if (setMin < currentMin){	//min (in no right setup would you ever need a dose to repeat, nor is the physicaly possible every minute)
+					valid = 0;
 				}
 			}
 
 			//LET THE DOSING BEGIN!!
-			if (valid){
+			
+			if (valid == 1){
+				//We don't have a repeating session
 				if (repeatType == 0){ //repeat type is = to none (most basic type of session)
 					pumpSpin(setAmount, setCalibration, setSize, i); //do pump spin
 					session["expried"] = true; //set session to expired
+					setSessionData(session, j, false);
 				}
-				else {
-					if (repeatCount == -1){ //repeat count is = to infinite
+				//We have a repeating session
+				if (repeatType > 0){
+					if (repeatCount < 0){ //repeat count is = to infinite, so we only pump
 						pumpSpin(setAmount, setCalibration, setSize, i); //do pump spin
+						progressSession = 1;
 					}
-					else{
-						if ((repeatedCount - 1) > 0) {
-							repeatedCount = repeatedCount - 1;
-						}
-						else{
-							repeatedCount = 0;
+
+					if(repeatCount > 0){
+						repeatedCount = ((repeatedCount - 1) > 0) ? repeatedCount - 1 : 0;
+						session["repeated"] = repeatedCount;
+						if (repeatedCount == 0){
+							//lets expire session
 							session["expired"] = true;
+						} else {
+							progressSession = 1;
 						}
+						setSessionData(session, j, false);
 						pumpSpin(setAmount, setCalibration, setSize, i); //do pump spin
 					}
+				}
+			}
+
+			//If the session is of repeating type, and needs to be repeated further 
+			//we progress the session further
+			if (progressSession == 1){
+				if (repeatType == 1){ //hourly
+					setHour = (setHour + 1 > 23) ? 0 : setHour + 1; //Push to next hour
+
+				}
+				if (repeatType == 2){ //daily
+					setDay = (setDay + 1 > days[setMonth]) ? 0 : setDay + 1; //Push to next day of month
+				}
+				if (repeatType == 4){ //monthly
+					setMonth = (setMonth + 1 > 11) ? 0 : setMonth + 1; //Push to next month
+				}
+				if (repeatType == 5){ //yearly
+					setYear = setYear + 1; //Push to next year
 				}
 			}
 		}

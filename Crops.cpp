@@ -174,7 +174,7 @@ void buildCrop(){
 	sessionTime.add(tmpInts[4]);		//hour
 	sessionTime.add(tmpInts[5]);		//min
 
-	session["channel"] = session["delay"] = session["repeat"] = session["repeatBy"] = 0;
+	session["channel"] = session["repeat"] = session["repeated"] = session["repeatBy"] = 0;
 
 	for (i = 0; i < defaultChannelSize; i++){
 		channel["id"] = session["channel"] = i;

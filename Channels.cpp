@@ -84,8 +84,8 @@ void makeChannel(String path, int numberOfSessions, JsonObject& channelData, Jso
 	makeNewFile(channelName + "/channel.dro", channelData);
 
 	for (j = 0; j < numberOfSessions; j++){
-		sessionData["id"] = j;
-		sessionData["outof"] = numberOfSessions;
+		//sessionData["id"] = j;
+		//sessionData["outof"] = numberOfSessions;
 		makeSession(channelName + "/Sessions/ChSes" + String(j + 1), sessionData);
 		Serial.flush();
 	}
@@ -111,7 +111,6 @@ void removeChannel(String path) {
 	for (i = 0; i < (sessionTotal + 1); i++){
 		loopedPath = path + "/Sessions/ChSes" + String(i + 1);
 		SD.rmdir(loopedPath + "/Amt");
-		SD.rmdir(loopedPath + "/Dly");
 		SD.rmdir(loopedPath + "/Rpt");
 		SD.rmdir(loopedPath + "/Str");
 		SD.remove(loopedPath + "/Session.dro");
@@ -159,7 +158,7 @@ void addChannels(int currentSize, int addAmount){
 	sessionData["date"].asArray().add(rtc.getTime().dow);
 	sessionData["time"].asArray().add(rtc.getTime().hour);
 	sessionData["time"].asArray().add(rtc.getTime().min);
-	sessionData["delay"] = sessionData["repeatBy"] = sessionData["repeat"] = 0;
+	sessionData["repeatBy"] = sessionData["repeat"] = 0;
 
 	for (j = 1; j < loopAmount; j++){
 		index = currentSize + j;

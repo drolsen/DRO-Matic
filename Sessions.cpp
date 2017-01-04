@@ -69,30 +69,6 @@ void setSessionAmount(int dir){
 	}
 }
 
-void setSessionDelay(int dir){
-	if (cursorX == 2){
-		lcd.clear();
-		String prefix, displayDelay;
-
-		prefix = "00";
-		tmpInts[0] = tmpInts[0] + dir;
-		if (tmpInts[0] < 10){
-			tmpInts[0] == 10;
-		}
-		if (tmpInts[0] >= 10 && tmpInts[0] < 100){
-			prefix = "0";
-		}
-		if (tmpInts[0] >= 100){
-			prefix = "";
-		}
-		displayDelay = prefix + String(tmpInts[0]);
-		lcd.print(displayDelay + F("(sec)  delay"));
-		lcd.setCursor(0, 1);
-		lcd.print(F("<back>      <ok>"));
-		lcd.setCursor(cursorX, cursorY);
-	}
-}
-
 void setSessionRepeat(int dir) {
 	char repeatsBuffer[8];
 	String displayRepeat, displayRepeatBy;

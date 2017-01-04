@@ -55,15 +55,15 @@ void exitScreen(){
 
 void openHomeScreen(){
 	captureDateTime();
-	lcd.clear();
 	char monthsBuffer[8];
+
 	//hour					//minute		  //AM/PM											//Month														//Day
-	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon]))) + F(" ") + tmpDisplay[1]);
+	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon-1]))) + F(" ") + tmpDisplay[1]);
 	lcd.setCursor(0, 1);
 	lcd.print(F("PPM:"));
-	lcd.print(String((analogRead(9) / 100) * 1000));
+	lcd.print((int)(analogRead(A1) * 5.00));
 	lcd.print(F(" PH:"));
-	lcd.print(String(analogRead(9)* 14.00 / 1024, 2));
+	lcd.print((float)analogRead(A1) * 5.00);
 	lcd.home();
 	lcd.noBlink();
 	turing(); //the heart of it all, thank you Allen

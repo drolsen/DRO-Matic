@@ -17,7 +17,7 @@ unsigned long previousMillis, currentMillis;  //stores last time
 void captureDateTime(){
 	Time current = rtc.getTime();
 	tmpInts[0] = current.year;
-	tmpInts[1] = current.mon;
+	tmpInts[1] = ((current.mon-1) > 11)? 0 : current.mon-1;
 	tmpInts[2] = current.date;
 	tmpInts[3] = current.dow;
 	tmpInts[4] = current.hour;

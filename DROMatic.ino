@@ -13,6 +13,7 @@
 #include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
 #include <DS3231.h> //Real time clock lib
 #include <Stepper.h> //Stepper motoer lib
+
 #include "Globals.h" //All temp and PROGMEM global variables
 #include "Core.h" //All core functions and variables
 #include "Crops.h" //All crop functions and variables
@@ -65,8 +66,7 @@ void setup()
 		lcd.print(F("Insert And Rest"));
 		screenName = "REQUIREDSD";
 	} 
-	else 
-	{
+	else {
 		coreInit();
 	}
 }
@@ -136,7 +136,7 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "AMT" || screenName == "DLY"){
+		if (screenName == "AMT"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
@@ -223,9 +223,6 @@ void loop()
 		if (screenName == "STR"){
 			setDateTime(dir);
 		}
-		if (screenName == "DLY"){
-			setSessionDelay(dir);
-		}
 		if (screenName == "RPT"){
 			setSessionRepeat(dir);
 		}
@@ -256,7 +253,6 @@ void loop()
 				if (screenName == "DATETIME"){
 					captureDateTime();
 					char monthsBuffer[8];
-
 					lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
 					lcd.setCursor(0, 1);
 					lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
@@ -387,19 +383,6 @@ void loop()
 					cursorX = 1;
 					cursorY = 0;
 				}
-				if (screenName == "DLY"){
-					DynamicJsonBuffer sessionBuffer;
-					JsonObject& data = getSessionData(sessionBuffer);
-					tmpInts[0] = data["delay"];
-					String displayDelay = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
-
-					lcd.print(displayDelay + F("(sec)  delay"));
-					lcd.setCursor(0, 1);
-					lcd.print(F("<back>      <ok>"));
-					cursorX = 2;
-					cursorY = 0;
-					lcd.setCursor(cursorX, cursorY);
-				}
 				if (screenName == "RPT"){
 					char repeatsBuffer[8];
 					DynamicJsonBuffer sessionBuffer;
@@ -410,7 +393,7 @@ void loop()
 					String displayRepeat = (tmpInts[0] == -1)? "Inf." : (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) + "x" : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) + "x" : String(tmpInts[0]) + "x";
 					String displayRepeatBy = strcpy_P(repeatsBuffer, (char*)pgm_read_word(&(displayRepeats[tmpInts[1]])));
 
-					lcd.print("Repeats: ");
+					lcd.print(F("Repeats: "));
 					lcd.print(displayRepeatBy);
 					lcd.setCursor(0, 1);
 					lcd.print(displayRepeat + F(" <back> <ok>"));
@@ -487,25 +470,24 @@ void loop()
 		}
 		if (screenName == "PH"){
 			if (cursorX == 11 && cursorY == 1){
+				lcd.clear();
+				lcd.home();
 				DynamicJsonBuffer jsonBuffer;
 				JsonObject& data = getCropData(jsonBuffer);
 				data["ph"].asArray()[0].set(tmpFloats[0]);
 				data["ph"].asArray()[1].set(tmpFloats[1]);
 
-				setCropData(data);
+				setCropData(data, false);
 				tmpFloats[0] = tmpFloats[1] = 0.0;
 				screenName = "PHCHL";
 				delay(250);
-
-				lcd.clear();
-				lcd.home();
 
 				tmpInts[0] = data["phChannels"].asArray()[0];
 				tmpInts[1] = data["phChannels"].asArray()[1];
 
 				String UpDisplay = (tmpInts[0] < 10) ? String(F("0")) + String(tmpInts[0]) : String(tmpInts[0]);
 				String DownDisplay = (tmpInts[1] < 10) ? String(F("0")) + String(tmpInts[1]) : String(tmpInts[1]);
-
+				lcd.blink();
 				lcd.print(F("PH"));
 				lcd.write(byte(1));
 				lcd.print(F("CH"));
@@ -517,7 +499,7 @@ void loop()
 				lcd.print(F("<back>      <ok>"));
 				cursorX = 6;
 				cursorY = 0;
-				lcd.setCursor(6, 0);
+				lcd.setCursor(cursorX, cursorY);
 			}
 			if (cursorX == 1 && cursorY == 1){
 				tmpFloats[0] = tmpFloats[1] = 0.0;
@@ -542,8 +524,8 @@ void loop()
 			if (cursorX == 13 && cursorY == 1){
 				//hour, min, seconds
 				rtc.setTime(tmpInts[4], tmpInts[5], 0);
-				//day, month, year
-				rtc.setDate(tmpInts[2], tmpInts[1], tmpInts[0]);
+				//day, month (RTC counts first month as 1, not 0), year
+				rtc.setDate(tmpInts[2], tmpInts[1]+1, tmpInts[0]);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				tmpDisplay[0] = ""; //suffix
@@ -625,9 +607,9 @@ void loop()
 			if (cursorX == 12 && cursorY == 1){ //all channel save
 				lcd.clear();
 				lcd.home();
-				lcd.print("  SAVING ALL  ");
+				lcd.print(F("  SAVING ALL  "));
 				lcd.setCursor(0, 1);
-				lcd.print("  PLEASE WAIT ");
+				lcd.print(F("  PLEASE WAIT "));
 
 				DynamicJsonBuffer cropBuffer;
 				JsonObject& cropData = getCropData(cropBuffer);
@@ -658,9 +640,9 @@ void loop()
 			if (cursorX == 12 && cursorY == 1){ //all channel save
 				lcd.clear();
 				lcd.home();
-				lcd.print("  SAVING ALL  ");
+				lcd.print(F("  SAVING ALL  "));
 				lcd.setCursor(0, 1);
-				lcd.print("  PLEASE WAIT ");
+				lcd.print(F("  PLEASE WAIT "));
 				
 				DynamicJsonBuffer cropBuffer;
 				JsonObject& cropData = getCropData(cropBuffer);
@@ -673,8 +655,7 @@ void loop()
 				}
 			}
 			if (cursorX == 1 || cursorX == 9 || cursorX == 12 && cursorY == 1){
-				tmpInts[1] = 0;
-				tmpInts[0] = 0;
+				tmpInts[1] = tmpInts[0] = 0;
 				exitScreen();
 			}
 		}
@@ -725,33 +706,19 @@ void loop()
 				exitScreen();
 			}
 		}
-		if (screenName == "DLY"){
-			if (cursorX == 13 && cursorY == 1){
-				DynamicJsonBuffer sessionBuffer;
-				JsonObject& sessionData = getSessionData(sessionBuffer);
-
-				sessionData["delay"] = tmpInts[0];
-				setSessionData(sessionData);
-			}
-			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				tmpInts[0] = 0;
-				exitScreen();
-			}
-		}
 		if (screenName == "RPT"){
 			if (cursorX == 13 && cursorY == 1){
 				DynamicJsonBuffer sessionBuffer;
 				JsonObject& sessionData = getSessionData(sessionBuffer);
 
 				sessionData["repeatBy"] = tmpInts[1];
-				sessionData["repeat"] = tmpInts[0];
-				sessionData["repeated"] = tmpInts[0]; //we use this as a changeable variable so we can use repeat value for crop resets
+				sessionData["repeat"] = sessionData["repeated"] = tmpInts[0];
+				//we use this as a changeable variable so we can use repeat value for crop resets
 
 				setSessionData(sessionData);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				tmpInts[1] = 0;
-				tmpInts[0] = 0;
+				tmpInts[1] = tmpInts[0] = 0;
 				exitScreen();
 			}
 		}
