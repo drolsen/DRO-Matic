@@ -1,4 +1,4 @@
-# DRO<img src="https://raw.githubusercontent.com/devinrayolsen/DRO-Matic/master/images/hydro-hyphen.png" width="64">Matic OS
+# DRO<img src="https://raw.githubusercontent.com/devinrayolsen/DRO-Matic/master/Docs/images/hydro-hyphen.png" width="64">Matic OS
 
 This is an Arduino (MicroController) based hydroponics Operating System built for any scale hydroponic farm that wants to fully automate nutrient and PH dosing. 
 The DRO-Matic (automatic hydroponics) has been built to allow users to create, configure and share projects called "crops" by interfacing with an external MicroSD card. 
