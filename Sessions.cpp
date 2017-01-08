@@ -102,7 +102,6 @@ void makeSession(String path, JsonObject& data){
 	SD.mkdir(path);
 	SD.mkdir(path + "/Amt");
 	SD.mkdir(path + "/Str");
-	SD.mkdir(path + "/Dly");
 	SD.mkdir(path + "/Rpt");
 
 	char buffer[512];
@@ -153,7 +152,6 @@ void trimSessions(int currentSize, int trimAmount){
 	for (i = 0; i <= currentSize; i++){
 		if (i > trimAmount){
 			SD.rmdir(path + i + "/AMT");
-			SD.rmdir(path + i + "/DLY");
 			SD.rmdir(path + i + "/RPT");
 			SD.rmdir(path + i + "/STR");
 			SD.remove(path + i + "/SESSION.DRO");

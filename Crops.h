@@ -25,6 +25,8 @@ extern void renameCrop(int dir);
 
 extern int getCropCount();
 
+extern int getChannelCount();
+
 extern void buildCrop();
 
 #endif

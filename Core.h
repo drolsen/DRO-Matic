@@ -32,7 +32,7 @@ extern void makeNewFile(String path, JsonObject& data);
 //Pumping Functions
 extern void turing();
 extern void RelayToggle(int channel, bool gate);
-extern void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNumber);
+extern void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNumber, int sessionNumber, JsonObject& session);
 
 
 

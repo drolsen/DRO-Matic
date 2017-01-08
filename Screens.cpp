@@ -39,6 +39,39 @@ byte downArrow[8] = {
 	B00000
 };
 
+byte infinityLeft[8] = {
+	B00000,
+	B00000,
+	B00110,
+	B01001,
+	B01001,
+	B00110,
+	B00000,
+	B00000
+};
+
+byte infinityRight[8] = {
+	B00000,
+	B00000,
+	B00110,
+	B01001,
+	B01001,
+	B00110,
+	B00000,
+	B00000
+};
+
+byte infintyRight[8] = {
+	B00000,
+	B00000,
+	B01100,
+	B10010,
+	B10010,
+	B01100,
+	B00000,
+	B00000
+};
+
 void exitScreen(){
 	menusHistory.pop_back();
 	menuIndex = 0;
@@ -53,9 +86,10 @@ void exitScreen(){
 	delay(350);
 }
 
-void openHomeScreen(){
+void openHomeScreen(bool sessionTuring = false){
 	captureDateTime();
 	char monthsBuffer[8];
+	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
 	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon-1]))) + F(" ") + tmpDisplay[1]);
@@ -63,10 +97,13 @@ void openHomeScreen(){
 	lcd.print(F("PPM:"));
 	lcd.print((int)(analogRead(A1) * 5.00));
 	lcd.print(F(" PH:"));
-	lcd.print((float)analogRead(A1) * 5.00);
+	lcd.print((float)analogRead(A2) * 14.0 / 1024);
 	lcd.home();
 	lcd.noBlink();
-	turing(); //the heart of it all, thank you Allen
+	if (sessionTuring == true){
+		turing(); //the heart of it all, thank you Allen
+		//expireSessions();
+	}
 }
 
 void screenMatrix(){

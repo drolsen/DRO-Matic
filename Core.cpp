@@ -138,11 +138,7 @@ void makeNewFile(String path, JsonObject& data){
 //Pump Functions
 void turing(){
 	captureDateTime();
-	byte valid = 1;
-	byte progressSession = 0;
-	int i, j,
-		setDOY, currentDOY,
-		setYear, currentYear,
+	byte i, j,
 		setMonth, currentMonth,
 		setDay, currentDay,
 		setDOW, currentDOW,
@@ -150,31 +146,35 @@ void turing(){
 		setMin, currentMin,
 		repeatCount, repeatedCount, repeatType,
 		setAmount, setCalibration, setSize,
-		id, calib, direction, totalChannels;
+		id, totalChannels, channelSessionTotal;
 
-	StaticJsonBuffer<256> cropBuffer;
-	JsonObject& cropData = getCropData(cropBuffer);
-	totalChannels = cropData["totalChannels"];
+	int setDOY, currentDOY,
+		setYear, currentYear;
 
+	totalChannels = getChannelCount();
 	//We start by looping over channesl
 	for (i = 1; i < totalChannels; i++){
 		if (analogRead(0) >= 0 && analogRead(0) <= 650){
 			break;
 		}
-		StaticJsonBuffer<256> channelBuffer;
+		StaticJsonBuffer<128> channelBuffer;
 		JsonObject& channel = getChannelData(channelBuffer, i);
-		int channelSessionTotal = channel["sessionsTotal"];
+		
+		channelSessionTotal = channel["sessionsTotal"];
+		setCalibration = channel["calibration"];
+		setSize = channel["size"];
+
 		for (j = 1; j < channelSessionTotal + 1; j++){
 			if (analogRead(0) >= 0 && analogRead(0) <= 650){
 				break;
 			}
-			valid = true; //set a validation flag to true
-			StaticJsonBuffer<256> sessionBuffer;
+			bool progressSession = false;
+			StaticJsonBuffer<512> sessionBuffer;
 			JsonObject& session = getSessionData(sessionBuffer, i, j);
-			JsonArray& sessionDate = session["date"];
-			JsonArray& sessionTime = session["time"];
+			JsonArray& sessionDate = session["date"].asArray();
+			JsonArray& sessionTime = session["time"].asArray();
 
-			if (session["expried"] == true) continue; //lets skip this session if it has already expired.
+			if (session["expired"] == true) continue; //lets skip this session if it has already expired.
 
 			//Capture session's set data
 			setYear = sessionDate[0];
@@ -185,8 +185,6 @@ void turing(){
 			setHour = sessionTime[0];
 			setMin = sessionTime[1];
 			setAmount = session["amount"];
-			setCalibration = channel["calibration"];
-			setSize = channel["size"];
 			repeatCount = session["repeat"];
 			repeatedCount = session["repeated"];
 			repeatType = session["repeatBy"];
@@ -201,109 +199,100 @@ void turing(){
 			currentHour = tmpInts[4];
 			currentMin = tmpInts[5];
 			
-			lcd.home(); //move lcd cursor to 0,0
-
 			//Validation of session date time
 			if (repeatType > 0){ //if session is set to repeat, we validate uniquely per repeatType
 				if (repeatType == 1){ //hourly
 					if (currentHour != setHour && currentMin < setMin){
-						valid = 0;
+						continue;
 					}
 				}
 				if (repeatType == 2){ //daily
 					if (currentDay != setDay && currentHour != setHour && currentMin < setMin){
-						valid = 0;
+						continue;
 					}
 				}
 				if (repeatType == 3){ //weekly
 					if (currentDOW != setDOW && currentHour != setHour && currentMin < setMin){
-						valid = 0;
+						continue;
 					}
 				}
 				if (repeatType == 4){ //monthly
 					if (currentMonth != setMonth && currentDay != setDay && currentHour != setHour && currentMin < setMin){
-						valid = 0;
+						continue;
 					}
 				}
 				if (repeatType == 5){ //yearly
 					if (currentDOY != setDOY && currentHour != setHour && currentMin < setMin){
-						valid = 0;
+						continue;
 					}
 				}
 			}
-			else{ //if no repeat type is set, validation is little simpler
-				if (setYear < currentYear){	//year
-					valid = 0;
+			
+			if (repeatType == 0){ //if no repeat type is set, validation is little simpler
+				if (setYear != currentYear){	//year
+					continue;
 				}
 
-				if (setMonth < currentMonth){ //month
-					valid = 0;
+				if (setMonth != currentMonth){	//month
+					continue;
 				}
 
-				if (setDay < currentDay){     //day
-					valid = 0;
+				if (setDay != currentDay){		//day
+					continue;
 				}
 
-				if (setHour < currentHour){	  //hour
-					valid = 0;
+				if (setHour != currentHour){	//hour
+					continue;
 				}
 
-				if (setMin < currentMin){	//min (in no right setup would you ever need a dose to repeat, nor is the physicaly possible every minute)
-					valid = 0;
+				if (setMin != currentMin){		//min
+					continue;
 				}
 			}
 
 			//LET THE DOSING BEGIN!!
-			
-			if (valid == 1){
-				//We don't have a repeating session
-				if (repeatType == 0){ //repeat type is = to none (most basic type of session)
-					pumpSpin(setAmount, setCalibration, setSize, i); //do pump spin
-					session["expried"] = true; //set session to expired
-					setSessionData(session, j, false);
-				}
+			if (repeatType == 0){ //repeat type is = to none (most basic type of session)
+				session["expired"] = true; //set session to expired
+				pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
+			} else { 
 				//We have a repeating session
-				if (repeatType > 0){
-					if (repeatCount < 0){ //repeat count is = to infinite, so we only pump
-						pumpSpin(setAmount, setCalibration, setSize, i); //do pump spin
-						progressSession = 1;
+				if (repeatCount < 0){ //repeat count is = to infinite, so we only pump
+					pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
+					progressSession = true;
+				}
+				if(repeatCount > 0){
+					repeatedCount = ((repeatedCount - 1) > 0) ? repeatedCount - 1 : 0;
+					session["repeated"] = repeatedCount;
+					if (repeatedCount == 0){
+						//lets expire session
+						session["expired"] = true;
+					} else {
+						progressSession = true;
 					}
-
-					if(repeatCount > 0){
-						repeatedCount = ((repeatedCount - 1) > 0) ? repeatedCount - 1 : 0;
-						session["repeated"] = repeatedCount;
-						if (repeatedCount == 0){
-							//lets expire session
-							session["expired"] = true;
-						} else {
-							progressSession = 1;
-						}
-						setSessionData(session, j, false);
-						pumpSpin(setAmount, setCalibration, setSize, i); //do pump spin
-					}
+					pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
 				}
 			}
 
 			//If the session is of repeating type, and needs to be repeated further 
 			//we progress the session further
-			if (progressSession == 1){
+			if (progressSession == true){
 				if (repeatType == 1){ //hourly
-					setHour = (setHour + 1 > 23) ? 0 : setHour + 1; //Push to next hour
-
+					sessionTime[0] = (setHour + 1 > 23) ? 0 : setHour + 1; //Push to next hour
 				}
 				if (repeatType == 2){ //daily
-					setDay = (setDay + 1 > days[setMonth]) ? 0 : setDay + 1; //Push to next day of month
+					sessionDate[2] = (setDay + 1 > days[setMonth]) ? 0 : setDay + 1; //Push to next day of month
 				}
 				if (repeatType == 4){ //monthly
-					setMonth = (setMonth + 1 > 11) ? 0 : setMonth + 1; //Push to next month
+					sessionDate[1] = (setMonth + 1 > 11) ? 0 : setMonth + 1; //Push to next month
 				}
 				if (repeatType == 5){ //yearly
-					setYear = setYear + 1; //Push to next year
+					sessionDate[0] = setYear + 1; //Push to next year
 				}
 			}
 		}
 	}
 }
+
 
 void RelayToggle(int channel, bool gate) {
 	if (gate == true){
@@ -376,10 +365,8 @@ void RelayToggle(int channel, bool gate) {
 	}
 }
 
-void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNumber){
-
+void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNumber, int sessionNumber, JsonObject& sessionData){
 	RelayToggle(channelNumber, true); //turn channel gate power on
-
 	if (channelSize > 0){ //fixed channel system (aka syrings or not)?
 		vector<long int> pumpSessions;
 		long int totalRotations = stepsPerRevolution * setCalibration; //7400
@@ -404,15 +391,20 @@ void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNum
 				if (turnCounts == 0){
 					while (reverseCount--){
 						myStepper.step(800); //push fluids
-
 					}
 				}
 			}
 		}
 	}
 	else { //no fixed channel size but a fixed configuration size of 100ml (aka flow control system or pump)
-		myStepper.step(stepsPerRevolution * (setAmount / setCalibration));
+		//int setAmount, int setCalibration, int channelSize, int channelNumber
+		int mlPerSec = (setCalibration*100) / 60; //100m / 60sec = 1.6ml per seconds
+		int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
+		for (int i = 0; i < pumpLength; i++){
+			delay(1000);
+			Serial.flush();
+		}
 	}
-
 	RelayToggle(channelNumber, false); //turn channel gate power on
+	setSessionData(sessionData, channelNumber, sessionNumber, false); //finally we save our sessions if data has changed
 }

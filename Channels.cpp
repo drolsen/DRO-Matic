@@ -173,9 +173,18 @@ void setChannelSize(int dir){
 		if (cursorX == 2){
 			tmpInts[0] = tmpInts[0] + dir;
 			lcd.clear();
-			tmpInts[0] = (tmpInts[0] < -1) ? -1 : (tmpInts[0] > 500) ? 500 : tmpInts[0]; //we must cap channel max size to 500ml
-			String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? (tmpInts[0] == -1) ? "Infinte" : "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
-			lcd.print(channelSize + F(" (ml) volume"));
+			tmpInts[0] = (tmpInts[0] < 0) ? 0 : (tmpInts[0] > 500) ? 500 : tmpInts[0]; //we must cap channel max size to 500ml
+			String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? (tmpInts[0] == 0) ? "" : "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
+			if (channelSize == ""){
+				lcd.print(" ");
+				lcd.write(byte(3));
+				lcd.write(byte(4));
+				lcd.print(F(" (ml) volume"));
+			}
+			else{
+				lcd.print(channelSize + F(" (ml) volume"));
+			}
+			
 			lcd.setCursor(0, 1);
 			lcd.print(F("<back>  <ok|all>"));
 			lcd.setCursor(cursorX, cursorY);
@@ -191,26 +200,42 @@ void setCalibrationSize(int dir){
 
 		tmpInts[1] = tmpInts[1] + dir;
 
-		if (tmpInts[1] < 0) { tmpInts[1] = 0; }
-		if (tmpInts[1] >= 10 && tmpInts[1] < 100) { displayRots = "0"; }
-		if (tmpInts[1] >= 100) { displayRots = ""; }
-		displayRots = displayRots + String(tmpInts[1]);
-
 		if (tmpInts[0] < 0) { tmpInts[0] = 0; }
-		if (tmpInts[0] >= 10 && tmpInts[0] < 100) { displaySize = "0"; }
-		if (tmpInts[0] >= 100) { displaySize = ""; }
-		displaySize = displaySize + String(tmpInts[0]);
+		if (tmpInts[0] >= 10 && tmpInts[0] < 100) { displayRots = "0"; }
+		if (tmpInts[0] >= 100) { displayRots = ""; }
+		displayRots = displayRots + String(tmpInts[0]);
+
+		if (tmpInts[1] < 0) { tmpInts[1] = 0; }
+		if (tmpInts[1] >= 10 && tmpInts[1] < 100) { displaySize = "0"; }
+		if (tmpInts[1] >= 100) { displaySize = ""; }
+		displaySize = displaySize + String(tmpInts[1]);
 
 		lcd.home();
 		lcd.print(displaySize + F("(ml) ") + displayRots + F(" rots"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("<back>  <ok|all>"));
 		lcd.setCursor(cursorX, cursorY);
-		float timeTurning = 31.5;
 
 		RelayToggle(currentChannelIndex, true); //turn replay gate power on
 		myStepper.step((dir == -1) ? 800 : -800);
 		RelayToggle(currentChannelIndex, false); //turn replay gate power off
+	}
 
+	if (cursorX == 2){
+		lcd.clear();
+		String displaySize;
+		displaySize = "00";
+
+		tmpInts[0] = tmpInts[0] + dir;
+
+		if (tmpInts[0] < 0) { tmpInts[0] = 0; }
+		if (tmpInts[0] > 5) { tmpInts[0] = 5; }
+		displaySize = String(tmpInts[0]) + displaySize;
+
+		lcd.home();
+		lcd.print(displaySize + F("(ml) per min"));
+		lcd.setCursor(0, 1);
+		lcd.print(F("<back>  <ok|all>"));
+		lcd.setCursor(cursorX, cursorY);
 	}
 }

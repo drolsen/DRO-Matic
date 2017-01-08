@@ -89,6 +89,12 @@ int getCropCount(){
 	return count;
 }
 
+int getChannelCount(){
+	DynamicJsonBuffer cropBuffer;
+	JsonObject& cropData = getCropData(cropBuffer);
+	return cropData["totalChannels"];
+}
+
 void buildCrop(){
 	String channelName;
 	File channelSettingsFile;
@@ -147,9 +153,9 @@ void buildCrop(){
 	///////////////////////
 	StaticJsonBuffer<64> channelBuffer;
 	JsonObject& channel = channelBuffer.createObject();
-	channel["size"] = 80;
+	channel["size"] = 0;
 	channel["sessionsTotal"] = defaultSessionSize;
-	channel["id"] = channel["calibration"] = 0;
+	channel["calibration"] = 1;
 
 	////////////////////////
 	//Build Session's file//
@@ -159,7 +165,7 @@ void buildCrop(){
 	JsonArray& sessionDate = session.createNestedArray("date");
 	JsonArray& sessionTime = session.createNestedArray("time");
 	session["expired"] = false;
-	session["amount"] = 80;
+	session["amount"] = 25;
 	captureDateTime();
 
 	int currentYear = tmpInts[0];
