@@ -28,6 +28,8 @@ void setup()
 {
 	lcd.createChar(0, upArrow);
 	lcd.createChar(1, downArrow);
+	lcd.createChar(3, infinityLeft);
+	lcd.createChar(4, infinityRight);
 	lcd.begin(16, 2);
 	Serial.begin(9600);
 	rtc.begin();
@@ -63,7 +65,7 @@ void setup()
 	if (!SD.begin(53)){
 		lcd.print(F("SD Card Required"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("Insert And Rest"));
+		lcd.print(F("Insert And Reset"));
 		screenName = "REQUIREDSD";
 	} 
 	else {
@@ -84,7 +86,7 @@ void loop()
 	if ((currentMillis - previousMillis) >= 30000) {
 		if (screenName == "") {
 			previousMillis = currentMillis;
-			openHomeScreen();
+			openHomeScreen(true);
 		}
 	}
 
@@ -149,10 +151,20 @@ void loop()
 			};
 		}
 		if (screenName == "CHCALIB"){
-			matrix = {
-				{ { 10, 10 } },
-				{ { 1, 1 }, { 9, 9 }, { 12, 12 } }
-			};
+			if (tmpInts[1] == 0){ 
+				//peristaltic pumps
+				matrix = {
+					{ { 2, 2 } },
+					{ { 1, 1 }, { 9, 9 }, { 12, 12 } }
+				};
+			}
+			else{ 
+				//fixed pumps
+				matrix = {
+					{ { 10, 10 } },
+					{ { 1, 1 }, { 9, 9 }, { 12, 12 } }
+				};
+			}
 		}
 		if (screenName == "RPT"){
 			matrix = {
@@ -336,9 +348,18 @@ void loop()
 				if (screenName == "CHSIZE"){
 					DynamicJsonBuffer channelBuffer;
 					JsonObject& data = getChannelData(channelBuffer);
-					tmpInts[0] = data["size"];
-					String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
-					lcd.print(channelSize + F(" (ml) volume"));
+					tmpInts[0] = data["size"];					
+					if (tmpInts[0] == 0){
+						lcd.print(" ");
+						lcd.write(byte(3));
+						lcd.write(byte(4));
+						lcd.print(F(" (ml) volume"));
+					}
+					else{
+						String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
+						lcd.print(channelSize + F(" (ml) volume"));
+					}
+					
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>  <ok|all>"));
 					cursorX = 2;
@@ -348,14 +369,21 @@ void loop()
 				if (screenName == "CHCALIB"){
 					DynamicJsonBuffer channelBuffer;
 					JsonObject& data = getChannelData(channelBuffer);
-					tmpInts[0] = data["size"];
-					tmpInts[1] = data["calibration"];
-					String targetSize = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
-					String rotsSize = (tmpInts[1] >= 10 && tmpInts[1] <= 99) ? "0" + String(tmpInts[1]) : (tmpInts[1] < 10 && tmpInts[1] >= 0) ? "00" + String(tmpInts[1]) : String(tmpInts[1]);
-					lcd.print(targetSize + F("(ml) ") + rotsSize + F(" rots"));
+					tmpInts[0] = data["calibration"];
+					tmpInts[1] = data["size"];
+					if (tmpInts[1] == 0){
+						lcd.print(String(tmpInts[0]) + F("00 (ml) per min"));
+						cursorX = 2;
+					}
+					else{
+						String rotsSize = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
+						String targetSize = (tmpInts[1] >= 10 && tmpInts[1] <= 99) ? "0" + String(tmpInts[1]) : (tmpInts[1] < 10 && tmpInts[1] >= 0) ? "00" + String(tmpInts[1]) : String(tmpInts[1]);
+						lcd.print(targetSize + F("(ml) ") + rotsSize + F(" rots"));
+						cursorX = 10;
+					}
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>  <ok|all>"));
-					cursorX = 10;
+					
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
 				}
@@ -462,7 +490,7 @@ void loop()
 				JsonObject& data = getCropData(jsonBuffer);
 				data["ppm"].asArray()[0] = minPPM;
 				data["ppm"].asArray()[1] = maxPPM;
-				setCropData(data);
+				setCropData(data, false);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 				exitScreen();
@@ -513,7 +541,7 @@ void loop()
 				JsonObject& data = getCropData(jsonBuffer);
 				data["phChannels"].asArray()[0] = tmpInts[0];
 				data["phChannels"].asArray()[1] = tmpInts[1];
-				setCropData(data);
+				setCropData(data, false);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 				tmpInts[0] = tmpInts[1] = 0;
@@ -548,7 +576,7 @@ void loop()
 				dir = (currentTotal < newTotal) ? 1 : -1;
 
 				cropData["totalChannels"] = newTotal; //then set new total
-				setCropData(cropData);
+				setCropData(cropData, false);
 				if (dir < 0){
 					lcd.print(F(" TRIM CHANNELS "));
 					lcd.setCursor(0, 1);
@@ -589,7 +617,7 @@ void loop()
 					addSessions(channelData["sessionsTotal"], tmpInts[0]);
 				}
 				channelData["sessionsTotal"] = tmpInts[0]; //update channel's session total
-				setChannelData(channelData);
+				setChannelData(channelData, currentChannelIndex, false);
 			}
 			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
 				tmpInts[0] = 0;
@@ -600,9 +628,10 @@ void loop()
 			if (cursorX == 9 && cursorY == 1){ //single channel save
 				DynamicJsonBuffer channelBuffer;
 				JsonObject& channelData = getChannelData(channelBuffer);
-
+				lcd.clear();
+				lcd.home();
 				channelData["size"] = tmpInts[0];
-				setChannelData(channelData);
+				setChannelData(channelData, currentChannelIndex, false);
 			}
 			if (cursorX == 12 && cursorY == 1){ //all channel save
 				lcd.clear();
@@ -630,11 +659,9 @@ void loop()
 			if (cursorX == 9 && cursorY == 1){ //single channel save
 				DynamicJsonBuffer channelBuffer;
 				JsonObject& channelData = getChannelData(channelBuffer);
-
-				channelData["calibration"] = tmpInts[1];
-				setChannelData(channelData);
-				tmpInts[1] = 0;
-				tmpInts[0] = 0;
+				channelData["calibration"] = tmpInts[0];
+				setChannelData(channelData, currentChannelIndex, false);
+				tmpInts[0] = tmpInts[1] = 0;
 				exitScreen();
 			}
 			if (cursorX == 12 && cursorY == 1){ //all channel save
@@ -650,12 +677,12 @@ void loop()
 				while (channelSize--){
 					DynamicJsonBuffer channelBuffer;
 					JsonObject& channelData = getChannelData(channelBuffer, channelSize);
-					channelData["calibration"] = tmpInts[1];
+					channelData["calibration"] = tmpInts[0];
 					setChannelData(channelData, channelSize, false);
 				}
 			}
 			if (cursorX == 1 || cursorX == 9 || cursorX == 12 && cursorY == 1){
-				tmpInts[1] = tmpInts[0] = 0;
+				tmpInts[0] = tmpInts[1] = 0;
 				exitScreen();
 			}
 		}
@@ -664,7 +691,7 @@ void loop()
 				DynamicJsonBuffer sessionBuffer;
 				JsonObject& sessionData = getSessionData(sessionBuffer);
 				sessionData["amount"] = tmpInts[0];
-				setSessionData(sessionData);
+				setSessionData(sessionData, currentChannelIndex, currentSessionIndex, false);
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 				tmpInts[0] = 0;
@@ -699,7 +726,8 @@ void loop()
 				time_t time_temp = mktime(&time_in);
 				tm const *time_out = localtime(&time_temp);
 				sessionData["date"].asArray()[3] = time_out->tm_wday;
-				setSessionData(sessionData); //save session data
+				sessionData["expired"] = false;
+				setSessionData(sessionData, currentChannelIndex, currentSessionIndex, false); //save session data
 				tmpDisplay[0] = tmpDisplay[1] = tmpDisplay[2] = tmpDisplay[3] = ""; //Clear out tmpDisplays
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
@@ -715,7 +743,7 @@ void loop()
 				sessionData["repeat"] = sessionData["repeated"] = tmpInts[0];
 				//we use this as a changeable variable so we can use repeat value for crop resets
 
-				setSessionData(sessionData);
+				setSessionData(sessionData, currentChannelIndex, currentSessionIndex, false);
 			}
 			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 				tmpInts[1] = tmpInts[0] = 0;

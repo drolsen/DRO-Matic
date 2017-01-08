@@ -70,15 +70,14 @@ const char numberOf[10] PROGMEM = "NUMBER OF";
 const char dateTime[12] PROGMEM = "DATE & TIME";
 const char configuration[14] PROGMEM = "CONFIGURATION";
 const char calibration[12] PROGMEM = "CALIBRATION";
-const char ppmRange[13] PROGMEM = "EC/PPM RANGE";
-const char phRange[9] PROGMEM = "PH RANGE";
+const char ppmConfig[14] PROGMEM = "EC/PPM CONFIG";
+const char phConfig[10] PROGMEM = "PH CONFIG";
 const char cropLoad[10] PROGMEM = "LOAD CROP";
 const char newCrop[9] PROGMEM = "NEW CROP";
 const char deleteCrop[12] PROGMEM = "DELETE CROP";
 const char sizeMl[12] PROGMEM = "SIZE(ml) OF";
 const char amountMl[11] PROGMEM = "AMOUNT(ml)";
 const char sessionStart[14] PROGMEM = "SESSION START";
-const char sessionDelay[14] PROGMEM = "SESSION DELAY";
 const char sessionRepeat[15] PROGMEM = "SESSION REPEAT";
 const char datetime[9] PROGMEM = "DATETIME";
 const char choconf[8] PROGMEM = "CHCONF";
@@ -102,8 +101,8 @@ const char* const displayNames[18][3] PROGMEM = {
 	{ datetime, dateTime, configuration },
 	{ choconf, channel, settings },
 	{ chnum, numberOf, channels },
-	{ ppm, ppmRange, configuration },
-	{ ph, phRange, configuration },
+	{ ppm, ppmConfig, configuration },
+	{ ph, phConfig, configuration },
 	{ Open, cropLoad, blank },
 	{ New, newCrop, blank },
 	{ Delete, deleteCrop, blank },
@@ -113,7 +112,6 @@ const char* const displayNames[18][3] PROGMEM = {
 	{ sessions, channel, sessions },
 	{ amt, session, amountMl },
 	{ str, sessionStart, dateTime },
-	{ dly, sessionDelay, configuration },
 	{ rpt, sessionRepeat, configuration }
 };
 
