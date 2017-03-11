@@ -11,11 +11,12 @@
 #include "DatesTime.h"
 #include "Crops.h"
 #include "Sessions.h"
+#include "Timers.h"
 
 String screenName;
 vector<vector<vector<byte>>> matrix;
-int cursorX, cursorY;
-int currentAlphaIndex = 0;
+byte cursorX, cursorY;
+byte currentAlphaIndex = 0;
 
 byte upArrow[8] = {
 	B00000,
@@ -86,23 +87,40 @@ void exitScreen(){
 	delay(350);
 }
 
-void openHomeScreen(bool sessionTuring = false){
+void printHomeScreen(){
 	captureDateTime();
 	char monthsBuffer[8];
+	float PH1Reading = (PH1Analog.getValue() * 14.0 / 1024);
+	int EC1Reading = (EC1Analog.getValue() * PPMHundredth);
+
+	//Ph1 = A1
+	//EC1 = A4
+
+	//Ph2 = A3
+	//EC2 = A2
+
 	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
 	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon-1]))) + F(" ") + tmpDisplay[1]);
 	lcd.setCursor(0, 1);
 	lcd.print(F("PPM:"));
-	lcd.print((int)(analogRead(A1) * 5.00));
+	lcd.print(EC1Reading);
 	lcd.print(F(" PH:"));
-	lcd.print((float)analogRead(A2) * 14.0 / 1024);
+	lcd.print(PH1Reading);
 	lcd.home();
 	lcd.noBlink();
-	if (sessionTuring == true){
-		turing(); //the heart of it all, thank you Allen
-		//expireSessions();
+
+
+
+	byte RED = (PH1Reading < minPH ) ? 255 : 0;
+	byte GREEN = (PH1Reading >= minPH && PH1Reading <= maxPH)? 255 : 0;
+	byte BLUE = (PH1Reading > maxPH) ? 255 : 0;
+
+	for (int i = 0; i<NUMOFLEDS; i++){
+		// pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+		pixels.setPixelColor(i, pixels.Color(RED, GREEN, BLUE)); // Moderately bright green color.
+		pixels.show(); // This sends the updated pixel color to the hardware.
 	}
 }
 
@@ -166,8 +184,8 @@ void printScrollArrows(){
 void printDisplayNames(String menu){
 	lcd.home();
 	bool hasMatch = false;
-	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL;
-	const byte isSession = strstr(menu.c_str(), "CHSES") != NULL;
+	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL; //Channels
+	const byte isTimer = strstr(menu.c_str(), "RECEP") != NULL; //Timers
 	const String index = String(menuIndex + 1);
 	if (isChannel){
 		lcd.print(F("SYSTEM"));
@@ -177,19 +195,18 @@ void printDisplayNames(String menu){
 		currentChannelIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
-	}
-	else if (isSession) {
-		lcd.print(F("CHANNEL"));
+	} else if (isTimer){
+		lcd.print(F("TIMED"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("SESSION "));
+		lcd.print(F("RECEPTACLE "));
 		lcd.print(index);
-		currentSessionIndex = menuIndex + 1;
+		currentTimerIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
 	}
 	else {
 		byte i;
-		for (i = 0; i < 18; i++){
+		for (i = 0; i < 27; i++){
 			char match1Buffer[18];
 			char match2Buffer[18];
 			char match3Buffer[18];

@@ -10,10 +10,23 @@
 #include "Sessions.h"
 #include "Menus.h"
 
+int Key, minPPM, maxPPM, minPH, maxPH, maxRegimens;
+double PPMHundredth;
+double InFlowRate, OutFlowRate = 0;
+
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+DS3231  rtc(SDA, SCL);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMOFLEDS, LEDPIN, NEO_GRB + NEO_KHZ800);
+ResponsiveAnalogRead PH1Analog(PHPin1, true, .25);
+ResponsiveAnalogRead PH2Analog(PHPin2, true, .25);
+ResponsiveAnalogRead EC1Analog(ECPin1, true, .5);
+ResponsiveAnalogRead EC2Analog(ECPin2, true, .5);
+
 File tmpFile;
 String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 int tmpInts[6];
 float tmpFloats[2];
+volatile int tmpFlowCount = 0;
 
 const char blank[2] PROGMEM = " ";
 const char a[2] PROGMEM = "A";
@@ -59,60 +72,108 @@ const char* const alphabet[37] PROGMEM = {
 	one, two, three, four, five, six, seven, eight, nine
 };
 
-const char sysconf[8] PROGMEM = "SYSCONF";
-const char System[7] PROGMEM = "SYSTEM";
-const char settings[9] PROGMEM = "SETTINGS";
-const char sessions[9] PROGMEM = "SESSIONS";
-const char session[8] PROGMEM = "SESSION";
-const char channel[8] PROGMEM = "CHANNEL";
-const char channels[9] PROGMEM = "CHANNELS";
-const char numberOf[10] PROGMEM = "NUMBER OF";
-const char dateTime[12] PROGMEM = "DATE & TIME";
-const char configuration[14] PROGMEM = "CONFIGURATION";
-const char calibration[12] PROGMEM = "CALIBRATION";
-const char ppmConfig[14] PROGMEM = "EC/PPM CONFIG";
-const char phConfig[10] PROGMEM = "PH CONFIG";
-const char cropLoad[10] PROGMEM = "LOAD CROP";
-const char newCrop[9] PROGMEM = "NEW CROP";
-const char deleteCrop[12] PROGMEM = "DELETE CROP";
-const char sizeMl[12] PROGMEM = "SIZE(ml) OF";
-const char amountMl[11] PROGMEM = "AMOUNT(ml)";
-const char sessionStart[14] PROGMEM = "SESSION START";
-const char sessionRepeat[15] PROGMEM = "SESSION REPEAT";
-const char datetime[9] PROGMEM = "DATETIME";
-const char choconf[8] PROGMEM = "CHCONF";
-const char chnum[6] PROGMEM = "CHNUM";
-const char ppm[4] PROGMEM = "PPM";
-const char ph[3] PROGMEM = "PH";
-const char Open[5] PROGMEM = "OPEN";
-const char New[8] PROGMEM = "NEWCROP";
-const char Delete[7] PROGMEM = "DELETE";
-const char chdoses[8] PROGMEM = "CHDOSES";
-const char chcalib[8] PROGMEM = "CHCALIB";
-const char chsize[7] PROGMEM = "CHSIZE";
-const char amt[4] PROGMEM = "AMT";
-const char str[12] PROGMEM = "STR";
-const char dly[12] PROGMEM = "DLY";
-const char rpt[12] PROGMEM = "RPT";
 
-const char* const displayNames[18][3] PROGMEM = {
-	{ sysconf, System, settings },
-	{ channels, System, channels },
-	{ datetime, dateTime, configuration },
-	{ choconf, channel, settings },
-	{ chnum, numberOf, channels },
-	{ ppm, ppmConfig, configuration },
-	{ ph, phConfig, configuration },
-	{ Open, cropLoad, blank },
-	{ New, newCrop, blank },
-	{ Delete, deleteCrop, blank },
-	{ chdoses, numberOf, sessions },
-	{ chsize, sizeMl, channel },
-	{ chcalib, channel, calibration },
-	{ sessions, channel, sessions },
-	{ amt, session, amountMl },
-	{ str, sessionStart, dateTime },
-	{ rpt, sessionRepeat, configuration }
+const char _sys[4] PROGMEM = "SYS";
+const char _crop[5] PROGMEM = "CROP";
+const char _irri[5] PROGMEM = "IRRI";
+const char _chan[4] PROGMEM = "CHS";
+const char _timer[7] PROGMEM = "TIMERS";
+const char _datetime[9] PROGMEM = "DATETIME";
+const char _EC[3] PROGMEM = "EC";
+const char _PH[3] PROGMEM = "PH";
+const char _open[5] PROGMEM = "OPEN";
+const char _new[4] PROGMEM = "NEW";
+const char _delete[7] PROGMEM = "DELETE";
+const char _reset[7] PROGMEM = "RESET";
+const char _amt[7] PROGMEM = "AMOUNT";
+const char _rsvrVol[8] PROGMEM = "RSVRVOL";
+const char _chCalib[6] PROGMEM = "CALIB";
+const char _topOffCcnt[8] PROGMEM = "TPFCCNT";
+const char _topOffVol[7] PROGMEM = "TPFVOL";
+const char _drainTime[8] PROGMEM = "DRNTIME";
+const char _doses[6] PROGMEM = "DOSES";
+const char _prime[6] PROGMEM = "PRIME";
+const char _startend[9] PROGMEM = "STARTEND";
+const char _weeks[6] PROGMEM = "WEEKS";
+const char _flowcal[8] PROGMEM = "FLOWCAL";
+const char _ECCal[6] PROGMEM = "ECCAL";
+const char _PHCal[6] PROGMEM = "PHCAL";
+const char _delay[6] PROGMEM = "DELAY";
+
+//Consolidated Repeating Displays Words
+const char System[7] PROGMEM = "SYSTEM";
+const char Settings[9] PROGMEM = "SETTINGS";
+const char Channel[8] PROGMEM = "CHANNEL";
+const char Channels[9] PROGMEM = "CHANNELS";
+const char NumberOf[10] PROGMEM = "NUMBER OF";
+const char Configuration[14] PROGMEM = "CONFIGURATION";
+const char Config[7] PROGMEM = "CONFIG";
+const char Concent[12] PROGMEM = "CONCENTRATE";
+const char Calib[10] PROGMEM = "CALIBRATE";
+const char Calibration[12] PROGMEM = "CALIBRATION";
+const char Volume[7] PROGMEM = "VOLUME";
+const char Range[6] PROGMEM = "RANGE";
+const char Irrigation[11] PROGMEM = "IRRIGATION";
+const char Reservoir[10] PROGMEM = "RESERVOIR";
+const char SizeMl[12] PROGMEM = "SIZE(ml) OF";
+const char Crop[5] PROGMEM = "CROP";
+const char Timer[6] PROGMEM = "TIMER";
+const char Times[6] PROGMEM = "TIMES";
+const char TopOff[8] PROGMEM = "TOP OFF";
+const char Names[6] PROGMEM = "NAMES";
+const char RegimensML[14] PROGMEM = "REGIMENS (ml)";
+const char RegimensWeeks[14] PROGMEM = "REGIMEN DOSES";
+const char Weeks[6] PROGMEM = "WEEKS";
+const char Solution[9] PROGMEM = "SOLUTION";
+const char Delay[6] PROGMEM = "DELAY";
+
+//Direct Translations
+const char DateTime[12] PROGMEM = "DATE & TIME";
+const char EC[13] PROGMEM = "EC/PPM RANGE";
+const char ECS[13] PROGMEM = "EC SENSORS";
+const char PH[9] PROGMEM = "PH RANGE";
+const char PHS[11] PROGMEM = "PH SENSORS";
+const char Open[5] PROGMEM = "OPEN";
+const char New[4] PROGMEM = "NEW";
+const char Delete[7] PROGMEM = "DELETE";
+const char Reset[6] PROGMEM = "RESET";
+const char DrainLength[11] PROGMEM = "DRAIN TIME";
+const char StartEnd[11] PROGMEM = "START END";
+const char PrimeChannel[14] PROGMEM = "PRIME CHANNEL";
+const char VolumeConfig[14] PROGMEM = "VOLUME CONFIG";
+const char ChannelDose[16] PROGMEM = "CHANNEL DOSEING";
+const char DelayConfig[16] PROGMEM = "DELAY CONFIGURE";
+const char FlowMeters[12] PROGMEM = "FLOW METERS";
+
+
+
+const char* const displayNames[27][3] PROGMEM = {
+	{ _sys, System, Settings },
+	{ _chan, Channels, Settings },
+	{ _crop, Crop, Settings },
+	{ _irri, Irrigation, Settings },
+	{ _timer, Timer, Settings },
+	{ _datetime, DateTime, Configuration },
+	{ _EC, EC, Configuration },
+	{ _PH, PH, Configuration },
+	{ _ECCal, ECS, Calib },
+	{ _PHCal, PHS, Calib },
+	{ _open, Open, Crop },
+	{ _new, New, Crop },
+	{ _delete, Delete, Crop },
+	{ _reset, Reset, Crop },
+	{ _rsvrVol, Reservoir, VolumeConfig },
+	{ _topOffVol, TopOff, Volume },
+	{ _topOffCcnt, TopOff, Concent },
+	{ _drainTime, DrainLength, Configuration },
+	{ _doses, NumberOf, RegimensWeeks },
+	{ _weeks, NumberOf, Weeks },
+	{ _amt, RegimensML, Configuration },
+	{ _delay, ChannelDose, DelayConfig },
+	{ _chCalib, Channel, Calib },
+	{ _flowcal, FlowMeters, Calib },
+	{ _prime, PrimeChannel, Solution },
+	{ _startend, StartEnd, Times }
 };
 
 const char jan[4] PROGMEM = "Jan";

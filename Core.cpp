@@ -13,16 +13,6 @@
 #include "Screens.h"
 #include "DatesTime.h"
 
-int Key;
-const int stepsPerRevolution = 100;
-const int stepperSpeed = 800;
-Stepper myStepper(stepsPerRevolution, 15, 14);
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-DS3231  rtc(SDA, SCL);
-
-int minPPM = 1200;
-int maxPPM = 1600;
-
 JsonObject& getCoreData(JsonBuffer& b){
 	tmpFile = SD.open("dromatic/core.dro");
 	JsonObject& d = b.parseObject(tmpFile.readString());
@@ -40,16 +30,30 @@ void setCoreData(JsonObject& d){
 
 void coreInit(){
 	if (SD.exists("dromatic")){ //has OS already been setup?
-		DynamicJsonBuffer coreBuffer;
+		StaticJsonBuffer<coreBufferSize> coreBuffer;
 		JsonObject& coreData = getCoreData(coreBuffer);
 
 		cropName = coreData["crop"].asString();
 		if (cropName != "" && SD.exists("dromatic/" + cropName)){ //Loading up exisiting core file's crop directory
 			screenName = "";
-			openHomeScreen();
 			tmpFile = SD.open("dromatic/" + cropName);
 			getDirectoryMenus(tmpFile);
 			tmpFile.close();
+			lcd.print(F("LOADING CROP..."));
+			lcd.setCursor(0, 1);
+			lcd.print(F("  PLEASE WAIT  "));
+			lcd.home();
+			StaticJsonBuffer<cropBufferSize> cropBuffer;
+			JsonObject& cropData = getCropData(cropBuffer);
+			JsonArray& ECData = cropData["ec"].asArray();
+			JsonArray& PHData = cropData["ph"].asArray();
+			PPMHundredth = cropData["ppm"];
+			maxRegimens = cropData["regimens"];
+			minPPM = ECData[0];
+			maxPPM = ECData[1];
+			minPH = PHData[0];
+			maxPH = PHData[1];
+			printHomeScreen();
 		}
 		else{ //we have core file with crop, but no crop directory. //VERY CORNER CASE!
 			startNewCrop();
@@ -62,7 +66,7 @@ void coreInit(){
 		lcd.print(F(" Please Hold... "));
 		tmpFile = SD.open("dromatic/core.dro", FILE_WRITE);
 		char buffer[64];
-		DynamicJsonBuffer coreBuffer;
+		StaticJsonBuffer<coreBufferSize> coreBuffer;
 		JsonObject& settings = coreBuffer.createObject();
 		settings["crop"] = "";
 		settings.printTo(buffer, sizeof(buffer));
@@ -78,52 +82,6 @@ void coreInit(){
 		lcd.clear();
 		startNewCrop();
 	}
-}
-
-void setPHRange(double dir){
-	String min, max;
-	float minMaxDiff = 0.01;
-
-	if ((dir == 1) ? cursorX == 3 : cursorX == 9){
-		(dir == 1) ? tmpFloats[0] = tmpFloats[0] + minMaxDiff : tmpFloats[1] = tmpFloats[1] - minMaxDiff;
-		if ((dir == 1) ? tmpFloats[0] > (tmpFloats[1] - minMaxDiff) : tmpFloats[1] < (tmpFloats[0] + minMaxDiff)){
-			(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
-		}
-	}
-	if ((dir == 1) ? cursorX == 9 : cursorX == 3) {
-		(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
-	}
-	min = String(tmpFloats[0]);
-	max = String(tmpFloats[1]);
-
-	lcd.clear();
-	lcd.print(min);
-	lcd.write(byte(1));
-	lcd.print(F(" "));
-	lcd.print(max);
-	lcd.write(byte(0));
-	lcd.print(F(" PH"));
-	lcd.setCursor(0, 1);
-	lcd.print(F("<back>    <next>"));
-	lcd.setCursor(cursorX, 0);
-}
-
-void setPPMRangeValues(int dir){
-	if ((dir == 1) ? cursorX == 3 : cursorX == 8){
-		(dir == 1) ? minPPM = minPPM + 10 : maxPPM = maxPPM - 10;
-		if ((dir == 1) ? minPPM > (maxPPM - 50) : maxPPM < (minPPM + 50)){
-			(dir == 1) ? maxPPM = maxPPM + 10 : minPPM = minPPM - 10;
-		}
-	}
-	if ((dir == 1) ? cursorX == 8 : cursorX == 3) {
-		(dir == 1) ? maxPPM = maxPPM + 10 : minPPM = minPPM - 10;
-	}
-
-	lcd.clear();
-	lcd.print(String(minPPM) + F("-") + String(maxPPM) + F(" EC/PPM"));
-	lcd.setCursor(0, 1);
-	lcd.print(F("<back>      <ok>"));
-	lcd.setCursor(cursorX, 0);
 }
 
 void makeNewFile(String path, JsonObject& data){
@@ -144,37 +102,36 @@ void turing(){
 		setDOW, currentDOW,
 		setHour, currentHour,
 		setMin, currentMin,
-		repeatCount, repeatedCount, repeatType,
 		setAmount, setCalibration, setSize,
-		id, totalChannels, channelSessionTotal;
+		totalSessions;
 
 	int setDOY, currentDOY,
 		setYear, currentYear;
 
-	totalChannels = getChannelCount();
 	//We start by looping over channesl
-	for (i = 1; i < totalChannels; i++){
+	for (i = 1; i <= 8; i++){
 		if (analogRead(0) >= 0 && analogRead(0) <= 650){
 			break;
 		}
-		StaticJsonBuffer<128> channelBuffer;
+		StaticJsonBuffer<channelBufferSize> channelBuffer;
 		JsonObject& channel = getChannelData(channelBuffer, i);
 		
-		channelSessionTotal = channel["sessionsTotal"];
+		totalSessions = channel["sessionsTotal"];
 		setCalibration = channel["calibration"];
 		setSize = channel["size"];
 
-		for (j = 1; j < channelSessionTotal + 1; j++){
+		for (j = 1; j <= totalSessions; j++){
 			if (analogRead(0) >= 0 && analogRead(0) <= 650){
 				break;
 			}
-			bool progressSession = false;
-			StaticJsonBuffer<512> sessionBuffer;
+			printHomeScreen();
+
+			StaticJsonBuffer<375> sessionBuffer;
 			JsonObject& session = getSessionData(sessionBuffer, i, j);
+			
+			if (session["expired"] == true) continue; //lets skip this session if it has already expired.
 			JsonArray& sessionDate = session["date"].asArray();
 			JsonArray& sessionTime = session["time"].asArray();
-
-			if (session["expired"] == true) continue; //lets skip this session if it has already expired.
 
 			//Capture session's set data
 			setYear = sessionDate[0];
@@ -185,10 +142,6 @@ void turing(){
 			setHour = sessionTime[0];
 			setMin = sessionTime[1];
 			setAmount = session["amount"];
-			repeatCount = session["repeat"];
-			repeatedCount = session["repeated"];
-			repeatType = session["repeatBy"];
-			id = session["id"];
 
 			//Capture current date/time data
 			currentYear = tmpInts[0];
@@ -200,99 +153,37 @@ void turing(){
 			currentMin = tmpInts[5];
 			
 			//Validation of session date time
-			if (repeatType > 0){ //if session is set to repeat, we validate uniquely per repeatType
-				if (repeatType == 1){ //hourly
-					if (currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 2){ //daily
-					if (currentDay != setDay && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 3){ //weekly
-					if (currentDOW != setDOW && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 4){ //monthly
-					if (currentMonth != setMonth && currentDay != setDay && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 5){ //yearly
-					if (currentDOY != setDOY && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-			}
-			
-			if (repeatType == 0){ //if no repeat type is set, validation is little simpler
+			//if not valid we break loop and move on to next channel to speed up turing process.
+
 				if (setYear != currentYear){	//year
-					continue;
+					break;
 				}
 
 				if (setMonth != currentMonth){	//month
-					continue;
+					break;
 				}
 
 				if (setDay != currentDay){		//day
-					continue;
+					break;
 				}
 
 				if (setHour != currentHour){	//hour
-					continue;
+					break;
 				}
 
 				if (setMin != currentMin){		//min
-					continue;
+					break;
 				}
-			}
 
 			//LET THE DOSING BEGIN!!
-			if (repeatType == 0){ //repeat type is = to none (most basic type of session)
-				session["expired"] = true; //set session to expired
-				pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
-			} else { 
-				//We have a repeating session
-				if (repeatCount < 0){ //repeat count is = to infinite, so we only pump
-					pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
-					progressSession = true;
-				}
-				if(repeatCount > 0){
-					repeatedCount = ((repeatedCount - 1) > 0) ? repeatedCount - 1 : 0;
-					session["repeated"] = repeatedCount;
-					if (repeatedCount == 0){
-						//lets expire session
-						session["expired"] = true;
-					} else {
-						progressSession = true;
-					}
-					pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
-				}
-			}
-
-			//If the session is of repeating type, and needs to be repeated further 
-			//we progress the session further
-			if (progressSession == true){
-				if (repeatType == 1){ //hourly
-					sessionTime[0] = (setHour + 1 > 23) ? 0 : setHour + 1; //Push to next hour
-				}
-				if (repeatType == 2){ //daily
-					sessionDate[2] = (setDay + 1 > days[setMonth]) ? 0 : setDay + 1; //Push to next day of month
-				}
-				if (repeatType == 4){ //monthly
-					sessionDate[1] = (setMonth + 1 > 11) ? 0 : setMonth + 1; //Push to next month
-				}
-				if (repeatType == 5){ //yearly
-					sessionDate[0] = setYear + 1; //Push to next year
-				}
-			}
+			pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
+			setSessionData(session, i, j, false); //finally we save our sessions if data has changed
+		}
+		if (i == 8){
+			printHomeScreen();
 		}
 	}
 }
-
 
 void RelayToggle(int channel, bool gate) {
 	if (gate == true){
@@ -367,44 +258,13 @@ void RelayToggle(int channel, bool gate) {
 
 void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNumber, int sessionNumber, JsonObject& sessionData){
 	RelayToggle(channelNumber, true); //turn channel gate power on
-	if (channelSize > 0){ //fixed channel system (aka syrings or not)?
-		vector<long int> pumpSessions;
-		long int totalRotations = stepsPerRevolution * setCalibration; //7400
-		long double intPart, fractionPart, pumpingRounds;
-		pumpingRounds = (float)setAmount / (float)channelSize; // 2.35 (235ml)
-		fractionPart = pumpingRounds - (long)pumpingRounds; // 0.35
-		intPart = pumpingRounds - fractionPart; // 2.0
-		fractionPart = 1 / fractionPart; //2.857142857142857
-
-		for (int i = 0; i < intPart; i++){
-			pumpSessions.push_back(totalRotations); //7400
-		}
-		pumpSessions.push_back(floor(totalRotations / fractionPart)); //2590
-
-		for (int j = 0; j < pumpSessions.size(); j++){
-			int turnCounts = (pumpSessions[j] / channelSize);
-			int reverseCount = turnCounts;
-			while (turnCounts--){
-				myStepper.step(-800); //pull fluids
-				lcd.clear();
-				lcd.print(turnCounts);
-				if (turnCounts == 0){
-					while (reverseCount--){
-						myStepper.step(800); //push fluids
-					}
-				}
-			}
-		}
-	}
-	else { //no fixed channel size but a fixed configuration size of 100ml (aka flow control system or pump)
-		//int setAmount, int setCalibration, int channelSize, int channelNumber
-		int mlPerSec = (setCalibration*100) / 60; //100m / 60sec = 1.6ml per seconds
-		int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
-		for (int i = 0; i < pumpLength; i++){
-			delay(1000);
-			Serial.flush();
-		}
+	//int setAmount, int setCalibration, int channelSize, int channelNumber
+	int mlPerSec = (setCalibration * 100) / 60; //100m / 60sec = 1.6ml per seconds
+	int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
+	for (int i = 0; i < pumpLength; i++){
+		delay(1000);
+		printHomeScreen();
+		Serial.flush();
 	}
 	RelayToggle(channelNumber, false); //turn channel gate power on
-	setSessionData(sessionData, channelNumber, sessionNumber, false); //finally we save our sessions if data has changed
 }

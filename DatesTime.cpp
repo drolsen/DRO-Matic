@@ -10,17 +10,19 @@
 #include "Sessions.h"
 #include "Screens.h"
 
-int currentMinute;
-int days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-unsigned long previousMillis, currentMillis;  //stores last time
+byte currentMinute;
+byte previousMinute;
+byte days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+unsigned long menuMillis, homeMillis, currentMillis = 0;  //stores last time
 
 void captureDateTime(){
 	Time current = rtc.getTime();
+	previousMinute = current.min;
 	tmpInts[0] = current.year;
 	tmpInts[1] = ((current.mon-1) > 11)? 0 : current.mon-1;
 	tmpInts[2] = current.date;
 	tmpInts[3] = current.dow;
-	tmpInts[4] = current.hour;
+	tmpInts[4] = (current.hour == 0) ? 24 : current.hour;
 	tmpInts[5] = current.min;
 	captureDateTimeDisplays();
 }
@@ -39,11 +41,11 @@ void captureSessionDateTime(){
 	captureDateTimeDisplays();
 }
 
-void captureDateTimeDisplays(){
+void captureDateTimeDisplays(int month = tmpInts[1], int day = tmpInts[2], int hour = tmpInts[4], int min = tmpInts[5]){
 	byte i, maxDaysInMonth, hourConversion;
 
-	maxDaysInMonth = days[tmpInts[1]];
-	hourConversion = (tmpInts[4] == 0) ? 12 : tmpInts[4];
+	maxDaysInMonth = days[month];
+	hourConversion = (hour == 0) ? 12 : hour;
 
 	//Thanks Romans...
 	int hoursKey[12][2] = {
@@ -58,15 +60,15 @@ void captureDateTimeDisplays(){
 	}
 
 	//day suffix
-	tmpDisplay[0] = (tmpInts[2] == 1 || tmpInts[2] == 21 || tmpInts[2] == 31) ? "st" : (tmpInts[2] == 2 || tmpInts[2] == 22) ? "nd" : (tmpInts[2] == 3 || tmpInts[2] == 23) ? "rd" : "th";
+	tmpDisplay[0] = (day == 1 || day == 21 || day == 31) ? "st" : (day == 2 || day == 22) ? "nd" : (day == 3 || day == 23) ? "rd" : "th";
 	//day
-	tmpDisplay[1] = (tmpInts[2] > maxDaysInMonth) ? "01" + String(tmpDisplay[0]) : (tmpInts[2] < 10) ? "0" + String(tmpInts[2]) + String(tmpDisplay[0]) : String(tmpInts[2]) + String(tmpDisplay[0]);
+	tmpDisplay[1] = (day > maxDaysInMonth) ? "01" + String(tmpDisplay[0]) : (day < 10) ? "0" + String(day) + String(tmpDisplay[0]) : String(day) + String(tmpDisplay[0]);
 	//hour
 	tmpDisplay[2] = (hourConversion < 10) ? "0" + String(hourConversion) : String(hourConversion);
 	//minute
-	tmpDisplay[3] = (tmpInts[5] < 10) ? "0" + String(tmpInts[5]) : String(tmpInts[5]);
+	tmpDisplay[3] = (min < 10) ? "0" + String(min) : String(min);
 	//AM/PM
-	tmpDisplay[4] = (tmpInts[4] >= 12 && tmpInts[4] < 24) ? "PM" : "AM";
+	tmpDisplay[4] = (hour >= 12 && hour < 24) ? F("PM") : F("AM");
 }
 
 int calculateDayOfYear(int day, int month, int year) {

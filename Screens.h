@@ -12,11 +12,11 @@
 
 extern String screenName;
 extern vector<vector<vector<byte>>> matrix;
-extern int cursorX, cursorY, currentAlphaIndex;
+extern byte cursorX, cursorY, currentAlphaIndex;
 extern byte upArrow[8], downArrow[8], infinityLeft[8], infinityRight[8];
 
 extern void exitScreen();
-extern void openHomeScreen(bool sessionTuring = false);
+extern void printHomeScreen();
 extern void screenMatrix();
 extern void printScrollArrows();
 extern void printDisplayNames(String menu);

@@ -10,12 +10,12 @@
 #define _DATESTIME_h
 #include "Globals.h"
 
-extern int currentMinute, days[12];
-extern unsigned long previousMillis, currentMillis;  //stores last time
+extern byte currentMinute, previousMinute, days[12];
+extern unsigned long menuMillis, homeMillis, currentMillis;  //stores last time
 
 extern void captureDateTime();
 extern void captureSessionDateTime();
-extern void captureDateTimeDisplays();
+extern void captureDateTimeDisplays(int month = tmpInts[1], int day = tmpInts[2], int hour = tmpInts[4], int min = tmpInts[5]);
 extern int calculateDayOfYear(int day, int month, int year);
 extern void setDateTime(int dir);
 
