@@ -272,6 +272,12 @@ void checkRegimenDosing(){
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& cropData = getCropData(cropBuffer);
 
+	lcd.clear();
+	lcd.home();
+	lcd.print(F("DOSING REGIMEN"));
+	lcd.setCursor(0, 1);
+	lcd.print(F("PLEASE HOLD!!"));
+	lcd.home();
 	for (byte i = 1; i <= 7; i++){
 		//Second, lets open our SD data up and get this current regimen's ml dosing amount for this channel
 		StaticJsonBuffer<regimenBufferSize> regimenBuffer;
@@ -304,9 +310,9 @@ void checkRegimenDosing(){
 			cropData["feedingType"] = feedingType;
 			setCropData(cropData);
 		}else{
-			byte delayMinutes = channelConfig["delay"];
-			int delaySeconds = delayMinutes * 60; //minutes * seconds = total seconds to loop and wait.
-			while (delaySeconds--){ //count down total seconds
+			byte pumpDelay = channelConfig["delay"];
+			int i = pumpDelay * 60; //mins x 60secs = loop total
+			while (i--){ //count down total seconds
 				delay(1000); //delay for 1 second each loop
 			}
 		}

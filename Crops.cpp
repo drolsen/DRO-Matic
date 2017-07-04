@@ -117,18 +117,16 @@ void cropBuild(){
 	SD.mkdir("dromatic/" + cropName);
 	SD.mkdir("dromatic/" + cropName + "/Sys");
 	SD.mkdir("dromatic/" + cropName + "/Sys/DateTime");
-	SD.mkdir("dromatic/" + cropName + "/Sys/Open");
-	SD.mkdir("dromatic/" + cropName + "/Sys/New");
-	SD.mkdir("dromatic/" + cropName + "/Sys/Start");
-	SD.mkdir("dromatic/" + cropName + "/Sys/Pause");
-	SD.mkdir("dromatic/" + cropName + "/Sys/Delete");
-	SD.mkdir("dromatic/" + cropName + "/Sys/Reset");
 	SD.mkdir("dromatic/" + cropName + "/Sys/ECCal");
 	SD.mkdir("dromatic/" + cropName + "/Sys/PHCal");
 	SD.mkdir("dromatic/" + cropName + "/Sys/PumpCal");
 
 	//Crop Settings
 	SD.mkdir("dromatic/" + cropName + "/Crop");
+	SD.mkdir("dromatic/" + cropName + "/Crop/New");
+	SD.mkdir("dromatic/" + cropName + "/Crop/Open");
+	SD.mkdir("dromatic/" + cropName + "/Crop/Delete");
+	SD.mkdir("dromatic/" + cropName + "/Crop/Reset");
 	SD.mkdir("dromatic/" + cropName + "/Crop/EC");
 	SD.mkdir("dromatic/" + cropName + "/Crop/PH");
 	SD.mkdir("dromatic/" + cropName + "/Crop/Doses");
