@@ -1,37 +1,41 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Channels
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
-// Channels.h
 
 #ifndef _CHANNELS_h
 #define _CHANNELS_h
 #include "Globals.h"
 #include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+extern byte currentChannelIndex;
 
-extern int currentChannelIndex;
+//Read & Write from SD
+extern JsonObject& getChannelsData(JsonBuffer& b);
 
-extern JsonObject& getChannelData(JsonBuffer& b, int channelIndex = currentChannelIndex);
+extern void setChannelsData(JsonObject& d);
 
-extern void setChannelData(JsonObject& d, int channelIndex = currentChannelIndex, bool returnHome = true);
+extern JsonObject& getChannelData(JsonBuffer& b, byte channelIndex = currentChannelIndex);
 
-extern void setPHChannels(int dir);
+extern void setChannelData(JsonObject& d, byte channelIndex = currentChannelIndex, bool returnHome = true);
 
-extern void setChannelNumber(int dir);
+//Prints
+extern void printPumpCalibration(int dir = 0);
+extern void printPumpDelay(int dir = 0);
 
-extern void makeChannel(String path, int numberOfSessions, JsonObject& channelData, JsonObject& sessionData);
+//Saves
+extern void savePumpCalibration();
+extern void savePumpDelay();
 
-extern void removeChannel(String path);
+//Helpers
+extern void channelCreate(String path, int numberOfSessions, JsonObject& sessionData);
+extern void primeChannelPump(int dir);
 
-extern void trimChannels(int currentSize, int trimAmount);
 
-extern void addChannels(int currentSize, int addAmount);
 
-extern void setChannelSize(int dir);
 
-extern void setCalibrationSize(int dir);
+
 
 #endif
 

@@ -1,27 +1,19 @@
 /*
 *  DROMatic.ino
 *  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
 #include "Core.h"
 #include "Crops.h"
 #include "Channels.h"
-#include "Sessions.h"
+#include "Regimens.h"
 #include "Menus.h"
 #include "Screens.h"
 #include "DatesTime.h"
-
-int Key;
-const int stepsPerRevolution = 100;
-const int stepperSpeed = 800;
-Stepper myStepper(stepsPerRevolution, 15, 14);
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-DS3231  rtc(SDA, SCL);
-
-int minPPM = 1200;
-int maxPPM = 1600;
+#include "Irrigation.h"
+#include "Timers.h"
 
 JsonObject& getCoreData(JsonBuffer& b){
 	tmpFile = SD.open("dromatic/core.dro");
@@ -40,19 +32,24 @@ void setCoreData(JsonObject& d){
 
 void coreInit(){
 	if (SD.exists("dromatic")){ //has OS already been setup?
-		DynamicJsonBuffer coreBuffer;
+		StaticJsonBuffer<coreBufferSize> coreBuffer;
 		JsonObject& coreData = getCoreData(coreBuffer);
 
 		cropName = coreData["crop"].asString();
 		if (cropName != "" && SD.exists("dromatic/" + cropName)){ //Loading up exisiting core file's crop directory
 			screenName = "";
-			openHomeScreen();
 			tmpFile = SD.open("dromatic/" + cropName);
 			getDirectoryMenus(tmpFile);
 			tmpFile.close();
+			lcd.print(F("LOADING CROP..."));
+			lcd.setCursor(0, 1);
+			lcd.print(F("  PLEASE WAIT  "));
+			lcd.home();
+			cropLoad();
+			printHomeScreen();
 		}
 		else{ //we have core file with crop, but no crop directory. //VERY CORNER CASE!
-			startNewCrop();
+			cropCreate();
 		}
 	}
 	else { //if OS has not been setup, lets build out core OS file / directory
@@ -62,7 +59,7 @@ void coreInit(){
 		lcd.print(F(" Please Hold... "));
 		tmpFile = SD.open("dromatic/core.dro", FILE_WRITE);
 		char buffer[64];
-		DynamicJsonBuffer coreBuffer;
+		StaticJsonBuffer<64> coreBuffer;
 		JsonObject& settings = coreBuffer.createObject();
 		settings["crop"] = "";
 		settings.printTo(buffer, sizeof(buffer));
@@ -76,224 +73,207 @@ void coreInit(){
 		lcd.print(F(" Please Hold... "));
 		delay(1000);
 		lcd.clear();
-		startNewCrop();
+		cropCreate();
 	}
 }
 
-void setPHRange(double dir){
-	String min, max;
-	float minMaxDiff = 0.01;
+//converts tmpInts array into a whole number that send to our EC circuts.
+int tmpIntsToInt(byte decimalPlaces){
+	if (decimalPlaces > ((sizeof tmpInts) / (sizeof *tmpInts))){
+		decimalPlaces = ((sizeof tmpInts) / (sizeof *tmpInts)); //we never want to exceed the size of our tmpInts array
+	}
+	String number;
+	for (byte i = 0; i <= decimalPlaces; i++){
+		number += tmpInts[i];
+	}
+	return number.toInt(); //return our string that is converte to int
+}
 
-	if ((dir == 1) ? cursorX == 3 : cursorX == 9){
-		(dir == 1) ? tmpFloats[0] = tmpFloats[0] + minMaxDiff : tmpFloats[1] = tmpFloats[1] - minMaxDiff;
-		if ((dir == 1) ? tmpFloats[0] > (tmpFloats[1] - minMaxDiff) : tmpFloats[1] < (tmpFloats[0] + minMaxDiff)){
-			(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
+//time feed plants some top off water?
+void correctPlantEC(){
+	if (flowInRate == true){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
+	int PPM = getWaterProbeValue(0);
+	if ((PPM > maxPPM || PPM < minPPM) && feedingType == 1){
+		Time current = rtc.getTime();
+		if (lastFeedingWeek != current.dow && lastFeedingDay == calcDayOfWeek(current.year, current.mon, current.date)){
+			//we seem to have run out of time for this feeding water before we have run out of feeding water.
+			//full flushing must happen now
+			fullFlushing();
+			return;
+		}
+		StaticJsonBuffer<cropBufferSize> cropBuffer;
+		JsonObject& cropData = getCropData(cropBuffer);
+		lcd.clear();
+		lcd.home();
+		lcd.print(F("TOPOFF FEEDING"));
+		lcd.setCursor(0, 1);
+		lcd.print(F("PLEAES WAIT..."));
+		while (currentRsvrVol > (currentRsvrVol - topOffAmount)){
+			RelayToggle(11, true);
+			detachInterrupt(digitalPinToInterrupt(FlowPinIn));
+			detachInterrupt(digitalPinToInterrupt(FlowPinOut));
+			attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
+			attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
+			checkFlowRates();
+			if (flowInRate == true){//OH CRAP! flowInRate is true, so we must of run out of reservoir topoff water.
+				//but was this EC correction successful?.. if not, time to flush plants!
+				RelayToggle(11, false); //close up in-valve finish feeding early
+				feedingType = 0; //now switch to full feeding for moving onto next regimen
+				cropData["feedingType"] = feedingType;
+				setCropData(cropData);
+				break; //finally we break out of while loop for topOff feeding early
+			}
+			delay(1000);
+		}
+		RelayToggle(11, false); //close up in-valve to finish feeding
+	}
+}
+
+//is it time to fix ph dift of plant water?
+void correctPlantPH(){
+	if (flowOutRate == true) { return; } //we are not allowed to correct plant pH if already flowing water to plants.. must wait
+	float pH = getWaterProbeValue(1);
+
+	//plant water can drift eitehr up or down, so we support both solutions via pump 9 and 10
+	if (pH > maxPH || pH < minPH){
+		lcd.clear();
+		lcd.home();
+		lcd.print(F("PLANT PH FIXING"));
+		lcd.setCursor(0, 1);
+		lcd.print(F("PLEAES WAIT..."));
+		if (pH > maxPH){ //we must micro-ph-dose our plant water DOWN
+			pumpSpin(10, 9, pumpCalibration);
+			phPlantMillis = currentMillis;
+		}
+		if (pH < minPH){ //we must micro-ph-dose our plant water UP
+			pumpSpin(10, 10, pumpCalibration);
+			phPlantMillis = currentMillis;
 		}
 	}
-	if ((dir == 1) ? cursorX == 9 : cursorX == 3) {
-		(dir == 1) ? tmpFloats[1] = tmpFloats[1] + minMaxDiff : tmpFloats[0] = tmpFloats[0] - minMaxDiff;
-	}
-	min = String(tmpFloats[0]);
-	max = String(tmpFloats[1]);
-
-	lcd.clear();
-	lcd.print(min);
-	lcd.write(byte(1));
-	lcd.print(F(" "));
-	lcd.print(max);
-	lcd.write(byte(0));
-	lcd.print(F(" PH"));
-	lcd.setCursor(0, 1);
-	lcd.print(F("<back>    <next>"));
-	lcd.setCursor(cursorX, 0);
 }
 
-void setPPMRangeValues(int dir){
-	if ((dir == 1) ? cursorX == 3 : cursorX == 8){
-		(dir == 1) ? minPPM = minPPM + 10 : maxPPM = maxPPM - 10;
-		if ((dir == 1) ? minPPM > (maxPPM - 50) : maxPPM < (minPPM + 50)){
-			(dir == 1) ? maxPPM = maxPPM + 10 : minPPM = minPPM - 10;
-		}
-	}
-	if ((dir == 1) ? cursorX == 8 : cursorX == 3) {
-		(dir == 1) ? maxPPM = maxPPM + 10 : minPPM = minPPM - 10;
-	}
+//is it time fix reservoir pH drift?
+void correctRsvrPH(){
+	if (flowInRate == true || flowOutRate == true) { return; } //we are not allowed to correct reservoir pH if we are currently filling or draining the reservoir.. must wait
+	float pH = getWaterProbeValue(1);
 
-	lcd.clear();
-	lcd.print(String(minPPM) + F("-") + String(maxPPM) + F(" EC/PPM"));
-	lcd.setCursor(0, 1);
-	lcd.print(F("<back>      <ok>"));
-	lcd.setCursor(cursorX, 0);
-}
-
-void makeNewFile(String path, JsonObject& data){
-	char buffer[1024];
-	tmpFile = SD.open(path, FILE_WRITE);
-	data.printTo(buffer, sizeof(buffer));
-	tmpFile.print(buffer);
-	tmpFile.close();
-	Serial.flush();
-}
-
-//Pump Functions
-void turing(){
-	captureDateTime();
-	byte i, j,
-		setMonth, currentMonth,
-		setDay, currentDay,
-		setDOW, currentDOW,
-		setHour, currentHour,
-		setMin, currentMin,
-		repeatCount, repeatedCount, repeatType,
-		setAmount, setCalibration, setSize,
-		id, totalChannels, channelSessionTotal;
-
-	int setDOY, currentDOY,
-		setYear, currentYear;
-
-	totalChannels = getChannelCount();
-	//We start by looping over channesl
-	for (i = 1; i < totalChannels; i++){
-		if (analogRead(0) >= 0 && analogRead(0) <= 650){
-			break;
-		}
-		StaticJsonBuffer<128> channelBuffer;
-		JsonObject& channel = getChannelData(channelBuffer, i);
-		
-		channelSessionTotal = channel["sessionsTotal"];
-		setCalibration = channel["calibration"];
-		setSize = channel["size"];
-
-		for (j = 1; j < channelSessionTotal + 1; j++){
-			if (analogRead(0) >= 0 && analogRead(0) <= 650){
-				break;
-			}
-			bool progressSession = false;
-			StaticJsonBuffer<512> sessionBuffer;
-			JsonObject& session = getSessionData(sessionBuffer, i, j);
-			JsonArray& sessionDate = session["date"].asArray();
-			JsonArray& sessionTime = session["time"].asArray();
-
-			if (session["expired"] == true) continue; //lets skip this session if it has already expired.
-
-			//Capture session's set data
-			setYear = sessionDate[0];
-			setMonth = sessionDate[1];
-			setDay = sessionDate[2];
-			setDOW = sessionDate[3];
-			setDOY = calculateDayOfYear(setDay, setMonth, setYear);
-			setHour = sessionTime[0];
-			setMin = sessionTime[1];
-			setAmount = session["amount"];
-			repeatCount = session["repeat"];
-			repeatedCount = session["repeated"];
-			repeatType = session["repeatBy"];
-			id = session["id"];
-
-			//Capture current date/time data
-			currentYear = tmpInts[0];
-			currentMonth = tmpInts[1];
-			currentDay = tmpInts[2];
-			currentDOW = tmpInts[3];
-			currentDOY = calculateDayOfYear(currentDay, currentMonth, currentYear);
-			currentHour = tmpInts[4];
-			currentMin = tmpInts[5];
-			
-			//Validation of session date time
-			if (repeatType > 0){ //if session is set to repeat, we validate uniquely per repeatType
-				if (repeatType == 1){ //hourly
-					if (currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 2){ //daily
-					if (currentDay != setDay && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 3){ //weekly
-					if (currentDOW != setDOW && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 4){ //monthly
-					if (currentMonth != setMonth && currentDay != setDay && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-				if (repeatType == 5){ //yearly
-					if (currentDOY != setDOY && currentHour != setHour && currentMin < setMin){
-						continue;
-					}
-				}
-			}
-			
-			if (repeatType == 0){ //if no repeat type is set, validation is little simpler
-				if (setYear != currentYear){	//year
-					continue;
-				}
-
-				if (setMonth != currentMonth){	//month
-					continue;
-				}
-
-				if (setDay != currentDay){		//day
-					continue;
-				}
-
-				if (setHour != currentHour){	//hour
-					continue;
-				}
-
-				if (setMin != currentMin){		//min
-					continue;
-				}
-			}
-
-			//LET THE DOSING BEGIN!!
-			if (repeatType == 0){ //repeat type is = to none (most basic type of session)
-				session["expired"] = true; //set session to expired
-				pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
-			} else { 
-				//We have a repeating session
-				if (repeatCount < 0){ //repeat count is = to infinite, so we only pump
-					pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
-					progressSession = true;
-				}
-				if(repeatCount > 0){
-					repeatedCount = ((repeatedCount - 1) > 0) ? repeatedCount - 1 : 0;
-					session["repeated"] = repeatedCount;
-					if (repeatedCount == 0){
-						//lets expire session
-						session["expired"] = true;
-					} else {
-						progressSession = true;
-					}
-					pumpSpin(setAmount, setCalibration, setSize, i, j, session); //do pump spin
-				}
-			}
-
-			//If the session is of repeating type, and needs to be repeated further 
-			//we progress the session further
-			if (progressSession == true){
-				if (repeatType == 1){ //hourly
-					sessionTime[0] = (setHour + 1 > 23) ? 0 : setHour + 1; //Push to next hour
-				}
-				if (repeatType == 2){ //daily
-					sessionDate[2] = (setDay + 1 > days[setMonth]) ? 0 : setDay + 1; //Push to next day of month
-				}
-				if (repeatType == 4){ //monthly
-					sessionDate[1] = (setMonth + 1 > 11) ? 0 : setMonth + 1; //Push to next month
-				}
-				if (repeatType == 5){ //yearly
-					sessionDate[0] = setYear + 1; //Push to next year
-				}
+	//if it has been a 1 min sincce last ph correction
+	if ((currentMillis - phRsvrMillis) > 60000){
+		//if current ph is outside of configred ph ranges
+		if (pH > maxPH || pH < minPH){
+			lcd.clear();
+			lcd.home();
+			lcd.print(F("RSVR PH FIXING"));
+			lcd.setCursor(0, 1);
+			lcd.print(F("PLEAES WAIT..."));
+			pumpSpin(1, 8, pumpCalibration);
+			phRsvrMillis = currentMillis;
+		}else{
+			//if ph corrected and 5 mins has past since last pH dosing
+			if ((currentMillis - phRsvrMillis) > 600000){
+				checkRegimenDosing();
 			}
 		}
 	}
 }
 
+//Open channel of tentical sheild to get probe reading value
+void openWaterProbeChannel(int channel) {
+	Wire.beginTransmission(channel_ids[channel]);     // call the circuit by its ID number.
+}
 
+//Get either EC or pH live probe values
+int getWaterProbeValue(byte channel = 111){ //default is channel 0 aka EC1. 0 = EC1, 1 = PH1, 2 = EC2, 3 = PH2
+	int data;
+	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
+	Wire.write('r');                          // request a reading by sending 'r'
+	Wire.endTransmission();                         // end the I2C data transmission.
+	delay(1000);  // AS circuits need a 1 second before the reading is ready
+	
+	sensor_bytes_received = 0;                        // reset data counter
+	memset(sensordata, 0, sizeof(sensordata));        // clear sensordata array;
+
+	Wire.requestFrom(channel_ids[channel], 48, 1);    // call the circuit and request 48 bytes (this is more then we need).
+	code = Wire.read();
+	while (Wire.available()) {          // are there bytes to receive?
+		in_char = Wire.read();            // receive a byte.
+		if (in_char == 0) {               // null character indicates end of command
+			Wire.endTransmission();         // end the I2C data transmission.
+			break;                          // exit the while loop, we're done here
+		}
+		else {
+			sensordata[sensor_bytes_received] = in_char;      // append this byte to the sensor data array.
+			sensor_bytes_received++;
+		}
+	}
+	String returnedValue;
+	for (byte i = 0; i < 4; i++){
+		returnedValue += sensordata[i];
+	}
+	if (channel == 0 || channel == 2){
+		return returnedValue.toInt();
+	}
+	else{
+		return returnedValue.toFloat();
+	}
+}
+
+//Three point pH water probe calibration
+void setPHWaterProbeCalibration(byte channel, int value, char type){
+	openWaterProbeChannel(channel);
+	delay(100);
+	if (type == 'low'){
+		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for low calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'mid'){
+		Wire.write("Cal,mid," + value);  // Send the command from OS to the Atlas Scientific device for mid calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'high'){
+		Wire.write("Cal,high," + value);  // Send the command from OS to the Atlas Scientific device for high calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+}
+
+//Three point EC water probe calibration
+void setECWaterProbeCalibration(byte channel, int value, char type){
+	openWaterProbeChannel(channel);
+	delay(100);
+	if (type == 'dry'){
+		Wire.write("Cal,dry,0");  // Manufacture says this calibration only needs to happen once, but never said it can't happen more than once, so we include it in all EC probrobe calibrations
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'low'){
+		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for mid calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'high'){
+		Wire.write("Cal," + value);  // There is no "high" value for this command cause this calibration only has low + high, or high as single point calibration
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+}
+
+//is it time to turn on/off timer
+void checkRecepticals(){
+	byte currentHour, currentDOW, startHour, endHour, currentReceptical, currentRecepticalWeek;
+	currentHour = rtc.getTime().hour;
+	currentDOW = rtc.getTime().dow;
+	for (byte i = 0; i < 4; i++){
+		StaticJsonBuffer<timerSessionBufferSize> timerSessionBuffer;
+		currentReceptical = 13 + i;
+		JsonObject& sessionData = getTimerSessionData(timerSessionBuffer, (i + 1), currentTimerSessions[i]);
+		startHour = sessionData["times"].asArray()[currentDOW-1].asArray()[0];
+		endHour = sessionData["times"].asArray()[currentDOW-1].asArray()[1];
+		if (currentHour >= startHour && currentHour < endHour){
+			RelayToggle(currentReceptical, true);
+		}else{
+			RelayToggle(currentReceptical, false);
+		}
+	}
+}
+
+//Helpers
 void RelayToggle(int channel, bool gate) {
 	if (gate == true){
 		switch (channel){
@@ -326,6 +306,24 @@ void RelayToggle(int channel, bool gate) {
 			break;
 		case 10:
 			digitalWrite(RELAY10, LOW);
+			break;
+		case 11:
+			digitalWrite(RELAY11, LOW);
+			break;
+		case 12:
+			digitalWrite(RELAY12, LOW);
+			break;
+		case 13:
+			digitalWrite(RELAY13, LOW);
+			break;
+		case 14:
+			digitalWrite(RELAY14, LOW);
+			break;
+		case 15:
+			digitalWrite(RELAY15, LOW);
+			break;
+		case 16:
+			digitalWrite(RELAY16, LOW);
 			break;
 		}
 	}
@@ -361,50 +359,47 @@ void RelayToggle(int channel, bool gate) {
 		case 10:
 			digitalWrite(RELAY10, HIGH);
 			break;
+		case 11:
+			digitalWrite(RELAY11, HIGH);
+			break;
+		case 12:
+			digitalWrite(RELAY12, HIGH);
+			break;
+		case 13:
+			digitalWrite(RELAY13, HIGH);
+			break;
+		case 14:
+			digitalWrite(RELAY14, HIGH);
+			break;
+		case 15:
+			digitalWrite(RELAY15, HIGH);
+			break;
+		case 16:
+			digitalWrite(RELAY16, HIGH);
+			break;
 		}
 	}
 }
 
-void pumpSpin(int setAmount, int setCalibration, int channelSize, int channelNumber, int sessionNumber, JsonObject& sessionData){
+void pumpSpin(int setAmount, int channelNumber, int pumpFlowRate = 100){
 	RelayToggle(channelNumber, true); //turn channel gate power on
-	if (channelSize > 0){ //fixed channel system (aka syrings or not)?
-		vector<long int> pumpSessions;
-		long int totalRotations = stepsPerRevolution * setCalibration; //7400
-		long double intPart, fractionPart, pumpingRounds;
-		pumpingRounds = (float)setAmount / (float)channelSize; // 2.35 (235ml)
-		fractionPart = pumpingRounds - (long)pumpingRounds; // 0.35
-		intPart = pumpingRounds - fractionPart; // 2.0
-		fractionPart = 1 / fractionPart; //2.857142857142857
+	//int setAmount, int setCalibration, int channelSize, int channelNumber
+	int mlPerSec = pumpFlowRate / 60; //100m (per minute) / 60sec = 1.6ml per seconds
+	int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
 
-		for (int i = 0; i < intPart; i++){
-			pumpSessions.push_back(totalRotations); //7400
-		}
-		pumpSessions.push_back(floor(totalRotations / fractionPart)); //2590
-
-		for (int j = 0; j < pumpSessions.size(); j++){
-			int turnCounts = (pumpSessions[j] / channelSize);
-			int reverseCount = turnCounts;
-			while (turnCounts--){
-				myStepper.step(-800); //pull fluids
-				lcd.clear();
-				lcd.print(turnCounts);
-				if (turnCounts == 0){
-					while (reverseCount--){
-						myStepper.step(800); //push fluids
-					}
-				}
-			}
-		}
-	}
-	else { //no fixed channel size but a fixed configuration size of 100ml (aka flow control system or pump)
-		//int setAmount, int setCalibration, int channelSize, int channelNumber
-		int mlPerSec = (setCalibration*100) / 60; //100m / 60sec = 1.6ml per seconds
-		int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
-		for (int i = 0; i < pumpLength; i++){
-			delay(1000);
-			Serial.flush();
-		}
+	for (int i = 0; i < pumpLength; i++){
+		delay(1000);
+		//printHomeScreen();
+		Serial.flush();
 	}
 	RelayToggle(channelNumber, false); //turn channel gate power on
-	setSessionData(sessionData, channelNumber, sessionNumber, false); //finally we save our sessions if data has changed
+}
+
+void makeNewFile(String path, JsonObject& data){
+	char buffer[1024];
+	tmpFile = SD.open(path, FILE_WRITE);
+	data.printTo(buffer, sizeof(buffer));
+	tmpFile.print(buffer);
+	tmpFile.close();
+	Serial.flush();
 }

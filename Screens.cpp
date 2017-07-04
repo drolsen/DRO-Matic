@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Screens
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
@@ -10,12 +10,13 @@
 #include "Menus.h"
 #include "DatesTime.h"
 #include "Crops.h"
-#include "Sessions.h"
+#include "Regimens.h"
+#include "Timers.h"
 
 String screenName;
 vector<vector<vector<byte>>> matrix;
-int cursorX, cursorY;
-int currentAlphaIndex = 0;
+byte cursorX, cursorY;
+byte currentAlphaIndex = 0;
 
 byte upArrow[8] = {
 	B00000,
@@ -39,39 +40,6 @@ byte downArrow[8] = {
 	B00000
 };
 
-byte infinityLeft[8] = {
-	B00000,
-	B00000,
-	B00110,
-	B01001,
-	B01001,
-	B00110,
-	B00000,
-	B00000
-};
-
-byte infinityRight[8] = {
-	B00000,
-	B00000,
-	B00110,
-	B01001,
-	B01001,
-	B00110,
-	B00000,
-	B00000
-};
-
-byte infintyRight[8] = {
-	B00000,
-	B00000,
-	B01100,
-	B10010,
-	B10010,
-	B01100,
-	B00000,
-	B00000
-};
-
 void exitScreen(){
 	menusHistory.pop_back();
 	menuIndex = 0;
@@ -81,28 +49,37 @@ void exitScreen(){
 	lcd.clear();
 	lcd.noBlink();
 	tmpFile.close();
-	printDisplayNames(menus.front());
+	printScreenNames(menus.front());
 	printScrollArrows();
 	delay(350);
 }
 
-void openHomeScreen(bool sessionTuring = false){
+void printHomeScreen(){
 	captureDateTime();
 	char monthsBuffer[8];
+	
+	int EC1Value = getWaterProbeValue(0);
+	float PH1Value = getWaterProbeValue(1);
 	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
 	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon-1]))) + F(" ") + tmpDisplay[1]);
 	lcd.setCursor(0, 1);
 	lcd.print(F("PPM:"));
-	lcd.print((int)(analogRead(A1) * 5.00));
+	lcd.print(EC1Value);
 	lcd.print(F(" PH:"));
-	lcd.print((float)analogRead(A2) * 14.0 / 1024);
+	lcd.print(PH1Value);
 	lcd.home();
 	lcd.noBlink();
-	if (sessionTuring == true){
-		turing(); //the heart of it all, thank you Allen
-		//expireSessions();
+
+	int RED = (PH1Value < minPH) ? 255 : 0;
+	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
+	int BLUE = (PH1Value > maxPH) ? 255 : 0;
+
+	for (int i = 0; i<NUMOFLEDS; i++){
+		// pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+		pixels.setPixelColor(i, pixels.Color(RED, GREEN, BLUE)); // Moderately bright green color.
+		pixels.show(); // This sends the updated pixel color to the hardware.
 	}
 }
 
@@ -163,11 +140,11 @@ void printScrollArrows(){
 	lcd.home();
 }
 
-void printDisplayNames(String menu){
+void printScreenNames(String menu){
 	lcd.home();
 	bool hasMatch = false;
-	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL;
-	const byte isSession = strstr(menu.c_str(), "CHSES") != NULL;
+	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL; //Channels
+	const byte isTimer = strstr(menu.c_str(), "RECEP") != NULL; //Timers
 	const String index = String(menuIndex + 1);
 	if (isChannel){
 		lcd.print(F("SYSTEM"));
@@ -177,25 +154,24 @@ void printDisplayNames(String menu){
 		currentChannelIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
-	}
-	else if (isSession) {
-		lcd.print(F("CHANNEL"));
+	} else if (isTimer){
+		lcd.print(F("TIMED"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("SESSION "));
+		lcd.print(F("RECEPTACLE "));
 		lcd.print(index);
-		currentSessionIndex = menuIndex + 1;
+		currentTimerIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
 	}
 	else {
 		byte i;
-		for (i = 0; i < 18; i++){
+		for (i = 0; i < 27; i++){
 			char match1Buffer[18];
 			char match2Buffer[18];
 			char match3Buffer[18];
-			String match1 = strcpy_P(match1Buffer, (char*)pgm_read_word(&(displayNames[i][0])));
-			String match2 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(displayNames[i][1])));
-			String match3 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(displayNames[i][2])));
+			String match1 = strcpy_P(match1Buffer, (char*)pgm_read_word(&(screenNames[i][0])));
+			String match2 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][1])));
+			String match3 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][2])));
 
 			if (menu == match1){
 				hasMatch = true;

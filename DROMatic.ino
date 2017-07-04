@@ -1,9 +1,11 @@
 /*
 *  DROMatic.ino
 *  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
+#include <Wire.h>    //Include the software serial library for white sheild
+#include <Adafruit_NeoPixel.h>
 #include <LiquidCrystal.h> //lib for interfacing with LCD screen
 #include <SPI.h> //Suppoting lib for SD card
 #include <SD.h> //SD card API
@@ -12,64 +14,84 @@
 #include <StandardCplusplus\ctime> //Time helper
 #include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
 #include <DS3231.h> //Real time clock lib
-#include <Stepper.h> //Stepper motoer lib
-
+ 
 #include "Globals.h" //All temp and PROGMEM global variables
 #include "Core.h" //All core functions and variables
 #include "Crops.h" //All crop functions and variables
 #include "Channels.h" //All channel functions and variables
-#include "Sessions.h" //All session functions and variables
+#include "Regimens.h" //All session functions and variables
 #include "Screens.h" //All screen functions and variables
 #include "Menus.h" //All menu functions and variables
 #include "DatesTime.h" //All date & time functions and variables
+#include "Irrigation.h" //All irrigation related functions and variables
+#include "Timers.h" //All timer related functions and variables
 
-//Our main setup function
+//OS main setup
 void setup()
 {
 	lcd.createChar(0, upArrow);
 	lcd.createChar(1, downArrow);
-	lcd.createChar(3, infinityLeft);
-	lcd.createChar(4, infinityRight);
 	lcd.begin(16, 2);
-	Serial.begin(9600);
-	rtc.begin();
-	captureDateTime();
-	String relayName;
-	myStepper.setSpeed(stepperSpeed);
-	previousMillis = 0;
+	pixels.begin(); // This initializes the NeoPixel library.
 
-	pinMode(MS1MS2, OUTPUT);
-	pinMode(RELAY1, OUTPUT);
-	pinMode(RELAY2, OUTPUT);
-	pinMode(RELAY3, OUTPUT);
-	pinMode(RELAY4, OUTPUT);
-	pinMode(RELAY5, OUTPUT);
-	pinMode(RELAY6, OUTPUT);
-	pinMode(RELAY7, OUTPUT);
-	pinMode(RELAY8, OUTPUT);
-	pinMode(RELAY9, OUTPUT);
-	pinMode(RELAY10, OUTPUT);
-
-	digitalWrite(MS1MS2, LOW);
-	digitalWrite(RELAY1, HIGH);
-	digitalWrite(RELAY2, HIGH);
-	digitalWrite(RELAY3, HIGH);
-	digitalWrite(RELAY4, HIGH);
-	digitalWrite(RELAY5, HIGH);
-	digitalWrite(RELAY6, HIGH);
-	digitalWrite(RELAY7, HIGH);
-	digitalWrite(RELAY8, HIGH);
-	digitalWrite(RELAY9, HIGH);
-	digitalWrite(RELAY10, HIGH);
-
+	//If SD Card is not found, we can't proceed
 	if (!SD.begin(53)){
 		lcd.print(F("SD Card Required"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("Insert And Reset"));
 		screenName = "REQUIREDSD";
-	} 
-	else {
-		coreInit();
+	} else {//if SD card is found, proceed with crop load or setup
+		rtc.begin(); //Realtime Clock setup AFTER having built and loaded crop
+		captureDateTime(); //Capture current time from real time clock
+
+		//Setup Flow Sensor Pins
+		pinMode(FlowPinIn, INPUT);	//irrigation "in" flow meter
+		digitalWrite(FlowPinIn, HIGH);
+		pinMode(FlowPinOut, INPUT);	//irrigation "out" flow meter
+		digitalWrite(FlowPinOut, HIGH);
+
+		//irrigation flow meters being hooked into flow counter methods
+		attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
+		attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
+
+		//Setup Relay Pins
+		pinMode(RELAY1, OUTPUT);	//perstaltic pump 1
+		digitalWrite(RELAY1, HIGH);
+		pinMode(RELAY2, OUTPUT);	//perstaltic pump 2
+		digitalWrite(RELAY2, HIGH);
+		pinMode(RELAY3, OUTPUT);	//perstaltic pump 3
+		digitalWrite(RELAY3, HIGH);
+		pinMode(RELAY4, OUTPUT);	//perstaltic pump 4
+		digitalWrite(RELAY4, HIGH);
+		pinMode(RELAY5, OUTPUT);	//perstaltic pump 5
+		digitalWrite(RELAY5, HIGH);
+		pinMode(RELAY6, OUTPUT);	//perstaltic pump 6
+		digitalWrite(RELAY6, HIGH);
+		pinMode(RELAY7, OUTPUT);	//perstaltic pump 7
+		digitalWrite(RELAY7, HIGH);
+		pinMode(RELAY8, OUTPUT);	//perstaltic pump 8
+		digitalWrite(RELAY8, HIGH);
+		pinMode(RELAY9, OUTPUT);	//perstaltic pump 9
+		digitalWrite(RELAY9, HIGH);
+		pinMode(RELAY10, OUTPUT);	//perstaltic pump 10
+		digitalWrite(RELAY10, HIGH);
+		pinMode(RELAY11, OUTPUT);	//irrigation "in" valve
+		digitalWrite(RELAY11, HIGH);
+		pinMode(RELAY12, OUTPUT);	//irrigation "out" valve
+		digitalWrite(RELAY12, HIGH);
+
+		pinMode(RELAY13, OUTPUT);	//High voltage power receptical 1
+		digitalWrite(RELAY13, HIGH);
+		pinMode(RELAY14, OUTPUT);	//High voltage power receptical 2
+		digitalWrite(RELAY14, HIGH);
+		pinMode(RELAY15, OUTPUT);	//High voltage power receptical 3
+		digitalWrite(RELAY15, HIGH);
+		pinMode(RELAY16, OUTPUT);	//High voltage power receptical 4
+		digitalWrite(RELAY16, HIGH);
+
+		//Serial.begin(9600);
+		Wire.begin();   // enable I2C port.
+		coreInit();		//Loads or Creates Crops
 	}
 }
 
@@ -78,27 +100,80 @@ void loop()
 {
 	Key = analogRead(0);
 	currentMillis = millis();
+
+	//detach & re-attach flow meters to counter methods per OS loop
+	detachInterrupt(digitalPinToInterrupt(FlowPinIn));
+	detachInterrupt(digitalPinToInterrupt(FlowPinOut));
+	attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
+	attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
+	checkFlowRates();	//OS monitors change to in and out water flow directions
+	
+
+	//Reset home screen and menu timers to current miliseconds after any interaction with LCD keys
 	if (Key >= 0 && Key <= 650){
-		previousMillis = currentMillis;
+		homeMillis = currentMillis;
+		menuMillis = currentMillis;
 	}
 
-	//30 seconds
-	if ((currentMillis - previousMillis) >= 30000) {
+	//60 seconds has passed - Check logic for action
+	if (previousMinute != rtc.getTime().min) {
 		if (screenName == "") {
-			previousMillis = currentMillis;
-			openHomeScreen(true);
+			previousMinute = rtc.getTime().min;
+			//checkRecepticals();
+			correctRsvrPH();
+			correctPlantPH();
+		}
+	}
+	
+	//if 2 seconds has passed, reprint home screen
+	//10 seconds has passed since interacting with menus start printing home screen
+	if ((currentMillis - homeMillis) >= 2000 && (currentMillis - menuMillis >= 10000)) {
+		if (screenName == ""){//of course non of this happens while we have a menu open
+			homeMillis = millis(); //reset home millis so 2 seconds can happen again.
+			printHomeScreen(); //finally we call the print home method
 		}
 	}
 
+	//1000 miliseconds has passed - Realtime UI Menus update
+	if ((currentMillis - homeMillis) >= 1000){
+		//doseCurrentRegimen();
+		if (screenName == "RSVRVOL"){
+			interrupts();		//start water fill/drain reading
+			noInterrupts();		//stop water fill/drain reading
+			float liters = tmpFlowCount / 1000;
+			float USgallons = tmpFlowCount / 4546.091879;
+			float UKgallons = USgallons * 0.83267384;
+
+			lcd.clear();
+			lcd.home();
+			lcd.print(USgallons, 1);
+			lcd.print(F("lqd/"));
+			lcd.print(UKgallons, 1);
+			lcd.print(F("gal"));
+			lcd.setCursor(0, 1);
+			lcd.print(F("<back>      <ok>"));
+			lcd.setCursor(cursorX, cursorY);
+			lcd.blink();
+			homeMillis = currentMillis;
+		}
+	}
+
+	//UI Menus
 	if (Key == 0 || Key == 408){
-		//Right & Left
-		if (screenName == "NewCrop"){
+		//Left & Right
+		if (screenName == "DATETIME"){
+			matrix = {
+				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
+				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "NEW"){
 			matrix = {
 				{ { 0, 15 } },
 				{ { 11, 11 } }
 			};
 			if (Key == 0){
-				renameCrop(NULL);
+				cropRename(NULL);
 				lcd.blink();
 			}
 		}
@@ -108,68 +183,119 @@ void loop()
 				{ { 1, 1 }, { 9, 9 } }
 			};
 		}
-		if (screenName == "DATETIME" || screenName == "STR"){
+		if (screenName == "RESET"){
 			matrix = {
-				{ { 1, 1 }, { 4, 4 }, { 10, 10 }, { 13, 13 } },
-				{ { 3, 3 }, { 6, 6 }, { 13, 13 } }
+				{ {2, 2} },
+				{ { 1, 1 }, { 9, 9 } }
 			};
 		}
-		if (screenName == "PPM"){
+		if (screenName == "DELETE") {}
+		if (screenName == "EC") {
 			matrix = {
-				{ { 3, 3 }, { 8, 8 } },
-				{ { 1, 1 }, { 13, 13 } }
+				{ { 3, 3 }, { 8, 8 }, { 15, 15 } },
+				{ { 1, 1 }, { 11, 11 } }
 			};
 		}
 		if (screenName == "PH"){
 			matrix = {
-				{ { 3, 3 }, { 9, 9 } },
-				{ { 1, 1 }, { 11, 11 } }
-			};
-		}
-		if (screenName == "PHCHL"){
-			matrix = {
-				{ { 6, 6 }, { 14, 14 } },
+				{ { 3, 3 }, {9, 9} },
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "CHNUM" || screenName == "CHDOSES"){
+		if (screenName == "RSVRVOL"){
+			matrix = {
+				{ { 0, 0 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "DOSES"){
 			matrix = {
 				{ { 1, 1 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "AMT"){
+		if (screenName == "PUMPCAL"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "CHSIZE"){
+		if (screenName == "PUMPDLY"){
 			matrix = {
 				{ { 2, 2 } },
-				{ { 1, 1 }, { 9, 9 }, { 12, 12 } }
+				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "CHCALIB"){
-			if (tmpInts[1] == 0){ 
-				//peristaltic pumps
-				matrix = {
-					{ { 2, 2 } },
-					{ { 1, 1 }, { 9, 9 }, { 12, 12 } }
-				};
-			}
-			else{ 
-				//fixed pumps
-				matrix = {
-					{ { 10, 10 } },
-					{ { 1, 1 }, { 9, 9 }, { 12, 12 } }
-				};
-			}
-		}
-		if (screenName == "RPT"){
+		if (screenName == "AMOUNT"){
 			matrix = {
-				{ { 13, 13 } },
-				{ { 2, 2 }, { 6, 6 }, { 13, 13 } }
+				{ { 12, 12 } },
+				{ { 1, 1 }, { 11, 11 } }
+			};
+		}
+		if (screenName == "TPFCCNT"){
+			matrix = {
+				{ { 0, 0 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "TPFAMT"){
+			matrix = {
+				{ { 0, 0 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "TPFDLY"){
+			matrix = {
+				{ { 2, 2 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "DRNTIME"){
+			matrix = {
+				{ { 1, 1 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "PRIME"){
+			matrix = {
+				{ { 0, 0 } },
+				{ { 11, 11 } }
+			};
+		}
+		if (screenName == "STARTEND"){
+			matrix = {
+				{ { 0, 0 }, { 3, 3 }, { 5, 5 }, { 8, 8 }, { 13, 13 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "RECEP01" || screenName == "RECEP02" || screenName == "RECEP03" || screenName == "RECEP04"){
+			matrix = {
+				{ { 1, 1 }, { 6, 6 }, { 11, 11 }, { 14, 14 }, },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "FLOWCAL"){
+			matrix = {
+				{ { 5, 5 }, { 13, 13 } },
+				{ { 1, 1 }, { 13, 13 } }
+			};
+		}
+		if (screenName == "PHCAL" || screenName == "PHCALLOW" || screenName == "PHCALHI"){
+			matrix = {
+				{ { 0, 0 } },
+				{ { 1, 1 }, { 11, 11 } }
+			};
+		}
+		if (screenName == "ECCAL" || screenName == "ECCALLOW" || screenName == "ECCALHI"){
+			matrix = {
+				{ { 10, 10 }, { 11, 11 }, { 12, 12 }, { 13, 13 }, { 14, 14 }, { 15, 15 } },
+				{ { 1, 1 }, { 11, 11 } }
+			};
+		}
+		if (screenName == "MANFLUSH"){
+			matrix = {
+				{ { 0, 0 } },
+				{ { 1, 1 }, { 5, 5 }, {10, 10} }
 			};
 		}
 
@@ -181,7 +307,7 @@ void loop()
 			getDirectoryMenus(tmpFile);
 			tmpFile.close();
 			lcd.clear();
-			printDisplayNames(menus.front());
+			printScreenNames(menus.front());
 			printScrollArrows();
 		}
 		if (Key == 0 || Key == 408 && screenName != ""){
@@ -193,8 +319,11 @@ void loop()
 		//Up & Down
 		int dir = (Key == 99) ? 1 : -1;
 		int lgdir = (Key == 99) ? 10 : -10;
-		if (screenName == "NewCrop"){
-			renameCrop(dir);
+		if (screenName == "DATETIME"){
+			printDateTime(dir);
+		}
+		if (screenName == "NEW"){
+			cropRename(dir);
 		}
 		if (screenName == "OPEN"){
 			if (cursorX == 0 && cursorY == 0){
@@ -205,39 +334,67 @@ void loop()
 				lcd.home();
 			}
 		}
-		if (screenName == "PPM"){
-			setPPMRangeValues(dir);
+		if (screenName == "RESET") {}
+		if (screenName == "DELETE") {}
+		if (screenName == "RSVRVOL") {
+			printReservoirVolume(dir);
+		}
+		if (screenName == "DOSES"){
+			printRegimenNumber(dir);
+		}
+		if (screenName == "PUMPCAL"){
+			printPumpCalibration(dir);
+		}
+		if (screenName == "PUMPDLY"){
+			printPumpDelay(dir);
+		}
+		if (screenName == "AMOUNT"){
+			printRegimenAmount(dir);
+		}
+		if (screenName == "TPFCCNT") {
+			printTopOffConcentrate(dir);
+		}
+		if (screenName == "TPFAMT"){
+			printTopOffAmount(dir);
+		}
+		if (screenName == "TPFDLY"){
+			printTopOffDelay(dir);
+		}
+		if (screenName == "DRNTIME") {
+			printDrainTime(dir);
+		}
+		if (screenName == "PRIME") {
+			primeChannelPump(dir);
+		}
+		if (screenName == "STARTEND") {
+			printTimerStartEnd(dir);
+		}
+		if (screenName == "RECEP01" || screenName == "RECEP02" || screenName == "RECEP03" || screenName == "RECEP04") {
+			printTimerStartEnd(dir);
+		}
+		if (screenName == "FLOWCAL") {
+			printFlowCalibration(dir);
+		}
+		if (screenName == "EC"){
+			printECRange(dir);
 		}
 		if (screenName == "PH"){
-			setPHRange(dir);
+			printPHRange(dir);
 		}
-		if (screenName == "PHCHL"){
-			setPHChannels(dir);
+		if (screenName == "ECCAL" || screenName == "ECCALLOW" || screenName == "ECCALHI"){
+			if ((cursorX >=10 || cursorX <=15) && cursorY == 0){
+				if (screenName == "ECCAL"){
+					printECCalibrations("DRY", dir);
+				}
+				if (screenName == "ECCALLOW"){
+					printECCalibrations("LOW", dir);
+				}
+				if (screenName == "ECCALHI"){
+					printECCalibrations("HI", dir);
+				}
+			}
 		}
-		if (screenName == "DATETIME"){
-			setDateTime(dir);
-		}
-		if (screenName == "CHNUM"){
-			setChannelNumber(dir);
-		}
-		if (screenName == "CHDOSES"){
-			setSessionNumber(dir);
-		}
-		if (screenName == "CHSIZE"){
-			setChannelSize(lgdir);
-		}
-		if (screenName == "CHCALIB"){
-			setCalibrationSize(dir);
-		}
-		if (screenName == "AMT"){
-			setSessionAmount(lgdir);
-		}
-		if (screenName == "STR"){
-			setDateTime(dir);
-		}
-		if (screenName == "RPT"){
-			setSessionRepeat(dir);
-		}
+
 		if (screenName == ""){
 			scrollMenus(dir);
 		}
@@ -255,7 +412,7 @@ void loop()
 			if (menus.size() > 0){
 				menuIndex = 0;
 				tmpFile.close();
-				printDisplayNames(menus.front());
+				printScreenNames(menus.front());
 				printScrollArrows();
 			}
 			else {
@@ -264,23 +421,19 @@ void loop()
 				lcd.home();
 				if (screenName == "DATETIME"){
 					captureDateTime();
-					char monthsBuffer[8];
-					lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
-					lcd.setCursor(0, 1);
-					lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
-					lcd.setCursor(1, 0);
+					printDateTime();
 					cursorX = 1;
 					cursorY = 0;
 				}
-				if (screenName == "NEWCROP"){
+				if (screenName == "NEW"){
 					menus.clear();
 					menusHistory.clear();
 					currentAlphaIndex = 0;
 					currentChannelIndex = 0;
-					currentSessionIndex = 0;
+					currentRegimenIndex = 0;
 					menuIndex = 0;
 					cursorX = cursorY = 0;
-					startNewCrop();
+					cropCreate();
 				}
 				if (screenName == "OPEN"){
 					lcd.setCursor(0, 1);
@@ -294,146 +447,223 @@ void loop()
 					printScrollArrows();
 					lcd.home();
 				}
-				if (screenName == "PPM"){
-					lcd.print(String(minPPM) + F("-") + String(maxPPM) + F(" EC/PPM"));
+				if (screenName == "RESET"){
+					lcd.clear();
+					lcd.home();
+					lcd.print(F(" CONFIRM RESET "));
+					lcd.setCursor(0, 1);
+					lcd.print(F("<back>  <reset>"));
+					printScrollArrows();
+				}
+				if (screenName == "DELETE"){
+
+				}
+				if (screenName == "RSVRVOL"){
+					tmpFlowCount = 0;
+				}
+				if (screenName == "DOSES"){
+					cursorX = 1;
+					cursorY = 0;
+					StaticJsonBuffer<cropBufferSize> buffer;
+					JsonObject& data = getCropData(buffer);
+					tmpInts[0] = data["maxRegimens"];
+					String totalDisplay;
+					totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+					lcd.print(totalDisplay + F(" REGIMEN DOSES"));
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>      <ok>"));
-					lcd.setCursor(3, 0);
-					cursorX = 3;
-					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
 				}
-				if (screenName == "PH"){
-					DynamicJsonBuffer jsonBuffer;
-					JsonObject& data = getCropData(jsonBuffer);
-					tmpFloats[0] = data["ph"].asArray()[0];
-					tmpFloats[1] = data["ph"].asArray()[1];
-					lcd.print(String(tmpFloats[0]));
-					lcd.write(byte(1));
-					lcd.print(String(F(" ")) + String(tmpFloats[1]));
-					lcd.write(byte(0));
-					lcd.print(F(" PH"));
+				if (screenName == "PUMPCAL"){
+					tmpInts[0] = pumpCalibration;
+					printPumpCalibration();
+				}
+				if (screenName == "PUMPDLY"){
+					tmpInts[0] = pumpDelay;
+					printPumpDelay();
+				}
+				if (screenName == "AMOUNT"){
+					String amountDisplay;
+					StaticJsonBuffer<regimenBufferSize> sessionBuffer;
+					JsonObject& data = getRegimenData(sessionBuffer);
+					tmpFloats[0] = data["ml"];
+					tmpInts[0] = 1;
+
+					StaticJsonBuffer<cropBufferSize> cropBuffer;
+					JsonObject& cropData = getCropData(cropBuffer);
+					tmpInts[1] = cropData["maxRegimens"];
+
+					if (tmpFloats[0] > 1000){
+						amountDisplay = F("");
+					}else if (tmpFloats[0] > 100){
+						amountDisplay = F("0");
+					}else if (tmpFloats[0] > 10){
+						amountDisplay = F("00");
+					} else if (tmpFloats[0] > 0.1){
+						amountDisplay = F("000");
+					} else {
+						amountDisplay = F("0000.00");
+					}
+
+					lcd.print(F("REGI "));
+					lcd.print(tmpInts[0]);
+					lcd.print(F(" "));
+					lcd.print(amountDisplay);
+					lcd.print(F("ml"));
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>    <next>"));
-					lcd.setCursor(3, 0);
+					cursorX = 12;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+				}
+				if (screenName == "TPFCCNT"){
+					tmpInts[0] = topOffConcentrate;
+					printTopOffConcentrate();
+				}
+				if (screenName == "TPFAMT"){
+					tmpInts[0] = topOffAmount;
+					printTopOffAmount();
+				}
+				if (screenName == "TPFDLY"){
+					tmpInts[0] = topOffDelay;
+					printTopOffDelay();
+				}
+				if (screenName == "DRNTIME"){
+					tmpInts[0] = drainTime;
+					printDrainTime();
+				}
+				if (screenName == "FLOWCAL"){
+					tmpFloats[0] = flowMeterConfig[0];
+					tmpFloats[1] = flowMeterConfig[1];
+					printFlowCalibration();
+				}
+				if (screenName == "PRIME"){
+					lcd.write(byte(0));
+					lcd.print(F(" TO PRIME CH0"));
+					lcd.print(String(currentChannelIndex));
+					lcd.setCursor(0, 1);
+					lcd.print(F("          <done>"));
+					cursorX = 0;
+					cursorY = 0;
+					lcd.setCursor(cursorX, cursorY);
+				}
+				if (screenName == "STARTEND"){
+					StaticJsonBuffer<timerBufferSize> buffer;
+					JsonObject& data = getTimerSessionData(buffer);
+					JsonArray& start = data["start"].asArray();
+					JsonArray& end = data["end"].asArray();
+
+					tmpInts[0] = start[0];
+					tmpInts[1] = start[1];
+					tmpInts[2] = start[2];
+					tmpInts[3] = end[0];
+					tmpInts[4] = end[1];
+					tmpInts[5] = end[2];
+
+					String startAMPM = (tmpInts[2] == 0) ? F("AM") : F("PM");
+					String endAMPM = (tmpInts[2] == 0) ? F("AM") : F("PM");
+
+					lcd.print(String(tmpInts[0]) + F(":") + String(tmpInts[1]) + startAMPM + F("-") + String(tmpInts[3]) + F(":") + String(tmpInts[4]) + endAMPM);
+					lcd.setCursor(0, 1);
+					lcd.print(F("<back>      <ok>"));
 					cursorX = 3;
 					cursorY = 0;
-				}
-				if (screenName == "CHNUM"){
-					cursorX = 1;
-					cursorY = 0;
-					DynamicJsonBuffer jsonBuffer;
-					JsonObject& data = getCropData(jsonBuffer);
-					int total = data["totalChannels"];
-					tmpInts[0] = total;
-					String totalDisplay;
-					totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
-					lcd.print(totalDisplay + F(" CHANNELS"));
-					lcd.setCursor(0, 1);
-					lcd.print(F("<back>      <ok>"));
 					lcd.setCursor(cursorX, cursorY);
 				}
-				if (screenName == "CHDOSES"){
-					cursorX = 1;
-					cursorY = 0;
-					DynamicJsonBuffer channelBuffer;
-					JsonObject& data = getChannelData(channelBuffer);
-					tmpInts[0] = data["sessionsTotal"];
-					String totalDisplay;
-					totalDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
-					lcd.print(totalDisplay + F(" # OF SESSIONS"));
-					lcd.setCursor(0, 1);
-					lcd.print(F("<back>      <ok>"));
-					lcd.setCursor(cursorX, cursorY);
-				}
-				if (screenName == "CHSIZE"){
-					DynamicJsonBuffer channelBuffer;
-					JsonObject& data = getChannelData(channelBuffer);
-					tmpInts[0] = data["size"];					
-					if (tmpInts[0] == 0){
-						lcd.print(" ");
-						lcd.write(byte(3));
-						lcd.write(byte(4));
-						lcd.print(F(" (ml) volume"));
+				if (screenName == "RECEP01" || screenName == "RECEP02" || screenName == "RECEP03" || screenName == "RECEP04"){
+					String startDisplay, endDisplay;
+					String AMPM1, AMPM2;
+					StaticJsonBuffer<timerSessionBufferSize> buffer;
+					if (currentTimerSessionIndex < 1){ currentTimerSessionIndex = 1; }
+					JsonObject& data = getTimerSessionData(buffer, currentTimerIndex, currentTimerSessionIndex);
+
+					JsonArray& times = data["times"];
+
+					tmpInts[0] = times[0][0]; //start hour
+					tmpInts[1] = times[0][1]; //end hour
+
+					//start
+					if (cursorX == 1){
+						if (tmpInts[0] > 23){
+							tmpInts[0] = 0;
+						}
+						if (tmpInts[0] < 0) {
+							tmpInts[0] = 23;
+						}
+					}
+
+					if (tmpInts[0] > 12){
+						startDisplay = ((tmpInts[0] - 12) < 10) ? "0" + String(tmpInts[0] - 12) : String(tmpInts[0] - 12);
 					}
 					else{
-						String channelSize = (tmpInts[0] < 100) ? (tmpInts[0] < 10) ? "00" + String(tmpInts[0]) : "0" + String(tmpInts[0]) : String(tmpInts[0]);
-						lcd.print(channelSize + F(" (ml) volume"));
+						if (tmpInts[0] == 0){
+							startDisplay = String(12);
+						}
+						else{
+							startDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+						}
 					}
-					
-					lcd.setCursor(0, 1);
-					lcd.print(F("<back>  <ok|all>"));
-					cursorX = 2;
-					cursorY = 0;
-					lcd.setCursor(cursorX, cursorY);
-				}
-				if (screenName == "CHCALIB"){
-					DynamicJsonBuffer channelBuffer;
-					JsonObject& data = getChannelData(channelBuffer);
-					tmpInts[0] = data["calibration"];
-					tmpInts[1] = data["size"];
-					if (tmpInts[1] == 0){
-						lcd.print(String(tmpInts[0]) + F("00 (ml) per min"));
-						cursorX = 2;
+
+					//END
+					if (cursorX == 6){
+						if (tmpInts[1] > 23){
+							tmpInts[1] = 0;
+						}
+						if (tmpInts[1] < 0) {
+							tmpInts[1] = 23;
+						}
+					}
+
+					if (tmpInts[1] > 12){
+						endDisplay = ((tmpInts[1] - 12) < 10) ? "0" + String(tmpInts[1] - 12) : String(tmpInts[1] - 12);
 					}
 					else{
-						String rotsSize = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
-						String targetSize = (tmpInts[1] >= 10 && tmpInts[1] <= 99) ? "0" + String(tmpInts[1]) : (tmpInts[1] < 10 && tmpInts[1] >= 0) ? "00" + String(tmpInts[1]) : String(tmpInts[1]);
-						lcd.print(targetSize + F("(ml) ") + rotsSize + F(" rots"));
-						cursorX = 10;
+						if (tmpInts[1] == 0){
+							endDisplay = String(12);
+						}
+						else{
+							endDisplay = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+						}
 					}
-					lcd.setCursor(0, 1);
-					lcd.print(F("<back>  <ok|all>"));
-					
-					cursorY = 0;
-					lcd.setCursor(cursorX, cursorY);
-				}
-				if (screenName == "AMT"){
-					DynamicJsonBuffer sessionBuffer;
-					JsonObject& data = getSessionData(sessionBuffer);
-					tmpInts[0] = data["amount"];
-					String displayAmount = (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) : String(tmpInts[0]);
 
-					lcd.print(displayAmount + F("(ml) volume"));
+					AMPM1 = (tmpInts[0] > 11) ? "PM" : "AM";
+					AMPM2 = (tmpInts[1] > 11) ? "PM" : "AM";
+
+					lcd.print(startDisplay);
+					lcd.print(AMPM1);
+					lcd.print(F("-"));
+					lcd.print(endDisplay);
+					lcd.print(AMPM2);
+					lcd.print(F(" Su/01"));
 					lcd.setCursor(0, 1);
 					lcd.print(F("<back>      <ok>"));
-					cursorX = 2;
+					cursorX = 6;
 					cursorY = 0;
 					lcd.setCursor(cursorX, cursorY);
 				}
-				if (screenName == "STR"){
-					captureSessionDateTime();
-					char monthsBuffer[8];
-					lcd.clear();
-					lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
-					lcd.setCursor(0, 1);
-					lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
-					lcd.setCursor(1, 0);
-					cursorX = 1;
-					cursorY = 0;
+				if (screenName == "EC"){
+					printECRange(0); //0 = first print version
 				}
-				if (screenName == "RPT"){
-					char repeatsBuffer[8];
-					DynamicJsonBuffer sessionBuffer;
-					JsonObject& data = getSessionData(sessionBuffer);
-					tmpInts[0] = data["repeat"];
-					tmpInts[1] = data["repeatBy"];
-
-					String displayRepeat = (tmpInts[0] == -1)? "Inf." : (tmpInts[0] >= 10 && tmpInts[0] <= 99) ? "0" + String(tmpInts[0]) + "x" : (tmpInts[0] < 10 && tmpInts[0] >= 0) ? "00" + String(tmpInts[0]) + "x" : String(tmpInts[0]) + "x";
-					String displayRepeatBy = strcpy_P(repeatsBuffer, (char*)pgm_read_word(&(displayRepeats[tmpInts[1]])));
-
-					lcd.print(F("Repeats: "));
-					lcd.print(displayRepeatBy);
-					lcd.setCursor(0, 1);
-					lcd.print(displayRepeat + F(" <back> <ok>"));
-					cursorX = 13;
-					cursorY = 0;
-					lcd.setCursor(cursorX, cursorY);
+				if (screenName == "PH"){
+					printPHRange(0); //0 = first print version
+				}
+				if (screenName == "ECCAL"){
+					printECCalibrations("DRY");
+				}
+				if (screenName == "PHCAL"){
+					printPHCalibrations("LOW", 4);
+				}
+				if (screenName == "MANFLUSH"){
+					printFullFlushing();
 				}
 			}
 			delay(350);
 		}
 		//Saves
-		if (screenName == "NewCrop"){
+		if (screenName == "DATETIME"){
+			saveDateTime();
+		}
+		if (screenName == "NEW"){
 			if (cursorX == 11 && cursorY == 1){
 				String nameConfirm;
 				for (int i = 0; i < 15; i++){
@@ -467,14 +697,14 @@ void loop()
 					lcd.home();
 				}
 				else {
-					buildCrop();
+					cropBuild();
 				}
 			}
 		}
 		if (screenName == "OPEN"){
 			if (cursorX == 9 && cursorY == 1){
 				if (menus[menuIndex] != cropName){
-					changeCrop();
+					cropChange();
 				}
 				else{
 					exitScreen();
@@ -484,269 +714,213 @@ void loop()
 				exitScreen();
 			}
 		}
-		if (screenName == "PPM"){
+		if (screenName == "RESET"){
 			if (cursorX == 13 && cursorY == 1){
-				DynamicJsonBuffer jsonBuffer;
-				JsonObject& data = getCropData(jsonBuffer);
-				data["ppm"].asArray()[0] = minPPM;
-				data["ppm"].asArray()[1] = maxPPM;
-				setCropData(data, false);
+				lcd.clear();
+				lcd.print(F("RESETTING"));
+				lcd.setCursor(1, 0);
+				lcd.print(F("  PLEASE HOLD  "));
+
+				for (byte i = 1; i < 8; i++){
+					StaticJsonBuffer<channelBufferSize> channelBuffer;
+					JsonObject& channelData = getChannelData(channelBuffer, i);
+					byte totalSessions = channelData["totalSessions"];
+
+					for (byte j = 1; j < totalSessions; j++){
+						StaticJsonBuffer<regimenBufferSize> regimenBuffer;
+						JsonObject& regimenData = getRegimenData(regimenBuffer, i, j);
+						JsonArray& regimenDate = regimenData["date"].asArray();
+						regimenData["repeated"] = 0;
+						regimenData["expired"] = false;
+						regimenDate[0] = rtc.getTime().year;
+					}
+				}
 			}
-			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+			if (cursorX == 1 || cursorX == 9 && cursorY == 1){
+				tmpInts[1] = tmpInts[0] = 0;
 				exitScreen();
 			}
+		}
+		if (screenName == "DELETE") {}
+		if (screenName == "RSVRVOL") {
+			saveReservoirVolume();
+		}
+		if (screenName == "DOSES"){
+			if (cursorX == 13 && cursorY == 1){
+				lcd.clear();
+				lcd.home();
+				StaticJsonBuffer<cropBufferSize> buffer;
+				JsonObject& data = getCropData(buffer);
+
+				if (data["maxRegimens"] > tmpInts[0]){ //we are trimming sessions
+					lcd.print(F("TRIM REGIMENS"));
+					lcd.setCursor(0, 1);
+					lcd.print(F(" PLEASE HOLD... "));
+					trimRegimens(data["maxRegimens"], tmpInts[0]);
+				}
+				else if (data["maxRegimens"] < tmpInts[0]){ //we are adding sessions
+					lcd.print(F("ADDING REGIMENS"));
+					lcd.setCursor(0, 1);
+					lcd.print(F(" PLEASE HOLD... "));
+					addRegimens(data["maxRegimens"], tmpInts[0]);
+				}
+				data["maxRegimens"] = tmpInts[0]; //update channel's session total
+				maxRegimens = tmpInts[0];
+				setCropData(data, false);
+			}
+			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = 0;
+				exitScreen();
+			}
+		}
+		if (screenName == "PUMPCAL"){
+			savePumpCalibration();
+		}
+		if (screenName == "PUMPDLY"){
+			savePumpDelay();
+		}
+		if (screenName == "AMOUNT"){
+			saveRegimenAmount();
+		}
+		if (screenName == "TPFCCNT"){
+			saveTopOffConcentrate();
+		}
+		if (screenName == "TPFAMT"){
+			saveTopOffAmount();
+		}
+		if (screenName == "TPFDLY") {
+			saveTopOffDelay();
+		}
+		if (screenName == "FLOWCAL"){
+			saveFlowCalibration();
+		}
+		if (screenName == "DRNTIME") {
+			saveDrainTime();
+		}
+		if (screenName == "STARTEND"){
+			saveStartEnd();
+		}
+		if (screenName == "RECEP01" || screenName == "RECEP02" || screenName == "RECEP03" || screenName == "RECEP04") {
+			if (cursorX == 13 && cursorY == 1){
+				lcd.clear();
+				lcd.home();
+				StaticJsonBuffer<timerSessionBufferSize> saveBuffer;
+				JsonObject& saveData = getTimerSessionData(saveBuffer, currentTimerIndex, currentTimerSessionIndex);
+
+				saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[0]; //start hour
+				saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[1]; //end hour
+				setTimerSessionData(saveData);
+				checkRecepticals();
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = 0;
+				exitScreen();
+			}
+		}
+		if (screenName == "PRIME"){
+			if (cursorX == 11 && cursorY == 1){
+				exitScreen();
+			}
+		}
+		if (screenName == "EC"){
+			saveECData();
 		}
 		if (screenName == "PH"){
-			if (cursorX == 11 && cursorY == 1){
+			savePHData();
+		}
+		if (screenName == "PHCAL"){
+			if (cursorX == 1 && cursorY == 1){ //back
+				exitScreen();
+			}
+			if (cursorX == 11 && cursorY == 1){ //forward
+				setPHWaterProbeCalibration(112, 4.0, 'low'); //ph probe 1
+				setPHWaterProbeCalibration(114, 4.0, 'low'); //ph probe 2
+				printPHCalibrations("MID", 7);
+				screenName = "PHCALMID";
+			}
+		}
+		if (screenName == "PHCALMID"){
+			if (cursorX == 1 && cursorY == 1){ //back
+				printPHCalibrations("LOW", 4);
+				screenName = "PHCALLOW";
+			}
+			if (cursorX == 11 && cursorY == 1){ //forward
+				setPHWaterProbeCalibration(112, 7.0, 'mid'); //ph probe 1
+				setPHWaterProbeCalibration(114, 7.0, 'mid'); //ph probe 2
+				printPHCalibrations("HI", 10);
+				screenName = "PHCALHI";
+			}
+		}
+		if (screenName == "PHCALHI"){
+			if (cursorX == 1 && cursorY == 1){ //back
+				printPHCalibrations("MID", 7);
+				screenName = "PHCALMID";
+			}
+			if (cursorX == 11 && cursorY == 1){ //forward
+				setPHWaterProbeCalibration(112, 10.0, 'high'); //ph probe 1
+				setPHWaterProbeCalibration(114, 10.0, 'high'); //ph probe 2
 				lcd.clear();
 				lcd.home();
-				DynamicJsonBuffer jsonBuffer;
-				JsonObject& data = getCropData(jsonBuffer);
-				data["ph"].asArray()[0].set(tmpFloats[0]);
-				data["ph"].asArray()[1].set(tmpFloats[1]);
-
-				setCropData(data, false);
-				tmpFloats[0] = tmpFloats[1] = 0.0;
-				screenName = "PHCHL";
-				delay(250);
-
-				tmpInts[0] = data["phChannels"].asArray()[0];
-				tmpInts[1] = data["phChannels"].asArray()[1];
-
-				String UpDisplay = (tmpInts[0] < 10) ? String(F("0")) + String(tmpInts[0]) : String(tmpInts[0]);
-				String DownDisplay = (tmpInts[1] < 10) ? String(F("0")) + String(tmpInts[1]) : String(tmpInts[1]);
-				lcd.blink();
-				lcd.print(F("PH"));
-				lcd.write(byte(1));
-				lcd.print(F("CH"));
-				lcd.print(UpDisplay);
-				lcd.print(F(" PH"));
-				lcd.write(byte(0));
-				lcd.print(String(F("CH")) + DownDisplay);
+				lcd.print(F("PH CALIBRATION"));
 				lcd.setCursor(0, 1);
-				lcd.print(F("<back>      <ok>"));
-				cursorX = 6;
-				cursorY = 0;
-				lcd.setCursor(cursorX, cursorY);
+				lcd.print(F("NOW FINISHED!"));
+				delay(5000);
+				exitScreen();
 			}
+		}
+		if (screenName == "ECCAL"){
+			if (cursorX == 11 && cursorY == 1){ //moving forward
+				setECWaterProbeCalibration(111, tmpIntsToInt(5), 'dry'); //ec probe 1
+				setECWaterProbeCalibration(113, tmpIntsToInt(5), 'dry'); //ec probe 2
+				printECCalibrations("LOW");
+				screenName = "ECCALLOW";
+			}
+			if ((cursorX == 1 && cursorY == 1)){ //cancel calibration
+				exitScreen();
+			}
+		}
+		if (screenName == "ECCALLOW"){
+			if (cursorX == 11 && cursorY == 1){ //going forward
+				setECWaterProbeCalibration(111, tmpIntsToInt(5), 'low'); //ec probe 1
+				setECWaterProbeCalibration(113, tmpIntsToInt(5), 'low'); //ec probe 2
+				printECCalibrations("HIGH");
+				screenName = "ECCALHI";
+			}
+			if ((cursorX == 1 && cursorY == 1)){ //going back
+				printECCalibrations("DRY");
+				screenName = "ECCAL";
+			}
+		}
+		if (screenName == "ECCALHI"){
+			if (cursorX == 11 && cursorY == 1){ //going forward
+				tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = tmpInts[4] = tmpInts[5] = 0; //reset tmpInts.
+				setECWaterProbeCalibration(111, tmpIntsToInt(5), 'high'); //ec probe 1
+				setECWaterProbeCalibration(113, tmpIntsToInt(5), 'high'); //ec probe 2
+				lcd.clear();
+				lcd.home();
+				lcd.print(F("EC CALIBRATION"));
+				lcd.setCursor(0, 1);
+				lcd.print(F("NOW FINISHED!"));
+				delay(5000);
+				exitScreen();
+			}
+			if ((cursorX == 1 && cursorY == 1)){ //going back
+				printECCalibrations("LOW");
+				screenName = "ECCALLOW";
+			}
+		}
+		if (screenName == "MANFLUSH"){
 			if (cursorX == 1 && cursorY == 1){
-				tmpFloats[0] = tmpFloats[1] = 0.0;
-				screenName = "";
-				exitScreen();
+				RelayToggle(11, true);
+				RelayToggle(12, false);
 			}
-		}
-		if (screenName == "PHCHL"){
-			if (cursorX == 13 && cursorY == 1){
-				DynamicJsonBuffer jsonBuffer;
-				JsonObject& data = getCropData(jsonBuffer);
-				data["phChannels"].asArray()[0] = tmpInts[0];
-				data["phChannels"].asArray()[1] = tmpInts[1];
-				setCropData(data, false);
+			if (cursorX == 5 && cursorY == 1){
+				RelayToggle(11, false);
+				RelayToggle(12, true);
 			}
-			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				tmpInts[0] = tmpInts[1] = 0;
-				exitScreen();
-			}
-		}
-		if (screenName == "DATETIME"){
-			if (cursorX == 13 && cursorY == 1){
-				//hour, min, seconds
-				rtc.setTime(tmpInts[4], tmpInts[5], 0);
-				//day, month (RTC counts first month as 1, not 0), year
-				rtc.setDate(tmpInts[2], tmpInts[1]+1, tmpInts[0]);
-			}
-			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				tmpDisplay[0] = ""; //suffix
-				tmpDisplay[1] = ""; //hour
-				tmpDisplay[2] = ""; //min
-				tmpDisplay[3] = ""; //day
-				exitScreen();
-			}
-		}
-		if (screenName == "CHNUM"){
-			if (cursorX == 13 && cursorY == 1){
-				lcd.clear();
-				int i, j, currentTotal, newTotal, dir;
-				Time currentTime = rtc.getTime();
-				DynamicJsonBuffer jsonBuffer;
-				JsonObject& cropData = getCropData(jsonBuffer);
-
-				currentTotal = cropData["totalChannels"]; //capture orignal total
-				newTotal = tmpInts[0];
-				dir = (currentTotal < newTotal) ? 1 : -1;
-
-				cropData["totalChannels"] = newTotal; //then set new total
-				setCropData(cropData, false);
-				if (dir < 0){
-					lcd.print(F(" TRIM CHANNELS "));
-					lcd.setCursor(0, 1);
-					lcd.print(F(" PLEASE HOLD... "));
-					trimChannels(currentTotal + 1, newTotal);
-				}
-
-				if (dir > 0){
-					lcd.print(F("ADDING CHANNELS"));
-					lcd.setCursor(0, 1);
-					lcd.print(F(" PLEASE HOLD... "));
-					addChannels(currentTotal, newTotal + 1);
-				}
-			}
-			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
-				tmpInts[0] = 0;
-				exitScreen();
-			}
-		}
-		if (screenName == "CHDOSES"){
-			if (cursorX == 13 && cursorY == 1){
-				//Get channel data
-				DynamicJsonBuffer channelBuffer;
-				JsonObject& channelData = getChannelData(channelBuffer);
-				lcd.clear();
-				lcd.home();
-
-				if (channelData["sessionsTotal"] > tmpInts[0]){ //we are trimming sessions
-					lcd.print(F("TRIM SESSIONS"));
-					lcd.setCursor(0, 1);
-					lcd.print(F(" PLEASE HOLD... "));
-					trimSessions(channelData["sessionsTotal"], tmpInts[0]);
-				}
-				else if (channelData["sessionsTotal"] < tmpInts[0]){ //we are adding sessions
-					lcd.print(F("ADDING SESSIONS"));
-					lcd.setCursor(0, 1);
-					lcd.print(F(" PLEASE HOLD... "));
-					addSessions(channelData["sessionsTotal"], tmpInts[0]);
-				}
-				channelData["sessionsTotal"] = tmpInts[0]; //update channel's session total
-				setChannelData(channelData, currentChannelIndex, false);
-			}
-			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
-				tmpInts[0] = 0;
-				exitScreen();
-			}
-		}
-		if (screenName == "CHSIZE"){
-			if (cursorX == 9 && cursorY == 1){ //single channel save
-				DynamicJsonBuffer channelBuffer;
-				JsonObject& channelData = getChannelData(channelBuffer);
-				lcd.clear();
-				lcd.home();
-				channelData["size"] = tmpInts[0];
-				setChannelData(channelData, currentChannelIndex, false);
-			}
-			if (cursorX == 12 && cursorY == 1){ //all channel save
-				lcd.clear();
-				lcd.home();
-				lcd.print(F("  SAVING ALL  "));
-				lcd.setCursor(0, 1);
-				lcd.print(F("  PLEASE WAIT "));
-
-				DynamicJsonBuffer cropBuffer;
-				JsonObject& cropData = getCropData(cropBuffer);
-				int channelSize = cropData["totalChannels"];
-				while (channelSize--){
-					DynamicJsonBuffer channelBuffer;
-					JsonObject& channelData = getChannelData(channelBuffer, channelSize);
-					channelData["size"] = tmpInts[0];
-					setChannelData(channelData, channelSize, false);
-				}
-			}
-			if (cursorX == 1 || cursorX == 9 || cursorX == 12 && cursorY == 1){
-				tmpInts[0] = 0;
-				exitScreen();
-			}
-		}
-		if (screenName == "CHCALIB"){
-			if (cursorX == 9 && cursorY == 1){ //single channel save
-				DynamicJsonBuffer channelBuffer;
-				JsonObject& channelData = getChannelData(channelBuffer);
-				channelData["calibration"] = tmpInts[0];
-				setChannelData(channelData, currentChannelIndex, false);
-				tmpInts[0] = tmpInts[1] = 0;
-				exitScreen();
-			}
-			if (cursorX == 12 && cursorY == 1){ //all channel save
-				lcd.clear();
-				lcd.home();
-				lcd.print(F("  SAVING ALL  "));
-				lcd.setCursor(0, 1);
-				lcd.print(F("  PLEASE WAIT "));
-				
-				DynamicJsonBuffer cropBuffer;
-				JsonObject& cropData = getCropData(cropBuffer);
-				int channelSize = cropData["totalChannels"];
-				while (channelSize--){
-					DynamicJsonBuffer channelBuffer;
-					JsonObject& channelData = getChannelData(channelBuffer, channelSize);
-					channelData["calibration"] = tmpInts[0];
-					setChannelData(channelData, channelSize, false);
-				}
-			}
-			if (cursorX == 1 || cursorX == 9 || cursorX == 12 && cursorY == 1){
-				tmpInts[0] = tmpInts[1] = 0;
-				exitScreen();
-			}
-		}
-		if (screenName == "AMT"){
-			if (cursorX == 13 && cursorY == 1){
-				DynamicJsonBuffer sessionBuffer;
-				JsonObject& sessionData = getSessionData(sessionBuffer);
-				sessionData["amount"] = tmpInts[0];
-				setSessionData(sessionData, currentChannelIndex, currentSessionIndex, false);
-			}
-			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-				tmpInts[0] = 0;
-				exitScreen();
-			}
-		}
-		if (screenName == "STR"){
-			if (cursorX == 13 && cursorY == 1){
-				lcd.clear();
-				lcd.noBlink();
-				DynamicJsonBuffer sessionBuffer;
-				JsonObject& sessionData = getSessionData(sessionBuffer);
-				JsonArray& date = sessionData["date"];
-				JsonArray& time = sessionData["time"];
-
-				date[0] = tmpInts[0]; //year
-				date[1] = tmpInts[1]; //month
-				date[2] = tmpInts[2]; //day
-				date[3] = tmpInts[3]; //day of week
-				time[0] = tmpInts[4]; //hour
-				time[1] = tmpInts[5]; //min
-
-				//Leap year help
-				tm time_in = { 
-					0,			// second
-					tmpInts[5], // minute
-					tmpInts[4], // hour
-					tmpInts[2], // 1-based day
-					tmpInts[1], // 0-based month
-					tmpInts[0] - tmpInts[0] //year since 1900
-				};
-				time_t time_temp = mktime(&time_in);
-				tm const *time_out = localtime(&time_temp);
-				sessionData["date"].asArray()[3] = time_out->tm_wday;
-				sessionData["expired"] = false;
-				setSessionData(sessionData, currentChannelIndex, currentSessionIndex, false); //save session data
-				tmpDisplay[0] = tmpDisplay[1] = tmpDisplay[2] = tmpDisplay[3] = ""; //Clear out tmpDisplays
-			}
-			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				exitScreen();
-			}
-		}
-		if (screenName == "RPT"){
-			if (cursorX == 13 && cursorY == 1){
-				DynamicJsonBuffer sessionBuffer;
-				JsonObject& sessionData = getSessionData(sessionBuffer);
-
-				sessionData["repeatBy"] = tmpInts[1];
-				sessionData["repeat"] = sessionData["repeated"] = tmpInts[0];
-				//we use this as a changeable variable so we can use repeat value for crop resets
-
-				setSessionData(sessionData, currentChannelIndex, currentSessionIndex, false);
-			}
-			if (cursorX == 6 || cursorX == 13 && cursorY == 1){
-				tmpInts[1] = tmpInts[0] = 0;
+			if (cursorX == 11 && cursorY == 1){
+				RelayToggle(11, false);
+				RelayToggle(12, false);
 				exitScreen();
 			}
 		}

@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Menus
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
@@ -10,7 +10,7 @@
 #include "Screens.h"
 #include "DatesTime.h"
 
-int menuIndex;
+byte menuIndex;
 vector<String> menus, menusHistory;
 
 String getMenuHistory(){
@@ -47,7 +47,7 @@ void scrollMenus(int dir){
 		menuIndex = 0;
 	}
 	lcd.clear();
-	printDisplayNames(menus[menuIndex]);
+	printScreenNames(menus[menuIndex]);
 	printScrollArrows();
 }
 

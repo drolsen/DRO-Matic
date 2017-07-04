@@ -1,23 +1,31 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS DateTime
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
-// DateTime.h
 
 #ifndef _DATESTIME_h
 #define _DATESTIME_h
 #include "Globals.h"
 
-extern int currentMinute, days[12];
-extern unsigned long previousMillis, currentMillis;  //stores last time
+extern byte currentMinute, previousMinute, days[12];
+extern unsigned long menuMillis, homeMillis, phRsvrMillis, phPlantMillis, currentMillis;  //stores last time
 
+//Read & Write from SD
 extern void captureDateTime();
 extern void captureSessionDateTime();
-extern void captureDateTimeDisplays();
+
+//Prints
+extern void printDateTime(int dir = 0);
+
+//Saves
+extern void saveDateTime();
+
+//Helpers
+extern void captureDateTimeDisplays(int month = tmpInts[1], int day = tmpInts[2], int hour = tmpInts[4], int min = tmpInts[5]);
 extern int calculateDayOfYear(int day, int month, int year);
-extern void setDateTime(int dir);
+extern byte calcDayOfWeek(unsigned int y, byte m, byte d);
 
 #endif
 
