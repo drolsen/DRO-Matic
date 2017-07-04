@@ -165,8 +165,8 @@ void printFlowCalibration(int dir = 0){
 void printFullFlushing(){
 	lcd.print(F("MANUAL FLUSHING"));
 	lcd.setCursor(0, 1);
-	lcd.print(F("<in><out><done>"));
-	cursorX = 1;
+	lcd.print(F("<in><out> <done>"));
+	cursorX = 0;
 	cursorY = 0;
 	lcd.setCursor(cursorX, cursorY);
 }
