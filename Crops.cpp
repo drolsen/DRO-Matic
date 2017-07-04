@@ -284,7 +284,7 @@ void cropLoad(){
 	//load plant water drain time
 	drainTime = irrigationData["drntime"];
 	//load topoff concentrate
-	topOffConcentrate = irrigationData["tpfcnt"];
+	topOffConcentrate = irrigationData["tpfccnt"];
 	//load topoff amounts
 	topOffAmount = irrigationData["tpfamt"];
 	//load topoff delays

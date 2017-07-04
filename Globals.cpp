@@ -147,7 +147,7 @@ const char RegimensWeeks[14] PROGMEM = "REGIMEN DOSES";
 const char Weeks[6] PROGMEM = "WEEKS";
 const char Solution[9] PROGMEM = "SOLUTION";
 const char Amount[7] PROGMEM = "AMOUNT";
-const char Flushing[9] PROGMEM = "FLUSHING";
+const char Flush[9] PROGMEM = "FLUSHING";
 
 //Direct Translations
 const char DateTime[12] PROGMEM = "DATE & TIME";
@@ -169,11 +169,11 @@ const char ChannelDose[16] PROGMEM = "CHANNEL DOSEING";
 const char DelayConfig[16] PROGMEM = "DELAY CONFIGURE";
 const char FlowMeters[12] PROGMEM = "FLOW METERS";
 const char ChannelPump[13] PROGMEM = "CHANNEL PUMP";
-const char ManualSystem[14] PROGMEM = "MANUAL SYSTEM";
+const char Manual[14] PROGMEM = "MANUAL SYSTEM";
 
 
 
-const char* const screenNames[30][3] PROGMEM = {
+const char* const screenNames[28][3] PROGMEM = {
 	{ _sys, System, Settings },
 	{ _chan, Channels, Settings },
 	{ _crop, Crop, Settings },
@@ -188,8 +188,6 @@ const char* const screenNames[30][3] PROGMEM = {
 	{ _new, New, Crop },
 	{ _delete, Delete, Crop },
 	{ _reset, Reset, Crop },
-	{ _start, Start, Crop },
-	{ _pause, Pause, Crop },
 	{ _rsvrVol, Reservoir, VolumeConfig },
 	{ _topOffCcnt, TopOff, Concent },
 	{ _topOffAmnt, TopOff, Amount },
@@ -201,7 +199,7 @@ const char* const screenNames[30][3] PROGMEM = {
 	{ _delay, ChannelDose, DelayConfig },
 	{ _pumpCal, ChannelPump, Calib },
 	{ _flowcal, FlowMeters, Calib },
-	{ _manFlush, ManualSystem, Flushing },
+	{ _manFlush, Manual, Flush },
 	{ _prime, PrimeChannel, Solution },
 	{ _startend, StartEnd, Times }
 };

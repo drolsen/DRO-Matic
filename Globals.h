@@ -102,7 +102,7 @@ extern float tmpFloats[2];
 extern volatile int tmpFlowCount;
 
 extern const char* const alphabet[37] PROGMEM;
-extern const char* const screenNames[30][3] PROGMEM;
+extern const char* const screenNames[28][3] PROGMEM;
 extern const char* const months[12] PROGMEM;
 extern const char* const displayRepeats[6] PROGMEM;
 
