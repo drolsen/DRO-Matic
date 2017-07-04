@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Irrigation
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
@@ -9,14 +9,15 @@
 #include "Core.h"
 #include "Crops.h"
 #include "Screens.h"
+#include "Regimens.h"
 
+//Read & Write from SD
 JsonObject& getIrrigationData(JsonBuffer& b){
 	tmpFile = SD.open("dromatic/" + cropName + "/irrigate.dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
-
 void setIrrigationData(JsonObject& d){
 	char b[256];
 	tmpFile = SD.open("dromatic/" + cropName + "/irrigate.dro", O_WRITE | O_TRUNC);
@@ -25,7 +26,8 @@ void setIrrigationData(JsonObject& d){
 	tmpFile.close();
 }
 
-void setReservoirVolume(int dir){
+//Prints
+void printReservoirVolume(int dir){
 	tmpInts[0] += dir;
 	String rsvrVol;
 	if (tmpInts[0] > 9999){ //max
@@ -50,15 +52,16 @@ void setReservoirVolume(int dir){
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
 }
-
-void setTopOffConcentrate(int dir){
+void printTopOffConcentrate(int dir = 0){
 	String fraction;
-	tmpInts[0] += dir;
-	//min - max prevention
-	if (tmpInts[0] > 5) {
-		tmpInts[0] = 5;
-	}else if (tmpInts[0] < 1){
-		tmpInts[0] = 1;
+	if (dir != 0){
+		tmpInts[0] += dir;
+		//min - max prevention
+		if (tmpInts[0] > 5) {
+			tmpInts[0] = 5;
+		}else if (tmpInts[0] < 1){
+			tmpInts[0] = 1;
+		}
 	}
 
 	if (tmpInts[0] == 1) {
@@ -80,40 +83,32 @@ void setTopOffConcentrate(int dir){
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
 }
-
-void setTopOffVolume(int dir){
-	tmpInts[0] += dir;
-	String tpfVol;
-	if (tmpInts[0] > 9999){ //max
-		tpfVol = F("9999");
-		tmpInts[0] = 9999;
+void printTopOffAmount(int dir = 0){
+	if (dir != 0){
+		tmpInts[0] += dir;
 	}
-	else if (tmpInts[0] < 1000) {
-		tpfVol = F("0");
-	}
-	else if (tmpInts[0] < 100){
-		tpfVol = F("00");
-	}
-	else if (tmpInts[0] < 10){
-		tpfVol = F("000");
-	}
-	else if (tmpInts[0] < 0){ //min
-		tpfVol = F("0000");
-		tmpInts[0] = 0;
-	}
-
 	lcd.clear();
-	lcd.print(tpfVol);
 	lcd.print(tmpInts[0]);
-	lcd.print(F(" lqd/gal"));
-	lcd.setCursor(0, 1);
+	lcd.print(F(" TOPOFF GAL"));
+	lcd.setCursor(0,1);
 	lcd.print(F("<back>      <ok>"));
-	lcd.setCursor(cursorX, 0);
 }
-
-void setDrainTime(int dir){
-	tmpInts[0] += dir;
+void printTopOffDelay(int dir = 0){
+	if (dir != 0){
+		tmpInts[0] += dir;
+		tmpInts[0] = (tmpInts[0] >= 99) ? 99 : (tmpInts[0] <= 1) ? 1 : tmpInts[0];
+	}
+	lcd.clear();
+	lcd.print(tmpInts[0]);
+	lcd.print(F(" TOPOFF DELAY"));
+	lcd.setCursor(0,1);
+	lcd.print(F("<back>      <ok>"));
+}
+void printDrainTime(int dir = 0){
 	String drainTime;
+	if (dir != 0){
+		tmpInts[0] += dir;
+	}
 	if (tmpInts[0] > 9999){ //max
 		drainTime = F("9999");
 		tmpInts[0] = 9999;
@@ -139,23 +134,23 @@ void setDrainTime(int dir){
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
 }
-
-void setFlowMeterCalibration(int dir){
-
-	if (cursorX == 5 && cursorY == 0){
-		if (dir > 0){
-			tmpFloats[0] += .05;
+void printFlowCalibration(int dir = 0){
+	if (dir != 0){
+		if (cursorX == 5 && cursorY == 0){
+			if (dir > 0){
+				tmpFloats[0] += .05;
+			}
+			else{
+				tmpFloats[0] -= .05;
+			}
 		}
-		else{
-			tmpFloats[0] -= .05;
-		}
-	}
-	if (cursorX == 13 && cursorY == 0){
-		if (dir > 0){
-			tmpFloats[1] += .05;
-		}
-		else{
-			tmpFloats[1] -= .05;
+		if (cursorX == 13 && cursorY == 0){
+			if (dir > 0){
+				tmpFloats[1] += .05;
+			}
+			else{
+				tmpFloats[1] -= .05;
+			}
 		}
 	}
 	lcd.clear();
@@ -167,8 +162,166 @@ void setFlowMeterCalibration(int dir){
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
 }
+void printFullFlushing(){
+	lcd.print(F("MANUAL FLUSHING"));
+	lcd.setCursor(0, 1);
+	lcd.print(F("<in><out><done>"));
+	cursorX = 1;
+	cursorY = 0;
+	lcd.setCursor(cursorX, cursorY);
+}
 
-void Flow()
-{
-	tmpFlowCount++; //Every time this function is called, increment "count" by 1
+//Saves
+void saveReservoirVolume(){
+	if (cursorX == 11 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
+		JsonObject& data = getIrrigationData(jsonBuffer);
+		data["rsvrvol"].asArray()[0] = rsvrVol = tmpFlowCount;
+		setIrrigationData(data);
+	}
+	if (cursorX == 1 && cursorY == 1){
+		exitScreen();
+	}
+}
+void saveTopOffConcentrate(){
+	if (cursorX == 13 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<irrigateBufferSize> buffer;
+		JsonObject& data = getIrrigationData(buffer);
+		data["tpfccnt"] = topOffConcentrate = tmpInts[0];
+		setIrrigationData(data);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpInts[0] = 0;
+		exitScreen();
+	}
+}
+void saveTopOffAmount(){
+	if (cursorX == 13 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<irrigateBufferSize> buffer;
+		JsonObject& data = getIrrigationData(buffer);
+		data["tpfamt"] = topOffAmount = tmpInts[0];
+		setIrrigationData(data);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpInts[0] = 0;
+		exitScreen();
+	}
+}
+void saveTopOffDelay(){
+	if (cursorX == 13 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<irrigateBufferSize> buffer;
+		JsonObject& data = getIrrigationData(buffer);
+		data["tpfdly"] = topOffDelay = tmpInts[0];
+		setIrrigationData(data);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpInts[0] = 0;
+		exitScreen();
+	}
+}
+void saveFlowCalibration(){
+	if (cursorX == 13 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
+		JsonObject& data = getIrrigationData(jsonBuffer);
+		data["flMeters"].asArray()[0] = tmpFloats[0];
+		data["flMeters"].asArray()[1] = tmpFloats[1];
+		flowMeterConfig[0] = tmpFloats[0];
+		flowMeterConfig[1] = tmpFloats[1];
+		setIrrigationData(data);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpFloats[0] = 0;
+		tmpFloats[1] = 0;
+		exitScreen();
+	}
+}
+void saveDrainTime(){
+	if (cursorX == 13 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<irrigateBufferSize> buffer;
+		JsonObject& data = getIrrigationData(buffer);
+		data["drntime"] = drainTime = tmpInts[0];
+		setIrrigationData(data);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpInts[0] = 0;
+		exitScreen();
+	}
+}
+
+//Helpers
+void checkFlowRates(){
+	if (currentRsvrVol == (tmpFlowCount * 2.25)){ //water must be done flowing from either direction
+		if (flowInRate == true || flowOutRate == true){
+			//lets store the final size once know we are done filling
+			//StaticJsonBuffer<irrigateBufferSize> irrigationBuffer;
+			//JsonObject& irrigationData = getIrrigationData(irrigationBuffer);
+			//irrigationData["currentVol"] = tmpFlowCount;
+			//setIrrigationData(irrigationData);
+		}
+
+		if (flowInRate == true){ //lets turn off our InFlow flag
+			flowInRate = false;
+		}
+
+		if (flowOutRate == true){ //lets turn off our OutFlow flag
+			flowOutRate = false;
+		}
+	}
+}
+void countRsvrFill(){
+	tmpFlowCount++; //Every time this function is called, increment our global tmpFlowCount by 1
+	currentRsvrVol = (tmpFlowCount * 2.25); //next we update our global currentRsvrVol to gallons
+	flowInRate = true;
+}
+void countRsvrDrain(){
+	tmpFlowCount--; //Every time this function is called, decrement our global tmpFlowCount by 1
+	if (tmpFlowCount <= 0){ tmpFlowCount = 0; } //we can't have less than 0 in our reservoir
+	currentRsvrVol = (tmpFlowCount * 2.25); //next we update our global currentRsvrVol to gallons
+	flowOutRate = true;
+}
+
+void flushPlantWater(){
+	RelayToggle(12, true);
+	int i = drainTime * 60; //mins x 60secs = loop total
+	while (i--){//we use loop to count i (aka seconds), then delay each loop by 1 second
+		delay(1000); //1 second delay ensures we don't exceed 30k delay max
+		if (i == 0){ //we done waiting?
+			RelayToggle(12, false); //if out of wait loops, we turn drain valve off.
+		}
+	}
+}
+void flushRsvrWater(){
+	//because of reservoir's automated dual float valve 
+	//we know we are done flushing when flowInRate beings for us
+	while (flowInRate == false){
+		RelayToggle(11, true);
+		if (flowInRate == true){
+			RelayToggle(11, false);
+			break;
+		}
+	}
+}
+void fullFlushing(){
+	RelayToggle(11, true);
+	RelayToggle(12, true);
+	int i = drainTime * 60;
+	while (i--){
+		delay(1000);
+		if (i == 0){ //we done waiting?
+			RelayToggle(11, false);
+			RelayToggle(12, false);
+		}
+	}
 }

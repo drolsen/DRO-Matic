@@ -1,26 +1,44 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Globals
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
 #include "Globals.h"
 #include "Channels.h"
-#include "Sessions.h"
+#include "Regimens.h"
 #include "Menus.h"
 
-int Key, minPPM, maxPPM, minPH, maxPH, maxRegimens;
-double PPMHundredth;
-double InFlowRate, OutFlowRate = 0;
+boolean flowInRate, flowOutRate;
+byte currentTimerSessions[4], flowMeterConfig[2], 
+minPH, maxPH, 
+currentRegimen, maxRegimens, 
+drainTime, 
+topOffConcentrate,
+topOffAmount,
+topOffDelay,
+cropStatus, 
+feedingType,
+lastFeedingWeek,
+lastFeedingDay;
+
+int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay;
+double currentRsvrVol = 0;
 
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 DS3231  rtc(SDA, SCL);
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMOFLEDS, LEDPIN, NEO_GRB + NEO_KHZ800);
-ResponsiveAnalogRead PH1Analog(PHPin1, true, .25);
-ResponsiveAnalogRead PH2Analog(PHPin2, true, .25);
-ResponsiveAnalogRead EC1Analog(ECPin1, true, .5);
-ResponsiveAnalogRead EC2Analog(ECPin2, true, .5);
+
+//Tentical Sheild
+int channel_ids[] = { 111, 112, 113, 114 };
+char *channel_names[] = { "EC1", "PH1", "EC2", "PH2" }; // <-- CHANGE THIS.
+char sensordata[30];                  // A 30 byte character array to hold incoming data from the sensors
+byte sensor_bytes_received = 0;       // We need to know how many characters bytes have been received
+
+byte code = 0;                        // used to hold the I2C response code.
+byte in_char = 0;                     // used as a 1 byte buffer to store in bound bytes from the I2C Circuit.
+
 
 File tmpFile;
 String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
@@ -85,17 +103,21 @@ const char _open[5] PROGMEM = "OPEN";
 const char _new[4] PROGMEM = "NEW";
 const char _delete[7] PROGMEM = "DELETE";
 const char _reset[7] PROGMEM = "RESET";
+const char _start[6] PROGMEM = "START";
+const char _pause[6] PROGMEM = "PAUSE";
 const char _amt[7] PROGMEM = "AMOUNT";
 const char _rsvrVol[8] PROGMEM = "RSVRVOL";
-const char _chCalib[6] PROGMEM = "CALIB";
+const char _pumpCal[8] PROGMEM = "PUMPCAL";
 const char _topOffCcnt[8] PROGMEM = "TPFCCNT";
-const char _topOffVol[7] PROGMEM = "TPFVOL";
+const char _topOffAmnt[8] PROGMEM = "TPFAMT";
+const char _topOffDly[8] PROGMEM = "TPFDLY";
 const char _drainTime[8] PROGMEM = "DRNTIME";
 const char _doses[6] PROGMEM = "DOSES";
 const char _prime[6] PROGMEM = "PRIME";
 const char _startend[9] PROGMEM = "STARTEND";
 const char _weeks[6] PROGMEM = "WEEKS";
 const char _flowcal[8] PROGMEM = "FLOWCAL";
+const char _manFlush[9] PROGMEM = "MANFLUSH";
 const char _ECCal[6] PROGMEM = "ECCAL";
 const char _PHCal[6] PROGMEM = "PHCAL";
 const char _delay[6] PROGMEM = "DELAY";
@@ -103,7 +125,6 @@ const char _delay[6] PROGMEM = "DELAY";
 //Consolidated Repeating Displays Words
 const char System[7] PROGMEM = "SYSTEM";
 const char Settings[9] PROGMEM = "SETTINGS";
-const char Channel[8] PROGMEM = "CHANNEL";
 const char Channels[9] PROGMEM = "CHANNELS";
 const char NumberOf[10] PROGMEM = "NUMBER OF";
 const char Configuration[14] PROGMEM = "CONFIGURATION";
@@ -125,7 +146,8 @@ const char RegimensML[14] PROGMEM = "REGIMENS (ml)";
 const char RegimensWeeks[14] PROGMEM = "REGIMEN DOSES";
 const char Weeks[6] PROGMEM = "WEEKS";
 const char Solution[9] PROGMEM = "SOLUTION";
-const char Delay[6] PROGMEM = "DELAY";
+const char Amount[7] PROGMEM = "AMOUNT";
+const char Flushing[9] PROGMEM = "FLUSHING";
 
 //Direct Translations
 const char DateTime[12] PROGMEM = "DATE & TIME";
@@ -137,6 +159,8 @@ const char Open[5] PROGMEM = "OPEN";
 const char New[4] PROGMEM = "NEW";
 const char Delete[7] PROGMEM = "DELETE";
 const char Reset[6] PROGMEM = "RESET";
+const char Start[6] PROGMEM = "START";
+const char Pause[6] PROGMEM = "PAUSE";
 const char DrainLength[11] PROGMEM = "DRAIN TIME";
 const char StartEnd[11] PROGMEM = "START END";
 const char PrimeChannel[14] PROGMEM = "PRIME CHANNEL";
@@ -144,10 +168,12 @@ const char VolumeConfig[14] PROGMEM = "VOLUME CONFIG";
 const char ChannelDose[16] PROGMEM = "CHANNEL DOSEING";
 const char DelayConfig[16] PROGMEM = "DELAY CONFIGURE";
 const char FlowMeters[12] PROGMEM = "FLOW METERS";
+const char ChannelPump[13] PROGMEM = "CHANNEL PUMP";
+const char ManualSystem[14] PROGMEM = "MANUAL SYSTEM";
 
 
 
-const char* const displayNames[27][3] PROGMEM = {
+const char* const screenNames[30][3] PROGMEM = {
 	{ _sys, System, Settings },
 	{ _chan, Channels, Settings },
 	{ _crop, Crop, Settings },
@@ -162,16 +188,20 @@ const char* const displayNames[27][3] PROGMEM = {
 	{ _new, New, Crop },
 	{ _delete, Delete, Crop },
 	{ _reset, Reset, Crop },
+	{ _start, Start, Crop },
+	{ _pause, Pause, Crop },
 	{ _rsvrVol, Reservoir, VolumeConfig },
-	{ _topOffVol, TopOff, Volume },
 	{ _topOffCcnt, TopOff, Concent },
+	{ _topOffAmnt, TopOff, Amount },
+	{ _topOffDly, TopOff, DelayConfig },
 	{ _drainTime, DrainLength, Configuration },
 	{ _doses, NumberOf, RegimensWeeks },
 	{ _weeks, NumberOf, Weeks },
 	{ _amt, RegimensML, Configuration },
 	{ _delay, ChannelDose, DelayConfig },
-	{ _chCalib, Channel, Calib },
+	{ _pumpCal, ChannelPump, Calib },
 	{ _flowcal, FlowMeters, Calib },
+	{ _manFlush, ManualSystem, Flushing },
 	{ _prime, PrimeChannel, Solution },
 	{ _startend, StartEnd, Times }
 };

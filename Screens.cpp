@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Screens
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
@@ -10,7 +10,7 @@
 #include "Menus.h"
 #include "DatesTime.h"
 #include "Crops.h"
-#include "Sessions.h"
+#include "Regimens.h"
 #include "Timers.h"
 
 String screenName;
@@ -40,39 +40,6 @@ byte downArrow[8] = {
 	B00000
 };
 
-byte infinityLeft[8] = {
-	B00000,
-	B00000,
-	B00110,
-	B01001,
-	B01001,
-	B00110,
-	B00000,
-	B00000
-};
-
-byte infinityRight[8] = {
-	B00000,
-	B00000,
-	B00110,
-	B01001,
-	B01001,
-	B00110,
-	B00000,
-	B00000
-};
-
-byte infintyRight[8] = {
-	B00000,
-	B00000,
-	B01100,
-	B10010,
-	B10010,
-	B01100,
-	B00000,
-	B00000
-};
-
 void exitScreen(){
 	menusHistory.pop_back();
 	menuIndex = 0;
@@ -82,7 +49,7 @@ void exitScreen(){
 	lcd.clear();
 	lcd.noBlink();
 	tmpFile.close();
-	printDisplayNames(menus.front());
+	printScreenNames(menus.front());
 	printScrollArrows();
 	delay(350);
 }
@@ -90,32 +57,24 @@ void exitScreen(){
 void printHomeScreen(){
 	captureDateTime();
 	char monthsBuffer[8];
-	float PH1Reading = (PH1Analog.getValue() * 14.0 / 1024);
-	int EC1Reading = (EC1Analog.getValue() * PPMHundredth);
-
-	//Ph1 = A1
-	//EC1 = A4
-
-	//Ph2 = A3
-	//EC2 = A2
-
+	
+	int EC1Value = getWaterProbeValue(0);
+	float PH1Value = getWaterProbeValue(1);
 	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
 	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[rtc.getTime().mon-1]))) + F(" ") + tmpDisplay[1]);
 	lcd.setCursor(0, 1);
 	lcd.print(F("PPM:"));
-	lcd.print(EC1Reading);
+	lcd.print(EC1Value);
 	lcd.print(F(" PH:"));
-	lcd.print(PH1Reading);
+	lcd.print(PH1Value);
 	lcd.home();
 	lcd.noBlink();
 
-
-
-	byte RED = (PH1Reading < minPH ) ? 255 : 0;
-	byte GREEN = (PH1Reading >= minPH && PH1Reading <= maxPH)? 255 : 0;
-	byte BLUE = (PH1Reading > maxPH) ? 255 : 0;
+	int RED = (PH1Value < minPH) ? 255 : 0;
+	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
+	int BLUE = (PH1Value > maxPH) ? 255 : 0;
 
 	for (int i = 0; i<NUMOFLEDS; i++){
 		// pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
@@ -181,7 +140,7 @@ void printScrollArrows(){
 	lcd.home();
 }
 
-void printDisplayNames(String menu){
+void printScreenNames(String menu){
 	lcd.home();
 	bool hasMatch = false;
 	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL; //Channels
@@ -210,9 +169,9 @@ void printDisplayNames(String menu){
 			char match1Buffer[18];
 			char match2Buffer[18];
 			char match3Buffer[18];
-			String match1 = strcpy_P(match1Buffer, (char*)pgm_read_word(&(displayNames[i][0])));
-			String match2 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(displayNames[i][1])));
-			String match3 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(displayNames[i][2])));
+			String match1 = strcpy_P(match1Buffer, (char*)pgm_read_word(&(screenNames[i][0])));
+			String match2 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][1])));
+			String match3 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][2])));
 
 			if (menu == match1){
 				hasMatch = true;

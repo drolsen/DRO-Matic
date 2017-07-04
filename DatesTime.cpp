@@ -1,20 +1,21 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS DateTime
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
 #include "DatesTime.h"
 #include "Core.h"
-#include "Sessions.h"
+#include "Regimens.h"
 #include "Screens.h"
 
 byte currentMinute;
 byte previousMinute;
 byte days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-unsigned long menuMillis, homeMillis, currentMillis = 0;  //stores last time
+unsigned long currentMillis, menuMillis, homeMillis, phRsvrMillis, phPlantMillis;  //stored timestamps
 
+//Read & Write from SD
 void captureDateTime(){
 	Time current = rtc.getTime();
 	previousMinute = current.min;
@@ -26,10 +27,9 @@ void captureDateTime(){
 	tmpInts[5] = current.min;
 	captureDateTimeDisplays();
 }
-
 void captureSessionDateTime(){
 	DynamicJsonBuffer sessionBuffer;
-	JsonObject& data = getSessionData(sessionBuffer);
+	JsonObject& data = getRegimenData(sessionBuffer);
 	JsonArray& date = data["date"].asArray();
 	JsonArray& time = data["time"].asArray();
 	tmpInts[0] = date[0]; //year
@@ -41,6 +41,66 @@ void captureSessionDateTime(){
 	captureDateTimeDisplays();
 }
 
+//Prints
+void printDateTime(int dir = 0){
+	if (dir != 0){
+		int maxDaysInMonth = days[tmpInts[1]];
+		if (cursorY == 0){
+			if (cursorX == 10){
+				//Month
+				(dir == 1) ? (tmpInts[1] = (tmpInts[1] + 1 > 11) ? 0 : tmpInts[1] + 1) : (tmpInts[1] = (tmpInts[1] - 1 < 0) ? 11 : tmpInts[1] - 1);
+				tmpInts[2] = 1;
+			}
+			if (cursorX == 13){
+				//Day
+				(dir == 1) ? (tmpInts[2] = (tmpInts[2] + 1 > maxDaysInMonth) ? 1 : tmpInts[2] + 1) : (tmpInts[2] = (tmpInts[2] - 1 < 1) ? maxDaysInMonth : tmpInts[2] - 1);
+			}
+			if (cursorX == 1){
+				//Hour
+				(dir == 1) ? (tmpInts[4] = (tmpInts[4] + 1 > 24) ? 1 : tmpInts[4] + 1) : (tmpInts[4] = (tmpInts[4] - 1 < 1) ? 24 : tmpInts[4] - 1);
+			}
+			if (cursorX == 4){
+				//Min
+				(dir == 1) ? (tmpInts[5] = (tmpInts[5] + 1 > 59) ? 0 : tmpInts[5] + 1) : (tmpInts[5] = (tmpInts[5] - 1 < 0) ? 59 : tmpInts[5] - 1);
+			}
+		}
+		else{
+			if (cursorX == 3){
+				//Year
+				tmpInts[0] = (dir == 1) ? tmpInts[0] + 1 : tmpInts[0] - 1;
+			}
+		}
+	}
+
+	lcd.clear();
+	captureDateTimeDisplays();
+	char monthsBuffer[8];
+
+	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
+	lcd.setCursor(0, 1);
+	lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
+	lcd.setCursor(cursorX, cursorY);
+}
+
+//Saves
+void saveDateTime(){
+	if (cursorX == 13 && cursorY == 1){
+		//hour, min, seconds
+		rtc.setTime(tmpInts[4], tmpInts[5], 0);
+		//day, month (RTC counts first month as 1, not 0), year
+		rtc.setDate(tmpInts[2], tmpInts[1] + 1, tmpInts[0]);
+		rtc.setDOW(calcDayOfWeek(tmpInts[0], tmpInts[1], tmpInts[2]));
+	}
+	if (cursorX == 6 || cursorX == 13 && cursorY == 1){
+		tmpDisplay[0] = ""; //suffix
+		tmpDisplay[1] = ""; //hour
+		tmpDisplay[2] = ""; //min
+		tmpDisplay[3] = ""; //day
+		exitScreen();
+	}
+}
+
+//Helpers
 void captureDateTimeDisplays(int month = tmpInts[1], int day = tmpInts[2], int hour = tmpInts[4], int min = tmpInts[5]){
 	byte i, maxDaysInMonth, hourConversion;
 
@@ -70,9 +130,7 @@ void captureDateTimeDisplays(int month = tmpInts[1], int day = tmpInts[2], int h
 	//AM/PM
 	tmpDisplay[4] = (hour >= 12 && hour < 24) ? F("PM") : F("AM");
 }
-
 int calculateDayOfYear(int day, int month, int year) {
-
 	// Given a day, month, and year (4 digit), returns 
 	// the day of year. Errors return 999.
 	byte i;
@@ -112,41 +170,75 @@ int calculateDayOfYear(int day, int month, int year) {
 	doy += day;
 	return doy;
 }
+byte calcDayOfWeek(unsigned int y, byte m, byte d)
+{
+	// cast out multiples of 400 from y
+	y -= (2000 * (y >> 11));
+	while (y >= 400) y -= 400;
 
-void setDateTime(int dir){
-	int maxDaysInMonth = days[tmpInts[1]];
-	if (cursorY == 0){
-		if (cursorX == 10){
-			//Month
-			(dir == 1) ? (tmpInts[1] = (tmpInts[1] + 1 > 11) ? 0 : tmpInts[1] + 1) : (tmpInts[1] = (tmpInts[1] - 1 < 0) ? 11 : tmpInts[1] - 1);
-			tmpInts[2] = 1;
-		}
-		if (cursorX == 13){
-			//Day
-			(dir == 1) ? (tmpInts[2] = (tmpInts[2] + 1 > maxDaysInMonth) ? 1 : tmpInts[2] + 1) : (tmpInts[2] = (tmpInts[2] - 1 < 1) ? maxDaysInMonth : tmpInts[2] - 1);
-		}
-		if (cursorX == 1){
-			//Hour
-			(dir == 1) ? (tmpInts[4] = (tmpInts[4] + 1 > 24) ? 1 : tmpInts[4] + 1) : (tmpInts[4] = (tmpInts[4] - 1 < 1) ? 24 : tmpInts[4] - 1);
-		}
-		if (cursorX == 4){
-			//Min
-			(dir == 1) ? (tmpInts[5] = (tmpInts[5] + 1 > 59) ? 0 : tmpInts[5] + 1) : (tmpInts[5] = (tmpInts[5] - 1 < 0) ? 59 : tmpInts[5] - 1);
+	boolean leap = ((y & 3) == 0);
+	if ((y == 100) || (y == 200) || (y == 300)) leap = false;
+
+	if (d > 31 || d == 0) return 0;
+
+	byte w = 6;
+	while (y >= 100) { y -= 100; w -= 2; }
+
+	w += (y + (y >> 2));
+
+	// correction for Jan. and Feb. of leap year
+	if (leap && (m <= 2)) w--;
+
+	// using subtraction iso addition makes the while at end possible 1 iteration faster.
+	switch (m)
+	{
+	case 1:
+		w++;
+		break;
+	case 2:
+		if (d > (leap ? 29 : 28)) return 0;
+		w += 4;
+		break;
+	case 3:
+		w += 4;
+		break;
+	case 5:
+		w += 2;
+		break;
+	case 7:
+		break;
+	case 8:
+		w += 3;
+		break;
+	case 10:
+		w++;
+		break;
+	case 12:
+		w += 6;
+		break;
+	default:
+		if (d > 30) return 0;
+		switch (m)
+		{
+		case 4:
+			break;
+		case 6:
+			w += 5;
+			break;
+		case 9:
+			w += 6;
+			break;
+		case 11:
+			w += 4;
+			break;
+		default:
+			return 0;
 		}
 	}
-	else{
-		if (cursorX == 3){
-			//Year
-			tmpInts[0] = (dir == 1) ? tmpInts[0] + 1 : tmpInts[0] - 1;
-		}
-	}
 
-	lcd.clear();
-	captureDateTimeDisplays();
-	char monthsBuffer[8];
+	w += d;
 
-	lcd.print(tmpDisplay[2] + F(":") + tmpDisplay[3] + tmpDisplay[4] + F(" ") + strcpy_P(monthsBuffer, (char*)pgm_read_word(&(months[tmpInts[1]]))) + F(" ") + tmpDisplay[1]);
-	lcd.setCursor(0, 1);
-	lcd.print(String(tmpInts[0]) + F(" <back> <ok>"));
-	lcd.setCursor(cursorX, cursorY);
+	// there are only 7 days in a week, so we "cast out" sevens
+	while (w > 7) w = (w >> 3) + (w & 7);
+	return w;
 }

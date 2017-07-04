@@ -1,7 +1,7 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Timers
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
@@ -13,8 +13,8 @@
 
 byte currentTimerIndex, currentTimerSessionIndex, currentTimerSessionDayIndex;
 
-//Get and set timer data
-JsonObject& getTimerData(JsonBuffer& b, int timerIndex = currentTimerIndex){
+//Read & Write from SD
+JsonObject& getTimerData(JsonBuffer& b){
 	tmpFile = SD.open("dromatic/" + cropName + "/Timer.dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
@@ -27,15 +27,12 @@ void setTimerData(JsonObject& d, int timerIndex = currentTimerIndex){
 	tmpFile.print(b);
 	tmpFile.close();
 }
-
-//Get and set timer sessions
 JsonObject& getTimerSessionData(JsonBuffer& b, int timerIndex = currentTimerIndex, int sessionIndex = currentTimerSessionIndex){
 	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + sessionIndex + ".dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
-
 void setTimerSessionData(JsonObject& d, int timerIndex = currentTimerIndex, int sessionIndex = currentTimerSessionIndex){
 	char b[128];
 	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + sessionIndex + ".dro", O_WRITE | O_TRUNC);
@@ -44,7 +41,8 @@ void setTimerSessionData(JsonObject& d, int timerIndex = currentTimerIndex, int 
 	tmpFile.close();
 }
 
-void setTimerWeeks(int dir) {
+//Prints
+void printTimerWeeks(int dir) {
 	tmpInts[0] += dir;
 	String weeksDisplay;
 	if (tmpInts[0] > 99){ //max
@@ -67,22 +65,19 @@ void setTimerWeeks(int dir) {
 	lcd.setCursor(cursorX, cursorY);
 
 }
+void printTimerStartEnd(int dir){
 
-void setTimerStartEnd(int dir){
-
-	String DOW[7] = { "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su" };
+	String DOW[7] = { "Su", "Mo", "Tu", "We", "Th", "Fi", "Sa" };
 	String DOWDisplay, startDisplay, endDisplay = "";
-	String AMPM1 = "AM";
-	String AMPM2 = "PM";
+	String AMPM1 = F("AM");
+	String AMPM2 = F("PM");
 	if (cursorY == 0){
 		if (cursorX == 14 || cursorX == 11){
 			StaticJsonBuffer<timerSessionBufferSize> saveBuffer;
 			JsonObject& saveData = getTimerSessionData(saveBuffer, currentTimerIndex, currentTimerSessionIndex);
 
-			saveData["start"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[0]; //start hour
-			saveData["start"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[1]; //start am/pm
-			saveData["end"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[2]; //end hour
-			saveData["end"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[3]; //end am/pm
+			saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[0]; //start hour
+			saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[1]; //end hour
 			setTimerSessionData(saveData);
 		}
 
@@ -93,16 +88,14 @@ void setTimerStartEnd(int dir){
 				currentTimerSessionIndex = 1;
 			}
 			if (!SD.exists("dromatic/" + cropName + "/timers/recep0" + currentTimerIndex + "/week" + currentTimerSessionIndex + ".dro")){
-				makeTimerSessionFile("dromatic/" + cropName + "/timers/recep0" + currentTimerIndex, currentTimerSessionIndex);
+				makeNewFile("dromatic/" + cropName + "/timers/recep0" + currentTimerIndex, newTimerSessionData());
 			}
 
 			//Finally we are going to open the next week's data and set it to our temp data
 			StaticJsonBuffer<timerSessionBufferSize> openBuffer;
 			JsonObject& openData = getTimerSessionData(openBuffer, currentTimerIndex, currentTimerSessionIndex);
-			tmpInts[0] = openData["start"].asArray()[currentTimerSessionDayIndex][0]; //start hour
-			tmpInts[1] = openData["start"].asArray()[currentTimerSessionDayIndex][1]; //start am/pm
-			tmpInts[2] = openData["end"].asArray()[currentTimerSessionDayIndex][0]; //end hour
-			tmpInts[3] = openData["end"].asArray()[currentTimerSessionDayIndex][1]; //end am/pm
+			tmpInts[0] = openData["times"].asArray()[currentTimerSessionDayIndex][0]; //start hour
+			tmpInts[1] = openData["times"].asArray()[currentTimerSessionDayIndex][1]; //end hour
 			currentTimerSessionDayIndex = 0;
 		}
 
@@ -119,12 +112,11 @@ void setTimerStartEnd(int dir){
 			//Finally we are going to open the next week's data and set it to our temp data
 			StaticJsonBuffer<timerSessionBufferSize> openBuffer;
 			JsonObject& openData = getTimerSessionData(openBuffer, currentTimerIndex, currentTimerSessionIndex);
-			tmpInts[0] = openData["start"].asArray()[currentTimerSessionDayIndex][0]; //start hour
-			tmpInts[1] = openData["start"].asArray()[currentTimerSessionDayIndex][1]; //start am/pm
-			tmpInts[2] = openData["end"].asArray()[currentTimerSessionDayIndex][0]; //end hour
-			tmpInts[3] = openData["end"].asArray()[currentTimerSessionDayIndex][1]; //end am/pm
+			tmpInts[0] = openData["times"].asArray()[currentTimerSessionDayIndex][0]; //start hour
+			tmpInts[1] = openData["times"].asArray()[currentTimerSessionDayIndex][1]; //end hour
 			
 		}
+
 		DOWDisplay = DOW[currentTimerSessionDayIndex];
 		
 		lcd.clear();
@@ -133,62 +125,63 @@ void setTimerStartEnd(int dir){
 		//START
 		if (cursorX == 1){
 			tmpInts[0] += dir;
-			if (tmpInts[0] > 12){
-				tmpInts[0] = 1;
+			if (tmpInts[0] > 23){
+				tmpInts[0] = 23;
 			}
-			if (tmpInts[0] < 1) {
-				tmpInts[0] = 12;
+			if (tmpInts[0] < 0) {
+				tmpInts[0] = 0;
 			}
-		}
-		if (tmpInts[0] >= 10){
-			startDisplay = F("");
-		}else{
-			startDisplay = F("0");
-		}
-		if (cursorX == 3){
-			if (dir > 0){
-				tmpInts[1] = 1;
-			}else{
-				tmpInts[1] = 0;
+			if (tmpInts[0] >= tmpInts[1] && tmpInts[1] < 24 && dir > 0){
+				tmpInts[1]++;
 			}
 		}
-		AMPM1 = (tmpInts[1] > 0) ? F("PM") : F("AM");
 
-		lcd.print(startDisplay);
-		lcd.print(tmpInts[0]);
-		lcd.print(AMPM1);
-		lcd.print(String("-"));
+		if (tmpInts[0] > 12){
+			startDisplay = ((tmpInts[0] - 12) < 10) ? "0" + String(tmpInts[0] - 12) : String(tmpInts[0] - 12);
+		}else{
+			if (tmpInts[0] == 0){
+				startDisplay = String(12);
+			}else{
+				startDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+			}
+		}
 
 		//END
 		if (cursorX == 6){
-			tmpInts[2] += dir;
+			tmpInts[1] += dir;
 
-			if (tmpInts[2] > 12){
-				tmpInts[2] = 1;
+			if (tmpInts[1] > 24){
+				tmpInts[1] = 24;
 			}
-			if (tmpInts[2] < 1) {
-				tmpInts[2] = 12;
+			if (tmpInts[1] < 1) {
+				tmpInts[1] = 1;
 			}
-		}
-
-		if (tmpInts[2] >= 10){
-			endDisplay = F("");
-		}else{
-			endDisplay = F("0");
-		}
-
-		if (cursorX == 8){
-			if (dir > 0){
-				tmpInts[3] = 1;
-			}else{
-				tmpInts[3] = 0;
+			if (tmpInts[1] <= tmpInts[0] && tmpInts[0] > 0 && dir != 0){
+				tmpInts[0]--;
 			}
 		}
 
-		AMPM2 = (tmpInts[3] > 0) ? F("PM") : F("AM");
+		if (tmpInts[1] > 12){
+			endDisplay = ((tmpInts[1] - 12) < 10) ? "0" + String(tmpInts[1] - 12) : String(tmpInts[1] - 12);
+		}
+		else{
+			if (tmpInts[1] == 0){
+				endDisplay = String(12);
+			}
+			else{
+				endDisplay = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+			}
+		}
+
+		AMPM1 = (tmpInts[0] > 11 && tmpInts[0] < 24) ? F("PM") : F("AM");
+
+		lcd.print(startDisplay);
+		lcd.print(AMPM1);
+		lcd.print(String("-"));
+
+		AMPM2 = (tmpInts[1] > 11 && tmpInts[1] < 24) ? F("PM") : F("AM");
 
 		lcd.print(endDisplay);
-		lcd.print(tmpInts[2]);
 		lcd.print(AMPM2);
 		lcd.print(F(" "));
 		lcd.print(DOWDisplay);
@@ -204,30 +197,41 @@ void setTimerStartEnd(int dir){
 	lcd.setCursor(cursorX, cursorY);
 }
 
-void makeTimerSessionFile(String path, byte index){
+//Saves
+void saveStartEnd(){
+	if (cursorX == 11 && cursorY == 1){
+		lcd.clear();
+		lcd.home();
+		StaticJsonBuffer<timerBufferSize> jsonBuffer;
+		JsonObject& data = getTimerSessionData(jsonBuffer);
+		JsonArray& start = data["start"].asArray();
+		JsonArray& end = data["end"].asArray();
+		start[0] = tmpInts[0];
+		start[0] = tmpInts[1];
+		start[0] = tmpInts[2];
+
+		end[0] = tmpInts[3];
+		end[0] = tmpInts[4];
+		end[0] = tmpInts[5];
+
+		setTimerSessionData(data);
+	}
+	if (cursorX == 1 && cursorY == 1){
+		exitScreen();
+	}
+}
+
+//Helpers
+JsonObject& newTimerSessionData(){
 	byte i;
-	StaticJsonBuffer<768> jsonBuffer;
-	JsonObject& root = jsonBuffer.createObject();
-	JsonArray& start = root.createNestedArray("start");
-	JsonArray& end = root.createNestedArray("end");
+	StaticJsonBuffer<timerSessionBufferSize> jsonBuffer;
+	JsonObject& sessionData = jsonBuffer.createObject();
+	JsonArray& times = sessionData.createNestedArray("times");
 
 	for (i = 1; i <= 7; i++){
-		JsonArray& StartDOW = start.createNestedArray();
-		JsonArray& EndDOW = end.createNestedArray();
-
-		StartDOW.add(12);//hour
-		StartDOW.add(0); //am/pm
-
-		EndDOW.add(12);//hour
-		EndDOW.add(1); //am/pm
+		JsonArray& StartEnd = times.createNestedArray();
+		StartEnd.add(0);//hour
+		StartEnd.add(12); //am/pm
 	}
-
-	char buffer[128];
-	root.printTo(buffer, sizeof(buffer));
-
-	tmpFile = SD.open(path + "/Week"+index+".dro", FILE_WRITE);
-	tmpFile.print(buffer);
-	tmpFile.close();
-
-	Serial.flush();
+	return sessionData;
 }

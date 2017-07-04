@@ -1,0 +1,35 @@
+/*
+*  DROMatic.ino
+*  DROMatic OS Regimens
+*  Devin R. Olsen - July 4th, 2017
+*  devin@devinrolsen.com
+*/
+
+#ifndef _SESSIONS_h
+#define _SESSIONS_h
+#include "Globals.h"
+#include "Channels.h"
+#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+
+extern byte currentRegimenIndex;
+
+//Read & Write from SD
+extern JsonObject& getRegimenData(JsonBuffer& b, byte channelIndex = currentChannelIndex, byte sessionIndex = currentRegimenIndex);
+extern void setRegimenData(JsonObject& d, byte channelIndex = currentChannelIndex, byte sessionIndex = currentRegimenIndex, bool returnHome = true);
+
+//Prints
+extern void printRegimenNumber(int dir);
+extern void printRegimenAmount(int dir);
+
+//Saves
+extern void saveRegimenAmount();
+
+//Helpers
+extern void addRegimens(int currentSize, int addAmount);
+extern void trimRegimens(int currentSize, int trimAmount);
+
+//Dosing functionality
+extern void checkRegimenDosing();
+
+#endif
+

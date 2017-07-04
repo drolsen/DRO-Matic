@@ -1,16 +1,15 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Menus
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
-// Menus.h
 
 #ifndef _MENUS_h
 #define _MENUS_h
 #include "Globals.h"
 
-extern int menuIndex;
+extern byte menuIndex;
 extern vector<String> menus, menusHistory;
 
 extern String getMenuHistory();

@@ -1,10 +1,9 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Core
-*  Devin R. Olsen - Dec 31, 2016
+*  DROMatic OS Crops
+*  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
-// Crops.h
 
 #ifndef _CROPS_h
 #define _CROPS_h
@@ -21,22 +20,26 @@ extern JsonObject& getECData(JsonBuffer& b, byte ecRangeIndex);
 
 extern void setECData(JsonObject& d, byte ecRangeIndex);
 
-extern void changeCrop();
+extern void cropChange();
 
-extern void startNewCrop();
+extern void cropCreate();
 
-extern void renameCrop(int dir);
+extern void cropRename(int dir);
 
-extern int getCropCount();
+extern void cropBuild();
 
-extern void buildCrop();
+extern void cropLoad();
 
-extern void setPHRange(double dir);
-extern void setECRange(int dir);
+//Saves
+extern void saveECData();
+extern void savePHData();
 
-extern void setPPMHundredth(int dir);
+//Prints
+extern void printECCalibrations(String type, int dir = 0);
+extern void printPHCalibrations(String type, byte value);
 
-extern void makeECRangeFile(String path, JsonObject& data, int index);
+extern void printPHRange(double dir);
+extern void printECRange(int dir);
 
 #endif
 
