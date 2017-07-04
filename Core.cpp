@@ -43,7 +43,7 @@ void coreInit(){
 			tmpFile.close();
 			lcd.print(F("LOADING CROP..."));
 			lcd.setCursor(0, 1);
-			lcd.print(F("  PLEASE WAIT  "));
+			lcd.print(F("  PLEASE HOLD  "));
 			lcd.home();
 			cropLoad();
 			printHomeScreen();
@@ -105,9 +105,9 @@ void correctPlantEC(){
 		JsonObject& cropData = getCropData(cropBuffer);
 		lcd.clear();
 		lcd.home();
-		lcd.print(F("TOPOFF FEEDING"));
+		lcd.print(F("TOPPING OFF EC"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("PLEAES WAIT..."));
+		lcd.print(F("PLEAES HOLD!!!"));
 		while (currentRsvrVol > (currentRsvrVol - topOffAmount)){
 			RelayToggle(11, true);
 			detachInterrupt(digitalPinToInterrupt(FlowPinIn));
@@ -138,9 +138,9 @@ void correctPlantPH(){
 	if (pH > maxPH || pH < minPH){
 		lcd.clear();
 		lcd.home();
-		lcd.print(F("PLANT PH FIXING"));
+		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("PLEAES WAIT..."));
+		lcd.print(F("PLEAES HOLD!!!"));
 		if (pH > maxPH){ //we must micro-ph-dose our plant water DOWN
 			pumpSpin(10, 9, pumpCalibration);
 			phPlantMillis = currentMillis;
@@ -163,9 +163,9 @@ void correctRsvrPH(){
 		if (pH > maxPH || pH < minPH){
 			lcd.clear();
 			lcd.home();
-			lcd.print(F("RSVR PH FIXING"));
+			lcd.print(F("PH DRIFT FIXING"));
 			lcd.setCursor(0, 1);
-			lcd.print(F("PLEAES WAIT..."));
+			lcd.print(F("PLEAES HOLD!!!"));
 			pumpSpin(1, 8, pumpCalibration);
 			phRsvrMillis = currentMillis;
 		}else{

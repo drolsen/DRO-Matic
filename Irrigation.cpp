@@ -303,25 +303,28 @@ void flushPlantWater(){
 	}
 }
 void flushRsvrWater(){
-	//because of reservoir's automated dual float valve 
-	//we know we are done flushing when flowInRate beings for us
+	//while reservoir is not filling up, we flush current reservoir water to plants.
 	while (flowInRate == false){
 		RelayToggle(11, true);
 		if (flowInRate == true){
 			RelayToggle(11, false);
-			break;
+			break; //break the loop.
 		}
 	}
 }
 void fullFlushing(){
 	RelayToggle(11, true);
 	RelayToggle(12, true);
-	int i = drainTime * 60;
+	int i = drainTime * 60; //mins x 60secs = loop total
 	while (i--){
 		delay(1000);
-		if (i == 0){ //we done waiting?
+		if (i == 0){ //if out of drainTime loops, we close off both irrigation values.
+			RelayToggle(11, false); //close off in irrigation value
+			RelayToggle(12, false); //close off out irrigation value
+		}
+		//we have to close in irrigation value reservoir beings auto filling.
+		if (flowInRate == true){ 
 			RelayToggle(11, false);
-			RelayToggle(12, false);
 		}
 	}
 }
