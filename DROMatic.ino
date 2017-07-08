@@ -654,271 +654,270 @@ void loop()
 			delay(350);
 		}
 		//Saves
-		if ((millis() - menuMillis) >= 1000){ //prevents premature saving
-			if (screenName == "DATETIME"){
-				saveDateTime();
-			}
-			if (screenName == "NEW"){
-				if (cursorX == 11 && cursorY == 1){
-					String nameConfirm;
-					for (int i = 0; i < 15; i++){
-						nameConfirm = nameConfirm + nameArry[i];
-					}
-					if (nameConfirm == ""){
-						lcd.clear();
-						lcd.home();
-						lcd.print(F("Sorry, No Blank"));
-						lcd.setCursor(0, 1);
-						lcd.print(F("Crop Names"));
-						delay(3000);
-						lcd.clear();
-						lcd.setCursor(0, 1);
-						lcd.print(F("Crop Name <done>"));
-						cursorX = cursorY = 0;
-						lcd.home();
-					}
-					else if (SD.exists("dromatic/" + nameConfirm)){
-						lcd.clear();
-						lcd.home();
-						lcd.print(F("Sorry, Crop"));
-						lcd.setCursor(0, 1);
-						lcd.print(F("Already Exists"));
-						delay(3000);
-						lcd.clear();
-						lcd.print(nameConfirm);
-						lcd.setCursor(0, 1);
-						lcd.print(F("Crop Name <done>"));
-						cursorX = cursorY = 0;
-						lcd.home();
-					}
-					else {
-						cropBuild();
-					}
+		if (screenName == "DATETIME"){
+			saveDateTime();
+		}
+		if (screenName == "NEW"){
+			if (cursorX == 11 && cursorY == 1){
+				String nameConfirm;
+				for (int i = 0; i < 15; i++){
+					nameConfirm = nameConfirm + nameArry[i];
 				}
-			}
-			if (screenName == "OPEN"){
-				if (cursorX == 9 && cursorY == 1){
-					if (menus[menuIndex] != cropName){
-						cropChange();
-					}
-					else{
-						exitScreen();
-					}
-				}
-				if (cursorX == 1 && cursorY == 1){
-					exitScreen();
-				}
-			}
-			if (screenName == "RESET"){
-				if (cursorX == 13 && cursorY == 1){
-					lcd.clear();
-					lcd.print(F("RESETTING"));
-					lcd.setCursor(1, 0);
-					lcd.print(F("  PLEASE HOLD  "));
-
-					for (byte i = 1; i < 8; i++){
-						StaticJsonBuffer<channelBufferSize> channelBuffer;
-						JsonObject& channelData = getChannelData(channelBuffer, i);
-						byte totalSessions = channelData["totalSessions"];
-
-						for (byte j = 1; j < totalSessions; j++){
-							StaticJsonBuffer<regimenBufferSize> regimenBuffer;
-							JsonObject& regimenData = getRegimenData(regimenBuffer, i, j);
-							JsonArray& regimenDate = regimenData["date"].asArray();
-							regimenData["repeated"] = 0;
-							regimenData["expired"] = false;
-							regimenDate[0] = rtc.getTime().year;
-						}
-					}
-				}
-				if (cursorX == 1 || cursorX == 9 && cursorY == 1){
-					tmpInts[1] = tmpInts[0] = 0;
-					exitScreen();
-				}
-			}
-			if (screenName == "DELETE") {}
-			if (screenName == "RSVRVOL") {
-				saveReservoirVolume();
-			}
-			if (screenName == "DOSES"){
-				if (cursorX == 13 && cursorY == 1){
+				if (nameConfirm == ""){
 					lcd.clear();
 					lcd.home();
-					StaticJsonBuffer<cropBufferSize> buffer;
-					JsonObject& data = getCropData(buffer);
-
-					if (data["maxRegimens"] > tmpInts[0]){ //we are trimming sessions
-						lcd.print(F("TRIM REGIMENS"));
-						lcd.setCursor(0, 1);
-						lcd.print(F(" PLEASE HOLD... "));
-						trimRegimens(data["maxRegimens"], tmpInts[0]);
-					}
-					else if (data["maxRegimens"] < tmpInts[0]){ //we are adding sessions
-						lcd.print(F("ADDING REGIMENS"));
-						lcd.setCursor(0, 1);
-						lcd.print(F(" PLEASE HOLD... "));
-						addRegimens(data["maxRegimens"], tmpInts[0]);
-					}
-					data["maxRegimens"] = tmpInts[0]; //update channel's session total
-					maxRegimens = tmpInts[0];
-					setCropData(data, false);
-				}
-				if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
-					tmpInts[0] = 0;
-					exitScreen();
-				}
-			}
-			if (screenName == "PUMPCAL"){
-				savePumpCalibration();
-			}
-			if (screenName == "PUMPDLY"){
-				savePumpDelay();
-			}
-			if (screenName == "AMOUNT"){
-				saveRegimenAmount();
-			}
-			if (screenName == "TPFCCNT"){
-				saveTopOffConcentrate();
-			}
-			if (screenName == "TPFAMT"){
-				saveTopOffAmount();
-			}
-			if (screenName == "TPFDLY") {
-				saveTopOffDelay();
-			}
-			if (screenName == "FLOWCAL"){
-				saveFlowCalibration();
-			}
-			if (screenName == "DRNTIME") {
-				saveDrainTime();
-			}
-			if (screenName == "STARTEND"){
-				saveStartEnd();
-			}
-			if (screenName == "RECEP01" || screenName == "RECEP02" || screenName == "RECEP03" || screenName == "RECEP04") {
-				if (cursorX == 13 && cursorY == 1){
-					lcd.clear();
-					lcd.home();
-					StaticJsonBuffer<timerSessionBufferSize> saveBuffer;
-					JsonObject& saveData = getTimerSessionData(saveBuffer, currentTimerIndex, currentTimerSessionIndex);
-
-					saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[0]; //start hour
-					saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[1]; //end hour
-					setTimerSessionData(saveData);
-					checkRecepticals();
-				}
-				if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-					tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = 0;
-					exitScreen();
-				}
-			}
-			if (screenName == "PRIME"){
-				if (cursorX == 11 && cursorY == 1){
-					exitScreen();
-				}
-			}
-			if (screenName == "EC"){
-				saveECData();
-			}
-			if (screenName == "PH"){
-				savePHData();
-			}
-			if (screenName == "PHCAL"){
-				if (cursorX == 1 && cursorY == 1){ //back
-					exitScreen();
-				}
-				if (cursorX == 11 && cursorY == 1){ //forward
-					setPHWaterProbeCalibration(112, 4.0, 'low'); //ph probe 1
-					setPHWaterProbeCalibration(114, 4.0, 'low'); //ph probe 2
-					printPHCalibrations("MID", 7);
-					screenName = "PHCALMID";
-				}
-			}
-			if (screenName == "PHCALMID"){
-				if (cursorX == 1 && cursorY == 1){ //back
-					printPHCalibrations("LOW", 4);
-					screenName = "PHCALLOW";
-				}
-				if (cursorX == 11 && cursorY == 1){ //forward
-					setPHWaterProbeCalibration(112, 7.0, 'mid'); //ph probe 1
-					setPHWaterProbeCalibration(114, 7.0, 'mid'); //ph probe 2
-					printPHCalibrations("HI", 10);
-					screenName = "PHCALHI";
-				}
-			}
-			if (screenName == "PHCALHI"){
-				if (cursorX == 1 && cursorY == 1){ //back
-					printPHCalibrations("MID", 7);
-					screenName = "PHCALMID";
-				}
-				if (cursorX == 11 && cursorY == 1){ //forward
-					setPHWaterProbeCalibration(112, 10.0, 'high'); //ph probe 1
-					setPHWaterProbeCalibration(114, 10.0, 'high'); //ph probe 2
-					lcd.clear();
-					lcd.home();
-					lcd.print(F("PH CALIBRATION"));
+					lcd.print(F("Sorry, No Blank"));
 					lcd.setCursor(0, 1);
-					lcd.print(F("NOW FINISHED!"));
-					delay(5000);
-					exitScreen();
+					lcd.print(F("Crop Names"));
+					delay(3000);
+					lcd.clear();
+					lcd.setCursor(0, 1);
+					lcd.print(F("Crop Name <done>"));
+					cursorX = cursorY = 0;
+					lcd.home();
 				}
-			}
-			if (screenName == "ECCAL"){
-				if (cursorX == 11 && cursorY == 1){ //moving forward
-					setECWaterProbeCalibration(111, tmpIntsToInt(5), 'dry'); //ec probe 1
-					setECWaterProbeCalibration(113, tmpIntsToInt(5), 'dry'); //ec probe 2
-					printECCalibrations("LOW");
-					screenName = "ECCALLOW";
-				}
-				if ((cursorX == 1 && cursorY == 1)){ //cancel calibration
-					exitScreen();
-				}
-			}
-			if (screenName == "ECCALLOW"){
-				if (cursorX == 11 && cursorY == 1){ //going forward
-					setECWaterProbeCalibration(111, tmpIntsToInt(5), 'low'); //ec probe 1
-					setECWaterProbeCalibration(113, tmpIntsToInt(5), 'low'); //ec probe 2
-					printECCalibrations("HIGH");
-					screenName = "ECCALHI";
-				}
-				if ((cursorX == 1 && cursorY == 1)){ //going back
-					printECCalibrations("DRY");
-					screenName = "ECCAL";
-				}
-			}
-			if (screenName == "ECCALHI"){
-				if (cursorX == 11 && cursorY == 1){ //going forward
-					tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = tmpInts[4] = tmpInts[5] = 0; //reset tmpInts.
-					setECWaterProbeCalibration(111, tmpIntsToInt(5), 'high'); //ec probe 1
-					setECWaterProbeCalibration(113, tmpIntsToInt(5), 'high'); //ec probe 2
+				else if (SD.exists("dromatic/" + nameConfirm)){
 					lcd.clear();
 					lcd.home();
-					lcd.print(F("EC CALIBRATION"));
+					lcd.print(F("Sorry, Crop"));
 					lcd.setCursor(0, 1);
-					lcd.print(F("NOW FINISHED!"));
-					delay(5000);
-					exitScreen();
+					lcd.print(F("Already Exists"));
+					delay(3000);
+					lcd.clear();
+					lcd.print(nameConfirm);
+					lcd.setCursor(0, 1);
+					lcd.print(F("Crop Name <done>"));
+					cursorX = cursorY = 0;
+					lcd.home();
 				}
-				if ((cursorX == 1 && cursorY == 1)){ //going back
-					printECCalibrations("LOW");
-					screenName = "ECCALLOW";
-				}
-			}
-			if (screenName == "MANFLUSH"){
-				if (cursorX == 1 && cursorY == 1){
-					RelayToggle(11, true);
-					RelayToggle(12, false);
-				}
-				if (cursorX == 5 && cursorY == 1){
-					RelayToggle(11, false);
-					RelayToggle(12, true);
-				}
-				if (cursorX == 11 && cursorY == 1){
-					RelayToggle(11, false);
-					RelayToggle(12, false);
-					exitScreen();
+				else {
+					cropBuild();
 				}
 			}
 		}
+		if (screenName == "OPEN"){
+			if (cursorX == 9 && cursorY == 1){
+				if (menus[menuIndex] != cropName){
+					cropChange();
+				}
+				else{
+					exitScreen();
+				}
+			}
+			if (cursorX == 1 && cursorY == 1){
+				exitScreen();
+			}
+		}
+		if (screenName == "RESET"){
+			if (cursorX == 13 && cursorY == 1){
+				lcd.clear();
+				lcd.print(F("RESETTING"));
+				lcd.setCursor(1, 0);
+				lcd.print(F("  PLEASE HOLD  "));
+
+				for (byte i = 1; i < 8; i++){
+					StaticJsonBuffer<channelBufferSize> channelBuffer;
+					JsonObject& channelData = getChannelData(channelBuffer, i);
+					byte totalSessions = channelData["totalSessions"];
+
+					for (byte j = 1; j < totalSessions; j++){
+						StaticJsonBuffer<regimenBufferSize> regimenBuffer;
+						JsonObject& regimenData = getRegimenData(regimenBuffer, i, j);
+						JsonArray& regimenDate = regimenData["date"].asArray();
+						regimenData["repeated"] = 0;
+						regimenData["expired"] = false;
+						regimenDate[0] = rtc.getTime().year;
+					}
+				}
+			}
+			if (cursorX == 1 || cursorX == 9 && cursorY == 1){
+				tmpInts[1] = tmpInts[0] = 0;
+				exitScreen();
+			}
+		}
+		if (screenName == "DELETE") {}
+		if (screenName == "RSVRVOL") {
+			saveReservoirVolume();
+		}
+		if (screenName == "DOSES"){
+			if (cursorX == 13 && cursorY == 1){
+				lcd.clear();
+				lcd.home();
+				StaticJsonBuffer<cropBufferSize> buffer;
+				JsonObject& data = getCropData(buffer);
+
+				if (data["maxRegimens"] > tmpInts[0]){ //we are trimming sessions
+					lcd.print(F("TRIM REGIMENS"));
+					lcd.setCursor(0, 1);
+					lcd.print(F(" PLEASE HOLD... "));
+					trimRegimens(data["maxRegimens"], tmpInts[0]);
+				}
+				else if (data["maxRegimens"] < tmpInts[0]){ //we are adding sessions
+					lcd.print(F("ADDING REGIMENS"));
+					lcd.setCursor(0, 1);
+					lcd.print(F(" PLEASE HOLD... "));
+					addRegimens(data["maxRegimens"], tmpInts[0]);
+				}
+				data["maxRegimens"] = tmpInts[0]; //update channel's session total
+				maxRegimens = tmpInts[0];
+				setCropData(data, false);
+			}
+			if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = 0;
+				exitScreen();
+			}
+		}
+		if (screenName == "PUMPCAL"){
+			savePumpCalibration();
+		}
+		if (screenName == "PUMPDLY"){
+			savePumpDelay();
+		}
+		if (screenName == "AMOUNT"){
+			saveRegimenAmount();
+		}
+		if (screenName == "TPFCCNT"){
+			saveTopOffConcentrate();
+		}
+		if (screenName == "TPFAMT"){
+			saveTopOffAmount();
+		}
+		if (screenName == "TPFDLY") {
+			saveTopOffDelay();
+		}
+		if (screenName == "FLOWCAL"){
+			saveFlowCalibration();
+		}
+		if (screenName == "DRNTIME") {
+			saveDrainTime();
+		}
+		if (screenName == "STARTEND"){
+			saveStartEnd();
+		}
+		if (screenName == "RECEP01" || screenName == "RECEP02" || screenName == "RECEP03" || screenName == "RECEP04") {
+			if (cursorX == 13 && cursorY == 1){
+				lcd.clear();
+				lcd.home();
+				StaticJsonBuffer<timerSessionBufferSize> saveBuffer;
+				JsonObject& saveData = getTimerSessionData(saveBuffer, currentTimerIndex, currentTimerSessionIndex);
+
+				saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[0]; //start hour
+				saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[1]; //end hour
+				setTimerSessionData(saveData);
+				checkRecepticals();
+			}
+			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+				tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = 0;
+				exitScreen();
+			}
+		}
+		if (screenName == "PRIME"){
+			if (cursorX == 11 && cursorY == 1){
+				exitScreen();
+			}
+		}
+		if (screenName == "EC"){
+			saveECData();
+		}
+		if (screenName == "PH"){
+			savePHData();
+		}
+		if (screenName == "PHCAL"){
+			if (cursorX == 1 && cursorY == 1){ //back
+				exitScreen();
+			}
+			if (cursorX == 11 && cursorY == 1){ //forward
+				setPHWaterProbeCalibration(112, 4.0, 'low'); //ph probe 1
+				setPHWaterProbeCalibration(114, 4.0, 'low'); //ph probe 2
+				printPHCalibrations("MID", 7);
+				screenName = "PHCALMID";
+			}
+		}
+		if (screenName == "PHCALMID"){
+			if (cursorX == 1 && cursorY == 1){ //back
+				printPHCalibrations("LOW", 4);
+				screenName = "PHCALLOW";
+			}
+			if (cursorX == 11 && cursorY == 1){ //forward
+				setPHWaterProbeCalibration(112, 7.0, 'mid'); //ph probe 1
+				setPHWaterProbeCalibration(114, 7.0, 'mid'); //ph probe 2
+				printPHCalibrations("HI", 10);
+				screenName = "PHCALHI";
+			}
+		}
+		if (screenName == "PHCALHI"){
+			if (cursorX == 1 && cursorY == 1){ //back
+				printPHCalibrations("MID", 7);
+				screenName = "PHCALMID";
+			}
+			if (cursorX == 11 && cursorY == 1){ //forward
+				setPHWaterProbeCalibration(112, 10.0, 'high'); //ph probe 1
+				setPHWaterProbeCalibration(114, 10.0, 'high'); //ph probe 2
+				lcd.clear();
+				lcd.home();
+				lcd.print(F("PH CALIBRATION"));
+				lcd.setCursor(0, 1);
+				lcd.print(F("NOW FINISHED!"));
+				delay(5000);
+				exitScreen();
+			}
+		}
+		if (screenName == "ECCAL"){
+			if (cursorX == 11 && cursorY == 1){ //moving forward
+				setECWaterProbeCalibration(111, tmpIntsToInt(5), 'dry'); //ec probe 1
+				setECWaterProbeCalibration(113, tmpIntsToInt(5), 'dry'); //ec probe 2
+				printECCalibrations("LOW");
+				screenName = "ECCALLOW";
+			}
+			if ((cursorX == 1 && cursorY == 1)){ //cancel calibration
+				exitScreen();
+			}
+		}
+		if (screenName == "ECCALLOW"){
+			if (cursorX == 11 && cursorY == 1){ //going forward
+				setECWaterProbeCalibration(111, tmpIntsToInt(5), 'low'); //ec probe 1
+				setECWaterProbeCalibration(113, tmpIntsToInt(5), 'low'); //ec probe 2
+				printECCalibrations("HIGH");
+				screenName = "ECCALHI";
+			}
+			if ((cursorX == 1 && cursorY == 1)){ //going back
+				printECCalibrations("DRY");
+				screenName = "ECCAL";
+			}
+		}
+		if (screenName == "ECCALHI"){
+			if (cursorX == 11 && cursorY == 1){ //going forward
+				tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = tmpInts[4] = tmpInts[5] = 0; //reset tmpInts.
+				setECWaterProbeCalibration(111, tmpIntsToInt(5), 'high'); //ec probe 1
+				setECWaterProbeCalibration(113, tmpIntsToInt(5), 'high'); //ec probe 2
+				lcd.clear();
+				lcd.home();
+				lcd.print(F("EC CALIBRATION"));
+				lcd.setCursor(0, 1);
+				lcd.print(F("NOW FINISHED!"));
+				delay(5000);
+				exitScreen();
+			}
+			if ((cursorX == 1 && cursorY == 1)){ //going back
+				printECCalibrations("LOW");
+				screenName = "ECCALLOW";
+			}
+		}
+		if (screenName == "MANFLUSH"){
+			if (cursorX == 1 && cursorY == 1){
+				RelayToggle(11, true);
+				RelayToggle(12, false);
+			}
+			if (cursorX == 5 && cursorY == 1){
+				RelayToggle(11, false);
+				RelayToggle(12, true);
+			}
+			if (cursorX == 11 && cursorY == 1){
+				RelayToggle(11, false);
+				RelayToggle(12, false);
+				exitScreen();
+			}
+		}
+
 	}
 }

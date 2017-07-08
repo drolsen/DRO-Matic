@@ -90,6 +90,7 @@ void saveDateTime(){
 		//day, month (RTC counts first month as 1, not 0), year
 		rtc.setDate(tmpInts[2], tmpInts[1] + 1, tmpInts[0]);
 		rtc.setDOW(calcDayOfWeek(tmpInts[0], tmpInts[1], tmpInts[2]));
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 		tmpDisplay[0] = ""; //suffix

@@ -181,6 +181,7 @@ void saveReservoirVolume(){
 		JsonObject& data = getIrrigationData(jsonBuffer);
 		data["rsvrvol"].asArray()[0] = rsvrVol;
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 && cursorY == 1){
 		exitScreen();
@@ -194,6 +195,7 @@ void saveTopOffConcentrate(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfccnt"] = topOffConcentrate = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -208,6 +210,7 @@ void saveTopOffAmount(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfamt"] = topOffAmount = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -222,6 +225,7 @@ void saveTopOffDelay(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfdly"] = topOffDelay = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -239,6 +243,7 @@ void saveFlowCalibration(){
 		flowMeterConfig[0] = tmpFloats[0];
 		flowMeterConfig[1] = tmpFloats[1];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpFloats[0] = 0;
@@ -254,6 +259,7 @@ void saveDrainTime(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["drntime"] = drainTime = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
