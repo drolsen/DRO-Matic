@@ -84,6 +84,7 @@ void savePumpCalibration(){
 		JsonObject& data = getChannelsData(buffer);
 		data["calibration"] = pumpCalibration = tmpInts[0];
 		setChannelsData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -96,6 +97,7 @@ void savePumpDelay(){
 		JsonObject& data = getChannelsData(buffer);
 		data["delay"] = pumpDelay = tmpInts[0];
 		setChannelsData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;

@@ -41,6 +41,7 @@ byte downArrow[8] = {
 };
 
 void exitScreen(){
+	cursorX = cursorY = 0;
 	menusHistory.pop_back();
 	menuIndex = 0;
 	screenName = "";

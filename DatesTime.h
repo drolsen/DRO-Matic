@@ -10,7 +10,7 @@
 #include "Globals.h"
 
 extern byte currentMinute, previousMinute, days[12];
-extern unsigned long menuMillis, homeMillis, phRsvrMillis, phPlantMillis, currentMillis;  //stores last time
+extern unsigned long menuMillis, homeMillis, phRsvrMillis, phPlantMillis;  //stores last time
 
 //Read & Write from SD
 extern void captureDateTime();

@@ -13,7 +13,7 @@
 byte currentMinute;
 byte previousMinute;
 byte days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-unsigned long currentMillis, menuMillis, homeMillis, phRsvrMillis, phPlantMillis;  //stored timestamps
+unsigned long menuMillis, homeMillis, phRsvrMillis, phPlantMillis;  //stored timestamps
 
 //Read & Write from SD
 void captureDateTime(){
@@ -90,6 +90,7 @@ void saveDateTime(){
 		//day, month (RTC counts first month as 1, not 0), year
 		rtc.setDate(tmpInts[2], tmpInts[1] + 1, tmpInts[0]);
 		rtc.setDOW(calcDayOfWeek(tmpInts[0], tmpInts[1], tmpInts[2]));
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 6 || cursorX == 13 && cursorY == 1){
 		tmpDisplay[0] = ""; //suffix

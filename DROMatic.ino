@@ -51,8 +51,8 @@ void setup()
 		digitalWrite(FlowPinOut, HIGH);
 
 		//irrigation flow meters being hooked into flow counter methods
-		attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
-		attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
+		attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, FALLING);
+		attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, FALLING);
 
 		//Setup Relay Pins
 		pinMode(RELAY1, OUTPUT);	//perstaltic pump 1
@@ -99,20 +99,11 @@ void setup()
 void loop()
 {
 	Key = analogRead(0);
-	currentMillis = millis();
-
-	//detach & re-attach flow meters to counter methods per OS loop
-	detachInterrupt(digitalPinToInterrupt(FlowPinIn));
-	detachInterrupt(digitalPinToInterrupt(FlowPinOut));
-	attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
-	attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
-	checkFlowRates();	//OS monitors change to in and out water flow directions
-	
 
 	//Reset home screen and menu timers to current miliseconds after any interaction with LCD keys
 	if (Key >= 0 && Key <= 650){
-		homeMillis = currentMillis;
-		menuMillis = currentMillis;
+		homeMillis = millis();
+		menuMillis = millis();
 	}
 
 	//60 seconds has passed - Check logic for action
@@ -122,12 +113,13 @@ void loop()
 			//checkRecepticals();
 			correctRsvrPH();
 			correctPlantPH();
+			correctPlantEC();
 		}
 	}
 	
 	//if 2 seconds has passed, reprint home screen
 	//10 seconds has passed since interacting with menus start printing home screen
-	if ((currentMillis - homeMillis) >= 2000 && (currentMillis - menuMillis >= 10000)) {
+	if ((millis() - homeMillis) >= 2000 && (millis() - menuMillis >= 10000)) {
 		if (screenName == ""){//of course non of this happens while we have a menu open
 			homeMillis = millis(); //reset home millis so 2 seconds can happen again.
 			printHomeScreen(); //finally we call the print home method
@@ -135,13 +127,15 @@ void loop()
 	}
 
 	//1000 miliseconds has passed - Realtime UI Menus update
-	if ((currentMillis - homeMillis) >= 1000){
+	if ((millis() - homeMillis) >= 1000){
+		
+		checkFlowRates();	//OS monitors change to in and out water flow directions
+
 		//doseCurrentRegimen();
 		if (screenName == "RSVRVOL"){
-			interrupts();		//start water fill/drain reading
-			noInterrupts();		//stop water fill/drain reading
-			float liters = tmpFlowCount / 1000;
-			float USgallons = tmpFlowCount / 4546.091879;
+			tmpFloats[0] += (flowInRate / 60) * 1000;
+			float liters = tmpFloats[0] / 1000;
+			float USgallons = tmpFloats[0] / 4546.091879;
 			float UKgallons = USgallons * 0.83267384;
 
 			lcd.clear();
@@ -154,7 +148,7 @@ void loop()
 			lcd.print(F("<back>      <ok>"));
 			lcd.setCursor(cursorX, cursorY);
 			lcd.blink();
-			homeMillis = currentMillis;
+			homeMillis = millis();
 		}
 	}
 
@@ -459,7 +453,7 @@ void loop()
 
 				}
 				if (screenName == "RSVRVOL"){
-					tmpFlowCount = 0;
+					tmpFloats[0] = 0;
 				}
 				if (screenName == "DOSES"){
 					cursorX = 1;
@@ -924,5 +918,6 @@ void loop()
 				exitScreen();
 			}
 		}
+
 	}
 }

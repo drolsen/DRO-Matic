@@ -174,8 +174,8 @@ void cropBuild(){
 	irrigate["tpfamt"] = 1;
 	irrigate["currentVol"] = 0;
 	irrigate["drntime"] = 10;
-	flMeters.add(2.25);
-	flMeters.add(2.25);
+	flMeters.add(5.5);
+	flMeters.add(5.5);
 
 	//Timers File
 	StaticJsonBuffer<timerBufferSize> timerBuffer;
@@ -318,6 +318,7 @@ void saveECData(){
 		ecData["ec"].asArray()[0] = minPPM = tmpInts[0];
 		ecData["ec"].asArray()[1] = maxPPM = tmpInts[1];
 		setECData(ecData, tmpInts[2]);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 11 && cursorY == 1){
 		exitScreen();

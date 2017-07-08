@@ -10,6 +10,7 @@
 #include "Crops.h"
 #include "Screens.h"
 #include "Regimens.h"
+#include "DatesTime.h"
 
 //Read & Write from SD
 JsonObject& getIrrigationData(JsonBuffer& b){
@@ -138,18 +139,18 @@ void printFlowCalibration(int dir = 0){
 	if (dir != 0){
 		if (cursorX == 5 && cursorY == 0){
 			if (dir > 0){
-				tmpFloats[0] += .05;
+				tmpFloats[0] += 0.1;
 			}
 			else{
-				tmpFloats[0] -= .05;
+				tmpFloats[0] -= 0.1;
 			}
 		}
 		if (cursorX == 13 && cursorY == 0){
 			if (dir > 0){
-				tmpFloats[1] += .05;
+				tmpFloats[1] += 0.1;
 			}
 			else{
-				tmpFloats[1] -= .05;
+				tmpFloats[1] -= 0.1;
 			}
 		}
 	}
@@ -178,8 +179,9 @@ void saveReservoirVolume(){
 		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
 		JsonObject& data = getIrrigationData(jsonBuffer);
-		data["rsvrvol"].asArray()[0] = rsvrVol = tmpFlowCount;
+		data["rsvrvol"].asArray()[0] = rsvrVol;
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 && cursorY == 1){
 		exitScreen();
@@ -193,6 +195,7 @@ void saveTopOffConcentrate(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfccnt"] = topOffConcentrate = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -207,6 +210,7 @@ void saveTopOffAmount(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfamt"] = topOffAmount = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -221,6 +225,7 @@ void saveTopOffDelay(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfdly"] = topOffDelay = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -238,6 +243,7 @@ void saveFlowCalibration(){
 		flowMeterConfig[0] = tmpFloats[0];
 		flowMeterConfig[1] = tmpFloats[1];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpFloats[0] = 0;
@@ -253,6 +259,7 @@ void saveDrainTime(){
 		JsonObject& data = getIrrigationData(buffer);
 		data["drntime"] = drainTime = tmpInts[0];
 		setIrrigationData(data);
+		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -262,69 +269,90 @@ void saveDrainTime(){
 
 //Helpers
 void checkFlowRates(){
-	if (currentRsvrVol == (tmpFlowCount * 2.25)){ //water must be done flowing from either direction
-		if (flowInRate == true || flowOutRate == true){
-			//lets store the final size once know we are done filling
-			//StaticJsonBuffer<irrigateBufferSize> irrigationBuffer;
-			//JsonObject& irrigationData = getIrrigationData(irrigationBuffer);
-			//irrigationData["currentVol"] = tmpFlowCount;
-			//setIrrigationData(irrigationData);
+	//detach & re-attach flow meters to counter methods per OS loop
+	detachInterrupt(digitalPinToInterrupt(FlowPinIn));
+	detachInterrupt(digitalPinToInterrupt(FlowPinOut));
+
+	//Get our rate of flow for either irrigation directions
+	flowInRate = ((1000.0 / (millis() - homeMillis)) * pulseInFlowCount) / flowMeterConfig[0]; 
+	flowOutRate = ((1000.0 / (millis() - homeMillis)) * pulseOutFlowCount) / flowMeterConfig[1];
+
+	//automated irrigation or a menu config editing irrigation?
+	//we don't want to store or capture currentRsvrVol while configuring OS
+	if (screenName == ""){
+		//do we have a flow rate for in?
+		if (flowInRate > 0){
+			currentRsvrVol += (flowInRate / 60) * 1000;
+			irrigationFlag = true; //flag OS while irrigation is taking place
 		}
 
-		if (flowInRate == true){ //lets turn off our InFlow flag
-			flowInRate = false;
+		//do we have a flow rate for out?
+		if (flowOutRate > 0){
+			currentRsvrVol -= (flowOutRate / 60) * 1000;
+			irrigationFlag = true; //flag OS while irrigation is taking place
 		}
 
-		if (flowOutRate == true){ //lets turn off our OutFlow flag
-			flowOutRate = false;
+		//did we previously have a flow rate, but now it it seems to have stopped?
+		if (irrigationFlag == true && flowInRate <= 0 && flowOutRate <= 0){
+			//store the final size once know we are done filling
+			StaticJsonBuffer<irrigateBufferSize> irrigationBuffer;
+			JsonObject& irrigationData = getIrrigationData(irrigationBuffer);
+			irrigationData["currentVol"] = currentRsvrVol;
+			setIrrigationData(irrigationData);
+			irrigationFlag = false; //reset irrigation flag for OS
 		}
 	}
-}
-void countRsvrFill(){
-	tmpFlowCount++; //Every time this function is called, increment our global tmpFlowCount by 1
-	currentRsvrVol = (tmpFlowCount * 2.25); //next we update our global currentRsvrVol to gallons
-	flowInRate = true;
-}
-void countRsvrDrain(){
-	tmpFlowCount--; //Every time this function is called, decrement our global tmpFlowCount by 1
-	if (tmpFlowCount <= 0){ tmpFlowCount = 0; } //we can't have less than 0 in our reservoir
-	currentRsvrVol = (tmpFlowCount * 2.25); //next we update our global currentRsvrVol to gallons
-	flowOutRate = true;
-}
+	pulseInFlowCount = pulseOutFlowCount = 0; //reset pulse counts for next time around
 
+	//re-attach interrupts
+	attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, FALLING);
+	attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, FALLING);
+}
+//flow rate counter for in
+void countRsvrFill(){
+	pulseInFlowCount++;
+}
+//flow rate counter for out
+void countRsvrDrain(){
+	pulseOutFlowCount++;
+}
+//Flush only plant water (drainTime config based)
 void flushPlantWater(){
 	RelayToggle(12, true);
 	int i = drainTime * 60; //mins x 60secs = loop total
-	while (i--){//we use loop to count i (aka seconds), then delay each loop by 1 second
+	while (i--){//loop to count i (aka seconds), then delay each loop by 1 second
 		delay(1000); //1 second delay ensures we don't exceed 30k delay max
 		if (i == 0){ //we done waiting?
 			RelayToggle(12, false); //if out of wait loops, we turn drain valve off.
 		}
 	}
 }
+//Flush only reservoir water (flowInRate event based)
 void flushRsvrWater(){
-	//while reservoir is not filling up, we flush current reservoir water to plants.
-	while (flowInRate == false){
+	//while reservoir isn't filling up, flush remaining reservoir water to plants.
+	while (flowInRate == 0){
 		RelayToggle(11, true);
-		if (flowInRate == true){
+		if (flowInRate > 0){
 			RelayToggle(11, false);
 			break; //break the loop.
 		}
 	}
 }
+//Flush both plant and reservoir water, 
+//but with premature stopping of plant water drain based on OS drain time configuration.
 void fullFlushing(){
-	RelayToggle(11, true);
-	RelayToggle(12, true);
+	RelayToggle(11, true); //in
+	RelayToggle(12, true); //out
 	int i = drainTime * 60; //mins x 60secs = loop total
 	while (i--){
 		delay(1000);
 		if (i == 0){ //if out of drainTime loops, we close off both irrigation values.
-			RelayToggle(11, false); //close off in irrigation value
-			RelayToggle(12, false); //close off out irrigation value
+			RelayToggle(11, false); //in
+			RelayToggle(12, false); //out
 		}
-		//we have to close in irrigation value reservoir beings auto filling.
-		if (flowInRate == true){ 
-			RelayToggle(11, false);
+		//if reservoir begins filling, we prematurely close off in valve.
+		if (flowInRate > 0){ 
+			RelayToggle(11, false); //in
 		}
 	}
 }

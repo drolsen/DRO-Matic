@@ -91,20 +91,26 @@ int tmpIntsToInt(byte decimalPlaces){
 
 //time feed plants some top off water?
 void correctPlantEC(){
-	if (flowInRate == true){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
+	if (flowInRate > 0){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
 	int PPM = getWaterProbeValue(0);
 	if ((PPM > maxPPM || PPM < minPPM) && feedingType == 1){
+		lcd.clear();
+		lcd.home();
+
 		Time current = rtc.getTime();
+		StaticJsonBuffer<cropBufferSize> cropBuffer;
+		JsonObject& cropData = getCropData(cropBuffer);
+
 		if (lastFeedingWeek != current.dow && lastFeedingDay == calcDayOfWeek(current.year, current.mon, current.date)){
 			//we seem to have run out of time for this feeding water before we have run out of feeding water.
 			//full flushing must happen now
 			fullFlushing();
+			feedingType = 0; //now switch to full feeding for moving onto next regimen
+			cropData["feedingType"] = feedingType;
+			setCropData(cropData);
 			return;
 		}
-		StaticJsonBuffer<cropBufferSize> cropBuffer;
-		JsonObject& cropData = getCropData(cropBuffer);
-		lcd.clear();
-		lcd.home();
+
 		lcd.print(F("TOPPING OFF EC"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
@@ -112,18 +118,17 @@ void correctPlantEC(){
 			RelayToggle(11, true);
 			detachInterrupt(digitalPinToInterrupt(FlowPinIn));
 			detachInterrupt(digitalPinToInterrupt(FlowPinOut));
-			attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
-			attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
 			checkFlowRates();
-			if (flowInRate == true){//OH CRAP! flowInRate is true, so we must of run out of reservoir topoff water.
-				//but was this EC correction successful?.. if not, time to flush plants!
+			if (flowInRate > 0){//OH CRAP! flowInRate is true, so we must of run out of reservoir topoff water.
+				//but was EC correction successful?.. if not, time to flush plants!
 				RelayToggle(11, false); //close up in-valve finish feeding early
 				feedingType = 0; //now switch to full feeding for moving onto next regimen
 				cropData["feedingType"] = feedingType;
 				setCropData(cropData);
 				break; //finally we break out of while loop for topOff feeding early
 			}
-			delay(1000);
+			attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
+			attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
 		}
 		RelayToggle(11, false); //close up in-valve to finish feeding
 	}
@@ -142,23 +147,23 @@ void correctPlantPH(){
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
 		if (pH > maxPH){ //we must micro-ph-dose our plant water DOWN
-			pumpSpin(10, 9, pumpCalibration);
-			phPlantMillis = currentMillis;
+			pumpSpin(1, 9, pumpCalibration);
+			phPlantMillis = millis();
 		}
 		if (pH < minPH){ //we must micro-ph-dose our plant water UP
-			pumpSpin(10, 10, pumpCalibration);
-			phPlantMillis = currentMillis;
+			pumpSpin(1, 10, pumpCalibration);
+			phPlantMillis = millis();
 		}
 	}
 }
 
 //is it time fix reservoir pH drift?
 void correctRsvrPH(){
-	if (flowInRate == true || flowOutRate == true) { return; } //we are not allowed to correct reservoir pH if we are currently filling or draining the reservoir.. must wait
+	if (flowInRate > 0 || flowOutRate > 0) { return; } //not permitted to correct reservoir pH if we are currently doing irrigation
 	float pH = getWaterProbeValue(1);
 
-	//if it has been a 1 min sincce last ph correction
-	if ((currentMillis - phRsvrMillis) > 60000){
+	//if it has been a 1 min since last ph correction
+	if ((millis() - phRsvrMillis) > 60000){
 		//if current ph is outside of configred ph ranges
 		if (pH > maxPH || pH < minPH){
 			lcd.clear();
@@ -167,10 +172,10 @@ void correctRsvrPH(){
 			lcd.setCursor(0, 1);
 			lcd.print(F("PLEAES HOLD!!!"));
 			pumpSpin(1, 8, pumpCalibration);
-			phRsvrMillis = currentMillis;
+			phRsvrMillis = millis();
 		}else{
 			//if ph corrected and 5 mins has past since last pH dosing
-			if ((currentMillis - phRsvrMillis) > 600000){
+			if ((millis() - phRsvrMillis) > 600000){
 				checkRegimenDosing();
 			}
 		}
