@@ -65,12 +65,12 @@ extern LiquidCrystal lcd;
 extern DS3231  rtc;
 extern Adafruit_NeoPixel pixels;
 
-extern boolean flowInRate, flowOutRate;
+extern float flowInRate, flowOutRate, flowMeterConfig[2];
+extern boolean irrigationFlag;
 
 extern byte
 currentTimerSessions[4],
 maxRegimens,
-flowMeterConfig[2],
 minPH, maxPH, //Where we store the min and max pH values of our crop configuration
 currentRegimen, //Where we store the current regimen we are on
 drainTime, //Where we store how long of a drain time we will take when flushing plants water
@@ -83,7 +83,7 @@ lastFeedingDay,
 lastFeedingWeek;
 
 
-extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay;
+extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay, pulseInFlowCount, pulseOutFlowCount;
 extern double currentRsvrVol;
 
 //Tentical Sheild
@@ -92,14 +92,13 @@ extern byte sensor_bytes_received;       // We need to know how many characters 
 
 extern byte code;                        // used to hold the I2C response code.
 extern byte in_char;                     // used as a 1 byte buffer to store in bound bytes from the I2C Circuit.
-extern int channel_ids[];
-extern char *channel_names[];
+extern int channel_ids[];				 // tentical shield channel ids array
+extern char *channel_names[];			 // channe names (optional)
 
 extern File tmpFile; //Single location to store file data when interfacting with SD card files
 extern String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 extern int tmpInts[6];
 extern float tmpFloats[2];
-extern volatile int tmpFlowCount;
 
 extern const char* const alphabet[37] PROGMEM;
 extern const char* const screenNames[28][3] PROGMEM;

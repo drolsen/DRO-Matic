@@ -10,8 +10,10 @@
 #include "Regimens.h"
 #include "Menus.h"
 
-boolean flowInRate, flowOutRate;
-byte currentTimerSessions[4], flowMeterConfig[2], 
+float flowInRate, flowOutRate, flowMeterConfig[2];
+boolean irrigationFlag = false;
+
+byte currentTimerSessions[4], 
 minPH, maxPH, 
 currentRegimen, maxRegimens, 
 drainTime, 
@@ -23,7 +25,7 @@ feedingType,
 lastFeedingWeek,
 lastFeedingDay;
 
-int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay;
+int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay, pulseInFlowCount, pulseOutFlowCount;
 double currentRsvrVol = 0;
 
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -44,7 +46,6 @@ File tmpFile;
 String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 int tmpInts[6];
 float tmpFloats[2];
-volatile int tmpFlowCount = 0;
 
 const char blank[2] PROGMEM = " ";
 const char a[2] PROGMEM = "A";

@@ -174,8 +174,8 @@ void cropBuild(){
 	irrigate["tpfamt"] = 1;
 	irrigate["currentVol"] = 0;
 	irrigate["drntime"] = 10;
-	flMeters.add(2.25);
-	flMeters.add(2.25);
+	flMeters.add(5.5);
+	flMeters.add(5.5);
 
 	//Timers File
 	StaticJsonBuffer<timerBufferSize> timerBuffer;
