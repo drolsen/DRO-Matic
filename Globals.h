@@ -56,7 +56,7 @@ const byte ECPower[3] = { 39, 41, 43 };
 #define regimenSessionBufferSize 64
 #define timerBufferSize 164
 #define timerSessionBufferSize 512
-#define irrigateBufferSize 196
+#define irrigateBufferSize 220
 #define ecBufferSize 64
 
 using namespace std; //Prefence of developer, I don't like typing std:: everywhere.
