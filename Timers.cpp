@@ -215,7 +215,6 @@ void saveStartEnd(){
 		end[0] = tmpInts[5];
 
 		setTimerSessionData(data);
-		cursorX = cursorY = 0;
 	}
 	if (cursorX == 1 && cursorY == 1){
 		exitScreen();
