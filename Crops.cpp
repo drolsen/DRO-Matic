@@ -583,6 +583,7 @@ void printECCalibrations(String type, int dir = 0){
 		cursorY = 0;
 	}
 	lcd.setCursor(cursorX, cursorY);
+	lcd.blink();
 }
 void printPHCalibrations(String type, byte value){
 	lcd.noBlink();
