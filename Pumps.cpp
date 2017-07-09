@@ -1,41 +1,41 @@
 /*
 *  DROMatic.ino
-*  DROMatic OS Channels
+*  DROMatic OS Pumps
 *  Devin R. Olsen - July 4th, 2017
 *  devin@devinrolsen.com
 */
 
-#include "Channels.h"
+#include "Pumps.h"
 #include "Core.h"
 #include "Regimens.h"
 #include "Screens.h"
 #include "Crops.h"
 
-byte currentChannelIndex;
+byte currentPumpIndex;
 
 //Read & Write from SD
-JsonObject& getChannelsData(JsonBuffer& b){
-	tmpFile = SD.open("dromatic/" + cropName + "/channel.dro", O_READ);
+JsonObject& getPumpsData(JsonBuffer& b){
+	tmpFile = SD.open("dromatic/" + cropName + "/pump.dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
-void setChannelsData(JsonObject& d){
+void setPumpsData(JsonObject& d){
 	char b[256];
-	tmpFile = SD.open("dromatic/" + cropName + "/channel.dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/pump.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
 }
-JsonObject& getChannelData(JsonBuffer& b, byte channelIndex = currentChannelIndex){
-	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + channelIndex + "/channel.dro", O_READ);
+JsonObject& getPumpData(JsonBuffer& b, byte pumpIndex = currentPumpIndex){
+	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pump.dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
-void setChannelData(JsonObject& d, byte channelIndex = currentChannelIndex, bool returnHome = true){
+void setPumpData(JsonObject& d, byte pumpIndex = currentPumpIndex, bool returnHome = true){
 	char b[256];
-	tmpFile = SD.open("dromatic/" + cropName + "/channels/sysch" + channelIndex + "/channel.dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pump.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -79,11 +79,11 @@ void printPumpDelay(int dir = 0){
 
 //Saves
 void savePumpCalibration(){
-	if (cursorX == 13 && cursorY == 1){ //single channel save
-		StaticJsonBuffer<channelBufferSize> buffer;
-		JsonObject& data = getChannelsData(buffer);
+	if (cursorX == 13 && cursorY == 1){ //single pump save
+		StaticJsonBuffer<pumpBufferSize> buffer;
+		JsonObject& data = getPumpsData(buffer);
 		data["calibration"] = pumpCalibration = tmpInts[0];
-		setChannelsData(data);
+		setPumpsData(data);
 	}
 	if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -91,11 +91,11 @@ void savePumpCalibration(){
 	}
 }
 void savePumpDelay(){
-	if (cursorX == 13 && cursorY == 1){ //single channel save
-		StaticJsonBuffer<channelBufferSize> buffer;
-		JsonObject& data = getChannelsData(buffer);
+	if (cursorX == 13 && cursorY == 1){ //single pump save
+		StaticJsonBuffer<pumpBufferSize> buffer;
+		JsonObject& data = getPumpsData(buffer);
 		data["delay"] = pumpDelay = tmpInts[0];
-		setChannelsData(data);
+		setPumpsData(data);
 	}
 	if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
@@ -104,7 +104,7 @@ void savePumpDelay(){
 }
 
 //Helpers
-void channelCreate(String path, int totalSessions, JsonObject& regimenData){
+void pumpCreate(String path, int totalSessions, JsonObject& regimenData){
 	byte j;
 	SD.mkdir(path);
 	SD.mkdir(path + "/Prime");
@@ -112,13 +112,13 @@ void channelCreate(String path, int totalSessions, JsonObject& regimenData){
 	SD.mkdir(path + "/Delay");
 
 	for (j = 0; j < totalSessions; j++){
-		makeNewFile(path + "/chse" + j + ".dro", regimenData);
+		makeNewFile(path + "/pmpse" + j + ".dro", regimenData);
 		Serial.flush();
 	}
 	Serial.flush();
 }
-void primeChannelPump(int dir){
-	RelayToggle(currentChannelIndex, true);
+void primePump(int dir){
+	RelayToggle(currentPumpIndex, true);
 	delay(1000);
-	RelayToggle(currentChannelIndex, false);
+	RelayToggle(currentPumpIndex, false);
 }

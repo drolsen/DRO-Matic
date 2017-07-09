@@ -6,7 +6,7 @@
 */
 
 #include "Globals.h"
-#include "Channels.h"
+#include "Pumps.h"
 #include "Regimens.h"
 #include "Menus.h"
 
@@ -95,7 +95,7 @@ const char* const alphabet[37] PROGMEM = {
 const char _sys[4] PROGMEM = "SYS";
 const char _crop[5] PROGMEM = "CROP";
 const char _irri[5] PROGMEM = "IRRI";
-const char _chan[4] PROGMEM = "CHS";
+const char _pump[6] PROGMEM = "PUMPS";
 const char _timer[7] PROGMEM = "TIMERS";
 const char _datetime[9] PROGMEM = "DATETIME";
 const char _EC[3] PROGMEM = "EC";
@@ -104,8 +104,7 @@ const char _open[5] PROGMEM = "OPEN";
 const char _new[4] PROGMEM = "NEW";
 const char _delete[7] PROGMEM = "DELETE";
 const char _reset[7] PROGMEM = "RESET";
-const char _start[6] PROGMEM = "START";
-const char _pause[6] PROGMEM = "PAUSE";
+const char _status[7] PROGMEM = "STATUS";
 const char _amt[7] PROGMEM = "AMOUNT";
 const char _rsvrVol[8] PROGMEM = "RSVRVOL";
 const char _pumpCal[8] PROGMEM = "PUMPCAL";
@@ -123,10 +122,11 @@ const char _ECCal[6] PROGMEM = "ECCAL";
 const char _PHCal[6] PROGMEM = "PHCAL";
 const char _delay[6] PROGMEM = "DELAY";
 
+
 //Consolidated Repeating Displays Words
 const char System[7] PROGMEM = "SYSTEM";
 const char Settings[9] PROGMEM = "SETTINGS";
-const char Channels[9] PROGMEM = "CHANNELS";
+const char Pump[6] PROGMEM = "PUMP";
 const char NumberOf[10] PROGMEM = "NUMBER OF";
 const char Configuration[14] PROGMEM = "CONFIGURATION";
 const char Config[7] PROGMEM = "CONFIG";
@@ -138,7 +138,6 @@ const char Range[6] PROGMEM = "RANGE";
 const char Irrigation[11] PROGMEM = "IRRIGATION";
 const char Reservoir[10] PROGMEM = "RESERVOIR";
 const char SizeMl[12] PROGMEM = "SIZE(ml) OF";
-const char Crop[5] PROGMEM = "CROP";
 const char Timer[6] PROGMEM = "TIMER";
 const char Times[6] PROGMEM = "TIMES";
 const char TopOff[8] PROGMEM = "TOP OFF";
@@ -164,20 +163,19 @@ const char Start[6] PROGMEM = "START";
 const char Pause[6] PROGMEM = "PAUSE";
 const char DrainLength[11] PROGMEM = "DRAIN TIME";
 const char StartEnd[11] PROGMEM = "START END";
-const char PrimeChannel[14] PROGMEM = "PRIME CHANNEL";
+const char PrimePump[14] PROGMEM = "PRIME PUMP";
 const char VolumeConfig[14] PROGMEM = "VOLUME CONFIG";
-const char ChannelDose[16] PROGMEM = "CHANNEL DOSEING";
+const char PumpDose[16] PROGMEM = "PUMP DOSEING";
 const char DelayConfig[16] PROGMEM = "DELAY CONFIGURE";
 const char FlowMeters[12] PROGMEM = "FLOW METERS";
-const char ChannelPump[13] PROGMEM = "CHANNEL PUMP";
 const char Manual[14] PROGMEM = "MANUAL SYSTEM";
 
 
 
-const char* const screenNames[28][3] PROGMEM = {
+const char* const screenNames[29][3] PROGMEM = {
 	{ _sys, System, Settings },
-	{ _chan, Channels, Settings },
-	{ _crop, Crop, Settings },
+	{ _pump, Pump, Settings },
+	{ _crop, _crop, Settings },
 	{ _irri, Irrigation, Settings },
 	{ _timer, Timer, Settings },
 	{ _datetime, DateTime, Configuration },
@@ -185,10 +183,11 @@ const char* const screenNames[28][3] PROGMEM = {
 	{ _PH, PH, Configuration },
 	{ _ECCal, ECS, Calib },
 	{ _PHCal, PHS, Calib },
-	{ _open, Open, Crop },
-	{ _new, New, Crop },
-	{ _delete, Delete, Crop },
-	{ _reset, Reset, Crop },
+	{ _open, Open, _crop },
+	{ _new, New, _crop },
+	{ _delete, Delete, _crop },
+	{ _reset, Reset, _crop },
+	{ _status, _crop, _status },
 	{ _rsvrVol, Reservoir, VolumeConfig },
 	{ _topOffCcnt, TopOff, Concent },
 	{ _topOffAmnt, TopOff, Amount },
@@ -197,11 +196,11 @@ const char* const screenNames[28][3] PROGMEM = {
 	{ _doses, NumberOf, RegimensWeeks },
 	{ _weeks, NumberOf, Weeks },
 	{ _amt, RegimensML, Configuration },
-	{ _delay, ChannelDose, DelayConfig },
-	{ _pumpCal, ChannelPump, Calib },
+	{ _delay, PumpDose, DelayConfig },
+	{ _pumpCal, Pump, Calib },
 	{ _flowcal, FlowMeters, Calib },
 	{ _manFlush, Manual, Flush },
-	{ _prime, PrimeChannel, Solution },
+	{ _prime, PrimePump, Solution },
 	{ _startend, StartEnd, Times }
 };
 

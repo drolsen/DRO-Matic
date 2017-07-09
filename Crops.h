@@ -33,13 +33,13 @@ extern void cropLoad();
 //Saves
 extern void saveECData();
 extern void savePHData();
+extern void saveStatus();
 
 //Prints
-extern void printECCalibrations(String type, int dir = 0);
-extern void printPHCalibrations(String type, byte value);
-
+extern void printStatus(int dir = 0);
 extern void printPHRange(double dir);
 extern void printECRange(int dir);
-
+extern void printECCalibrations(String type, int dir = 0);
+extern void printPHCalibrations(String type, byte value);
 #endif
 
