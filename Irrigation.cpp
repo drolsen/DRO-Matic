@@ -174,7 +174,7 @@ void printFullFlushing(){
 
 //Saves
 void saveReservoirVolume(){
-	if (cursorX == 11 && cursorY == 1){
+	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
 		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
@@ -182,7 +182,7 @@ void saveReservoirVolume(){
 		data["rsvrvol"].asArray()[0] = rsvrVol;
 		setIrrigationData(data);
 	}
-	if (cursorX == 1 && cursorY == 1){
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		exitScreen();
 	}
 }
