@@ -362,6 +362,7 @@ void printStatus(int dir = 0){
 	lcd.home();
 	lcd.print("STATUS: ");
 	lcd.print((cropStatus == 0) ? "PAUSED" : "RUNNING");
+	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 }
 void printPHRange(double dir = 0){
