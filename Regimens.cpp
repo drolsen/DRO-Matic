@@ -9,22 +9,22 @@
 #include "Core.h"
 #include "Screens.h"
 #include "Crops.h"
-#include "Channels.h"
+#include "Pumps.h"
 #include "DatesTime.h"
 #include "Irrigation.h"
 
 byte currentRegimenIndex;
 //Read & Write from SD
-JsonObject& getRegimenData(JsonBuffer& b, byte channelIndex = currentChannelIndex, byte sessionIndex = currentRegimenIndex){
-	tmpFile = SD.open("DROMATIC/" + cropName + "/CHS/SYSCH" + channelIndex + "/CHSE" + sessionIndex + ".DRO", O_READ);
+JsonObject& getRegimenData(JsonBuffer& b, byte pumpIndex = currentPumpIndex, byte sessionIndex = currentRegimenIndex){
+	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pmpse" + sessionIndex + ".dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
 
-void setRegimenData(JsonObject& d, byte channelIndex = currentChannelIndex, byte sessionIndex = currentRegimenIndex, bool returnHome = true){
+void setRegimenData(JsonObject& d, byte pumpIndex = currentPumpIndex, byte sessionIndex = currentRegimenIndex, bool returnHome = true){
 	char b[256];
-	tmpFile = SD.open("DROMATIC/" + cropName + "/CHS/SYSCH" + channelIndex + "/CHSE" + sessionIndex + ".DRO", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pmpse" + sessionIndex + ".dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -113,7 +113,7 @@ void saveRegimenAmount(){
 			cropData["maxRegimens"] = currentRegimenIndex;
 			setCropData(cropData);
 		}
-		setRegimenData(sessionData, currentChannelIndex, currentRegimenIndex, false);
+		setRegimenData(sessionData, currentPumpIndex, currentRegimenIndex, false);
 
 		//Move on to next session
 		if (tmpInts[0] < tmpInts[1]){
@@ -145,6 +145,7 @@ void saveRegimenAmount(){
 			lcd.clear();
 			lcd.home();
 			lcd.print(F("REGI "));
+			lcd.print((tmpInts[0] <= 9) ? F("0") : F(""));
 			lcd.print(tmpInts[0]);
 			lcd.print(F(" "));
 			lcd.print(amountDisplay);
@@ -233,7 +234,7 @@ void addRegimens(int currentSize, int addAmount){
 	data["expired"] = false;
 
 	for (i = 1; i <= 8; i++){
-		path = "dromatic/" + cropName + "/chs/sysch" + String(i);
+		path = "dromatic/" + cropName + "/pumps/syspmp" + String(i);
 		for (j = 0; j < addAmount; j++){
 			if (j > currentSize){
 				makeNewFile(path + j + ".dro", data);
@@ -245,12 +246,12 @@ void addRegimens(int currentSize, int addAmount){
 void trimRegimens(int currentSize, int trimAmount){
 	byte i, j;
 	String path;
-	i = 8; //number of channels
+	i = 8; //number of pumps
 	for (i = 1; i <= 8; i++){
-		path = "dromatic/" + cropName + "/chs/sysch" + String(i);
+		path = "dromatic/" + cropName + "/pumps/syspmp" + String(i);
 		for (j = 0; j <= currentSize; j++){
 			if (j > trimAmount-1){
-				SD.remove(path + "/chse" + String(j) + ".dro");
+				SD.remove(path + "/pmpse" + String(j) + ".dro");
 			}
 			Serial.flush();
 		}
@@ -266,8 +267,8 @@ void checkRegimenDosing(){
 	//3) we have remaining topOff water within reservoir
 	if (flowInRate == true || feedingType == 2) { return; }
 
-	StaticJsonBuffer<channelBufferSize> channelConfigBuffer;
-	JsonObject& channelConfig = getChannelsData(channelConfigBuffer);
+	StaticJsonBuffer<pumpBufferSize> pumpConfigBuffer;
+	JsonObject& pumpConfig = getPumpsData(pumpConfigBuffer);
 
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& cropData = getCropData(cropBuffer);
@@ -279,15 +280,15 @@ void checkRegimenDosing(){
 	lcd.print(F("PLEASE HOLD!!"));
 	lcd.home();
 	for (byte i = 1; i <= 7; i++){
-		//Second, lets open our SD data up and get this current regimen's ml dosing amount for this channel
+		//Second, lets open our SD data up and get this current regimen's ml dosing amount for this pump
 		StaticJsonBuffer<regimenBufferSize> regimenBuffer;
-		JsonObject& regimenData = getRegimenData(regimenBuffer, i, currentRegimen); //remember, this is a single channel instance (aka getChannelData)
+		JsonObject& regimenData = getRegimenData(regimenBuffer, i, currentRegimen); //remember, this is a single pump instance (aka getPumpData)
 		int amount = regimenData["ml"];
 		int concentrate = (amount / 6) * topOffConcentrate;
 		float ml = (feedingType == 0) ? (amount * rsvrVol) : (concentrate * rsvrVol);
 		pumpSpin(ml, i, pumpCalibration); //perform dosing 
 
-		//Third, if we have reached the end of our 7 available channels
+		//Third, if we have reached the end of our 7 available pumps
 		//we need to update our crop settings to let OS know if current reservoir water is full feeding water, or topoff feeding water
 		if (i == 7){
 			//if this is a full feedingType dosing, we flush the whole
@@ -310,7 +311,7 @@ void checkRegimenDosing(){
 			cropData["feedingType"] = feedingType;
 			setCropData(cropData);
 		}else{
-			byte pumpDelay = channelConfig["delay"];
+			byte pumpDelay = pumpConfig["delay"];
 			int i = pumpDelay * 60; //mins x 60secs = loop total
 			while (i--){ //count down total seconds
 				delay(1000); //delay for 1 second each loop

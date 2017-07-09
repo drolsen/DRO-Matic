@@ -30,7 +30,7 @@ extern void checkRecepticals();
 
 //Pumping Functions
 extern void RelayToggle(int channel, bool gate);
-extern void pumpSpin(int setAmount, int channelNumber, int pumpFlowRate = 100);
+extern void pumpSpin(int setAmount, int pumpNumber, int pumpFlowRate = 100);
 
 
 

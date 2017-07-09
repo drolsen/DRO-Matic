@@ -179,7 +179,7 @@ void saveReservoirVolume(){
 		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
 		JsonObject& data = getIrrigationData(jsonBuffer);
-		data["rsvrvol"].asArray()[0] = rsvrVol;
+		data["rsvrvol"] = rsvrVol;
 		setIrrigationData(data);
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){

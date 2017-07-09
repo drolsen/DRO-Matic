@@ -144,15 +144,15 @@ void printScrollArrows(){
 void printScreenNames(String menu){
 	lcd.home();
 	bool hasMatch = false;
-	const byte isChannel = strstr(menu.c_str(), "SYSCH") != NULL; //Channels
+	const byte isPump = strstr(menu.c_str(), "SYSPMP") != NULL; //Pumps
 	const byte isTimer = strstr(menu.c_str(), "RECEP") != NULL; //Timers
 	const String index = String(menuIndex + 1);
-	if (isChannel){
+	if (isPump){
 		lcd.print(F("SYSTEM"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("CHANNEL "));
+		lcd.print(F("PUMP "));
 		lcd.print(index);
-		currentChannelIndex = menuIndex + 1;
+		currentPumpIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
 	} else if (isTimer){

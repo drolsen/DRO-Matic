@@ -8,14 +8,14 @@
 #ifndef _SESSIONS_h
 #define _SESSIONS_h
 #include "Globals.h"
-#include "Channels.h"
+#include "Pumps.h"
 #include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
 
 extern byte currentRegimenIndex;
 
 //Read & Write from SD
-extern JsonObject& getRegimenData(JsonBuffer& b, byte channelIndex = currentChannelIndex, byte sessionIndex = currentRegimenIndex);
-extern void setRegimenData(JsonObject& d, byte channelIndex = currentChannelIndex, byte sessionIndex = currentRegimenIndex, bool returnHome = true);
+extern JsonObject& getRegimenData(JsonBuffer& b, byte pumpIndex = currentPumpIndex, byte sessionIndex = currentRegimenIndex);
+extern void setRegimenData(JsonObject& d, byte pumpIndex = currentPumpIndex, byte sessionIndex = currentRegimenIndex, bool returnHome = true);
 
 //Prints
 extern void printRegimenNumber(int dir);

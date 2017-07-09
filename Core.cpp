@@ -7,7 +7,7 @@
 
 #include "Core.h"
 #include "Crops.h"
-#include "Channels.h"
+#include "Pumps.h"
 #include "Regimens.h"
 #include "Menus.h"
 #include "Screens.h"
@@ -136,48 +136,53 @@ void correctPlantEC(){
 
 //is it time to fix ph dift of plant water?
 void correctPlantPH(){
-	if (flowOutRate == true) { return; } //we are not allowed to correct plant pH if already flowing water to plants.. must wait
-	float pH = getWaterProbeValue(1);
+	//are we permitted to correct plant pH?
+	if (flowOutRate > 0 && ((millis() - phPlantMillis) < 60000)) { return; }
+	tmpFloats[0] = getWaterProbeValue(1);
 
-	//plant water can drift eitehr up or down, so we support both solutions via pump 9 and 10
-	if (pH > maxPH || pH < minPH){
+	//is current ph is outside of configred ph ranges?
+	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
 		lcd.clear();
 		lcd.home();
 		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
-		if (pH > maxPH){ //we must micro-ph-dose our plant water DOWN
+		if (tmpFloats[0] > maxPH){ //we must micro-ph-dose our plant water DOWN
 			pumpSpin(1, 9, pumpCalibration);
 			phPlantMillis = millis();
+			tmpFloats[0] = 0;
+			printHomeScreen();
 		}
-		if (pH < minPH){ //we must micro-ph-dose our plant water UP
+		if (tmpFloats[0] < minPH){ //we must micro-ph-dose our plant water UP
 			pumpSpin(1, 10, pumpCalibration);
 			phPlantMillis = millis();
+			tmpFloats[0] = 0;
+			printHomeScreen();
 		}
 	}
 }
 
 //is it time fix reservoir pH drift?
 void correctRsvrPH(){
-	if (flowInRate > 0 || flowOutRate > 0) { return; } //not permitted to correct reservoir pH if we are currently doing irrigation
-	float pH = getWaterProbeValue(1);
+	//are we permitted to correct reservoir pH?
+	if ((flowInRate > 0 || flowOutRate > 0) && ((millis() - phRsvrMillis) < 60000)) { return; }
+	tmpFloats[0] = getWaterProbeValue(1);
 
-	//if it has been a 1 min since last ph correction
-	if ((millis() - phRsvrMillis) > 60000){
-		//if current ph is outside of configred ph ranges
-		if (pH > maxPH || pH < minPH){
-			lcd.clear();
-			lcd.home();
-			lcd.print(F("PH DRIFT FIXING"));
-			lcd.setCursor(0, 1);
-			lcd.print(F("PLEAES HOLD!!!"));
-			pumpSpin(1, 8, pumpCalibration);
-			phRsvrMillis = millis();
-		}else{
-			//if ph corrected and 5 mins has past since last pH dosing
-			if ((millis() - phRsvrMillis) > 600000){
-				checkRegimenDosing();
-			}
+	//if current ph is outside of configred ph ranges
+	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
+		lcd.clear();
+		lcd.home();
+		lcd.print(F("PH DRIFT FIXING"));
+		lcd.setCursor(0, 1);
+		lcd.print(F("PLEAES HOLD!!!"));
+		pumpSpin(1, 8, pumpCalibration);
+		phRsvrMillis = millis();
+		tmpFloats[0] = 0;
+		printHomeScreen();
+	}else{
+		//if ph corrected and 5 mins has past since last pH dosing
+		if ((millis() - phRsvrMillis) > 600000){
+			checkRegimenDosing();
 		}
 	}
 }
@@ -215,7 +220,7 @@ int getWaterProbeValue(byte channel = 111){ //default is channel 0 aka EC1. 0 = 
 	for (byte i = 0; i < 4; i++){
 		returnedValue += sensordata[i];
 	}
-	if (channel == 0 || channel == 2){
+	if (channel == 111 || channel == 113){
 		return returnedValue.toInt();
 	}
 	else{
@@ -386,9 +391,9 @@ void RelayToggle(int channel, bool gate) {
 	}
 }
 
-void pumpSpin(int setAmount, int channelNumber, int pumpFlowRate = 100){
-	RelayToggle(channelNumber, true); //turn channel gate power on
-	//int setAmount, int setCalibration, int channelSize, int channelNumber
+void pumpSpin(int setAmount, int pumpNumber, int pumpFlowRate = 100){
+	RelayToggle(pumpNumber, true); //turn pump gate power on
+	//int setAmount, int setCalibration, int pumpSize, int pumpNumber
 	int mlPerSec = pumpFlowRate / 60; //100m (per minute) / 60sec = 1.6ml per seconds
 	int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
 
@@ -397,7 +402,7 @@ void pumpSpin(int setAmount, int channelNumber, int pumpFlowRate = 100){
 		//printHomeScreen();
 		Serial.flush();
 	}
-	RelayToggle(channelNumber, false); //turn channel gate power on
+	RelayToggle(pumpNumber, false); //turn pump gate power on
 }
 
 void makeNewFile(String path, JsonObject& data){

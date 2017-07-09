@@ -8,7 +8,7 @@
 #include "Crops.h"
 #include "Globals.h"
 #include "Core.h"
-#include "Channels.h"
+#include "Pumps.h"
 #include "Menus.h"
 #include "DatesTime.h"
 #include "Screens.h"
@@ -61,7 +61,7 @@ void cropChange(){
 	core["crop"] = menus[menuIndex];
 	tmpFile.close();
 	setCoreData(core);
-	menuIndex = currentChannelIndex = currentRegimenIndex = currentAlphaIndex = 0;
+	menuIndex = currentPumpIndex = currentRegimenIndex = currentAlphaIndex = 0;
 	menus.clear();
 	menusHistory.clear();
 	coreInit();
@@ -92,8 +92,7 @@ void cropRename(int dir){
 }
 
 void cropBuild(){
-	String channelName;
-	File channelSettingsFile;
+	File pumpSettingsFile;
 	File sessionSettingsFile;
 	byte i, j, defaultRegimensSize, defaultTimerSize;
 	defaultRegimensSize = 12;
@@ -127,12 +126,13 @@ void cropBuild(){
 	SD.mkdir("dromatic/" + cropName + "/Crop/Open");
 	SD.mkdir("dromatic/" + cropName + "/Crop/Delete");
 	SD.mkdir("dromatic/" + cropName + "/Crop/Reset");
+	SD.mkdir("dromatic/" + cropName + "/Crop/Status");
 	SD.mkdir("dromatic/" + cropName + "/Crop/EC");
 	SD.mkdir("dromatic/" + cropName + "/Crop/PH");
 	SD.mkdir("dromatic/" + cropName + "/Crop/Doses");
 
-	//Channels and volumes for each channel's regimen
-	SD.mkdir("dromatic/" + cropName + "/Chs");
+	//Pumps and ml volumes for each pump's regimen
+	SD.mkdir("dromatic/" + cropName + "/Pumps");
 
 	//Irrigation settings
 	SD.mkdir("dromatic/" + cropName + "/Irri");
@@ -198,22 +198,22 @@ void cropBuild(){
 	ec.add(500);
 	ec.add(700);
 
-	//Channels file
-	StaticJsonBuffer<channelBufferSize> channelBuffer;
-	JsonObject& channel = channelBuffer.createObject();
-	channel["calibration"] = 100; //in hundredths
-	channel["delay"] = 3;
+	//Pumps file
+	StaticJsonBuffer<pumpBufferSize> pumpBuffer;
+	JsonObject& pump = pumpBuffer.createObject();
+	pump["calibration"] = 100; //in hundredths
+	pump["delay"] = 3;
 
-	//Regimen files (these live under each channel's session)
+	//Regimen files (these live under each pump's folder)
 	StaticJsonBuffer<32> regimenBuffer;
 	JsonObject& regimen = regimenBuffer.createObject();
 	regimen["expired"] = false;
 	regimen["ml"] = 0.0;
 
-	//Make channel folders and their sessions files
+	//Make pump folders and their regimen files
 	for (i = 1; i <= 8; i++){
-		channel["id"] = i;
-		channelCreate("dromatic/" + cropName + "/Chs/SysCh" + i, 12, regimen);
+		pump["id"] = i;
+		pumpCreate("dromatic/" + cropName + "/Pumps/SysPmp" + i, 12, regimen);
 		lcd.print(F("*"));
 		Serial.flush();
 	}
@@ -234,7 +234,7 @@ void cropBuild(){
 	//(must happen after for loop cause we are gathering session ids above first)
 	makeNewFile("dromatic/" + cropName + "/crop.dro", crop);
 	makeNewFile("dromatic/" + cropName + "/irrigate.dro", irrigate);
-	makeNewFile("dromatic/" + cropName + "/channel.dro", channel);
+	makeNewFile("dromatic/" + cropName + "/pump.dro", pump);
 	makeNewFile("dromatic/" + cropName + "/Timer.dro", timer);
 
 	screenName = "";
@@ -267,6 +267,8 @@ void cropLoad(){
 	maxPH = cropData["ph"].asArray()[1];
 	//load current feeding type
 	feedingType = cropData["feedingType"];
+	//load current crop status
+	cropStatus = cropData["status"];
 
 	StaticJsonBuffer<ecBufferSize> ecBuffer;
 	JsonObject& ECData = getECData(ecBuffer, currentRegimen);
@@ -297,12 +299,12 @@ void cropLoad(){
 
 	//load current topoff count
 
-	StaticJsonBuffer<channelBufferSize> channelsBuffer;
-	JsonObject& channelsData = getChannelsData(channelsBuffer);
+	StaticJsonBuffer<pumpBufferSize> pumpsBuffer;
+	JsonObject& pumpsData = getPumpsData(pumpsBuffer);
 	//load pump config
-	pumpCalibration = channelsData["calibration"];
+	pumpCalibration = pumpsData["calibration"];
 	//load pump delay
-	pumpDelay = channelsData["delay"];
+	pumpDelay = pumpsData["delay"];
 
 	//Check recepticals before proceeding
 	checkRecepticals();
@@ -337,8 +339,31 @@ void savePHData(){
 		exitScreen();
 	}
 }
+void saveStatus(){
+	if (cursorX == 13 && cursorY == 1){
+		StaticJsonBuffer<cropBufferSize> cropBuffer;
+		JsonObject& cropData = getCropData(cropBuffer);
+		cropData["status"] = cropStatus;
+		setCropData(cropData);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		exitScreen();
+	}
+}
 
 //Prints
+void printStatus(int dir = 0){
+	if (dir != 0){
+		cropStatus += dir;
+		if (cropStatus > 1){ cropStatus = 1; }
+		if (cropStatus < 0){ cropStatus = 0; }
+	}
+	lcd.clear();
+	lcd.home();
+	lcd.print("STATUS: ");
+	lcd.print((cropStatus == 0) ? "PAUSED" : "RUNNING");
+	lcd.print(F("<back>      <ok>"));
+}
 void printPHRange(double dir = 0){
 	float minMaxDiff = 0.01;
 	if (dir == 0){

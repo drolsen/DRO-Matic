@@ -51,7 +51,7 @@ const byte ECPower[3] = { 39, 41, 43 };
 
 #define coreBufferSize 32
 #define cropBufferSize 220
-#define channelBufferSize 196
+#define pumpBufferSize 196
 #define regimenBufferSize 512
 #define regimenSessionBufferSize 64
 #define timerBufferSize 164
@@ -101,7 +101,7 @@ extern int tmpInts[6];
 extern float tmpFloats[2];
 
 extern const char* const alphabet[37] PROGMEM;
-extern const char* const screenNames[28][3] PROGMEM;
+extern const char* const screenNames[29][3] PROGMEM;
 extern const char* const months[12] PROGMEM;
 extern const char* const displayRepeats[6] PROGMEM;
 
