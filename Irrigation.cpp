@@ -66,20 +66,21 @@ void printTopOffConcentrate(int dir = 0){
 	}
 
 	if (tmpInts[0] == 1) {
-		lcd.print(F("1/6 CONCENTRATE"));
+		lcd.print(F("1/6"));
 	}
 	if (tmpInts[0] == 2) {
-		lcd.print(F("2/6 CONCENTRATE"));
+		lcd.print(F("2/6"));
 	}
 	if (tmpInts[0] == 3) {
-		lcd.print(F("3/6 CONCENTRATE"));
+		lcd.print(F("3/6"));
 	}
 	if (tmpInts[0] == 4) {
-		lcd.print(F("4/6 CONCENTRATE"));
+		lcd.print(F("4/6"));
 	}
 	if (tmpInts[0] == 5) {
-		lcd.print(F("5/6 CONCENTRATE"));
+		lcd.print(F("5/6"));
 	}
+	lcd.print(" CONCENTRATE");
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
@@ -140,16 +141,14 @@ void printFlowCalibration(int dir = 0){
 		if (cursorX == 5 && cursorY == 0){
 			if (dir > 0){
 				tmpFloats[0] += 0.1;
-			}
-			else{
+			} else {
 				tmpFloats[0] -= 0.1;
 			}
 		}
 		if (cursorX == 13 && cursorY == 0){
 			if (dir > 0){
 				tmpFloats[1] += 0.1;
-			}
-			else{
+			} else {
 				tmpFloats[1] -= 0.1;
 			}
 		}
@@ -164,11 +163,11 @@ void printFlowCalibration(int dir = 0){
 	lcd.setCursor(cursorX, 0);
 }
 void printFullFlushing(){
+	lcd.clear();
 	lcd.print(F("MANUAL FLUSHING"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<in><out> <done>"));
-	cursorX = 0;
-	cursorY = 0;
+	cursorX = cursorY = 0;
 	lcd.setCursor(cursorX, cursorY);
 }
 
@@ -241,8 +240,7 @@ void saveFlowCalibration(){
 		setIrrigationData(data);
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-		tmpFloats[0] = 0;
-		tmpFloats[1] = 0;
+		tmpFloats[0] = tmpFloats[1] = 0;
 		exitScreen();
 	}
 }

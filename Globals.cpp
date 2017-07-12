@@ -23,9 +23,12 @@ topOffDelay,
 cropStatus, 
 feedingType,
 lastFeedingWeek,
-lastFeedingDay;
+lastFeedingDay,
+pumpDelay;
 
-int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay, pulseInFlowCount, pulseOutFlowCount;
+volatile byte pulseInFlowCount, pulseOutFlowCount;
+
+int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 double currentRsvrVol = 0;
 
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -34,10 +37,8 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMOFLEDS, LEDPIN, NEO_GRB + NEO_KH
 
 //Tentical Sheild
 int channel_ids[] = { 111, 112, 113, 114 };
-char *channel_names[] = { "EC1", "PH1", "EC2", "PH2" }; // <-- CHANGE THIS.
 char sensordata[30];                  // A 30 byte character array to hold incoming data from the sensors
 byte sensor_bytes_received = 0;       // We need to know how many characters bytes have been received
-
 byte code = 0;                        // used to hold the I2C response code.
 byte in_char = 0;                     // used as a 1 byte buffer to store in bound bytes from the I2C Circuit.
 
@@ -129,21 +130,15 @@ const char Settings[9] PROGMEM = "SETTINGS";
 const char Pump[6] PROGMEM = "PUMP";
 const char NumberOf[10] PROGMEM = "NUMBER OF";
 const char Configuration[14] PROGMEM = "CONFIGURATION";
-const char Config[7] PROGMEM = "CONFIG";
 const char Concent[12] PROGMEM = "CONCENTRATE";
 const char Calib[10] PROGMEM = "CALIBRATE";
-const char Calibration[12] PROGMEM = "CALIBRATION";
-const char Volume[7] PROGMEM = "VOLUME";
-const char Range[6] PROGMEM = "RANGE";
 const char Irrigation[11] PROGMEM = "IRRIGATION";
 const char Reservoir[10] PROGMEM = "RESERVOIR";
-const char SizeMl[12] PROGMEM = "SIZE(ml) OF";
 const char Timer[6] PROGMEM = "TIMER";
 const char Times[6] PROGMEM = "TIMES";
 const char TopOff[8] PROGMEM = "TOP OFF";
-const char Names[6] PROGMEM = "NAMES";
 const char RegimensML[14] PROGMEM = "REGIMENS (ml)";
-const char RegimensWeeks[14] PROGMEM = "REGIMEN DOSES";
+const char RegimensDoses[14] PROGMEM = "REGIMEN DOSES";
 const char Weeks[6] PROGMEM = "WEEKS";
 const char Solution[9] PROGMEM = "SOLUTION";
 const char Amount[7] PROGMEM = "AMOUNT";
@@ -159,8 +154,6 @@ const char Open[5] PROGMEM = "OPEN";
 const char New[4] PROGMEM = "NEW";
 const char Delete[7] PROGMEM = "DELETE";
 const char Reset[6] PROGMEM = "RESET";
-const char Start[6] PROGMEM = "START";
-const char Pause[6] PROGMEM = "PAUSE";
 const char DrainLength[11] PROGMEM = "DRAIN TIME";
 const char StartEnd[11] PROGMEM = "START END";
 const char PrimePump[14] PROGMEM = "PRIME PUMP";
@@ -193,7 +186,7 @@ const char* const screenNames[29][3] PROGMEM = {
 	{ _topOffAmnt, TopOff, Amount },
 	{ _topOffDly, TopOff, DelayConfig },
 	{ _drainTime, DrainLength, Configuration },
-	{ _doses, NumberOf, RegimensWeeks },
+	{ _doses, NumberOf, RegimensDoses },
 	{ _weeks, NumberOf, Weeks },
 	{ _amt, RegimensML, Configuration },
 	{ _delay, PumpDose, DelayConfig },
@@ -225,5 +218,3 @@ const char daily[6] PROGMEM = "Daily";
 const char weekly[7] PROGMEM = "Weekly";
 const char monthly[8] PROGMEM = "Monthly";
 const char yearly[7] PROGMEM = "Yearly";
-
-const char* const displayRepeats[6] PROGMEM = { none, hourly, daily, weekly, monthly, yearly };

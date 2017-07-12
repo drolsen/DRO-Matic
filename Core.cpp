@@ -92,7 +92,7 @@ int tmpIntsToInt(byte decimalPlaces){
 //time feed plants some top off water?
 void correctPlantEC(){
 	if (flowInRate > 0){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
-	int PPM = getWaterProbeValue(0);
+	int PPM = getECProbeValue(0);
 	if ((PPM > maxPPM || PPM < minPPM) && feedingType == 1){
 		lcd.clear();
 		lcd.home();
@@ -138,7 +138,7 @@ void correctPlantEC(){
 void correctPlantPH(){
 	//are we permitted to correct plant pH?
 	if (flowOutRate > 0 && ((millis() - phPlantMillis) < 60000)) { return; }
-	tmpFloats[0] = getWaterProbeValue(1);
+	tmpFloats[0] = getPHProbeValue(1);
 
 	//is current ph is outside of configred ph ranges?
 	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
@@ -166,7 +166,7 @@ void correctPlantPH(){
 void correctRsvrPH(){
 	//are we permitted to correct reservoir pH?
 	if ((flowInRate > 0 || flowOutRate > 0) && ((millis() - phRsvrMillis) < 60000)) { return; }
-	tmpFloats[0] = getWaterProbeValue(1);
+	tmpFloats[0] = getPHProbeValue(1);
 
 	//if current ph is outside of configred ph ranges
 	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
@@ -188,13 +188,12 @@ void correctRsvrPH(){
 }
 
 //Open channel of tentical sheild to get probe reading value
-void openWaterProbeChannel(int channel) {
+void openWaterProbeChannel(byte channel) {
 	Wire.beginTransmission(channel_ids[channel]);     // call the circuit by its ID number.
 }
 
 //Get either EC or pH live probe values
-int getWaterProbeValue(byte channel = 111){ //default is channel 0 aka EC1. 0 = EC1, 1 = PH1, 2 = EC2, 3 = PH2
-	int data;
+float getPHProbeValue(byte channel){ //default is channel 0 aka EC1. 0 = EC1, 1 = PH1, 2 = EC2, 3 = PH2
 	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
 	Wire.write('r');                          // request a reading by sending 'r'
 	Wire.endTransmission();                         // end the I2C data transmission.
@@ -220,12 +219,36 @@ int getWaterProbeValue(byte channel = 111){ //default is channel 0 aka EC1. 0 = 
 	for (byte i = 0; i < 4; i++){
 		returnedValue += sensordata[i];
 	}
-	if (channel == 111 || channel == 113){
-		return returnedValue.toInt();
+	return returnedValue.toFloat();
+}
+
+int getECProbeValue(byte channel){ //default is channel 0 aka EC1. 0 = EC1, 1 = PH1, 2 = EC2, 3 = PH2
+	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
+	Wire.write('r');                          // request a reading by sending 'r'
+	Wire.endTransmission();                         // end the I2C data transmission.
+	delay(1000);  // AS circuits need a 1 second before the reading is ready
+
+	sensor_bytes_received = 0;                        // reset data counter
+	memset(sensordata, 0, sizeof(sensordata));        // clear sensordata array;
+
+	Wire.requestFrom(channel_ids[channel], 48, 1);    // call the circuit and request 48 bytes (this is more then we need).
+	code = Wire.read();
+	while (Wire.available()) {          // are there bytes to receive?
+		in_char = Wire.read();            // receive a byte.
+		if (in_char == 0) {               // null character indicates end of command
+			Wire.endTransmission();         // end the I2C data transmission.
+			break;                          // exit the while loop, we're done here
+		}
+		else {
+			sensordata[sensor_bytes_received] = in_char;      // append this byte to the sensor data array.
+			sensor_bytes_received++;
+		}
 	}
-	else{
-		return returnedValue.toFloat();
+	String returnedValue;
+	for (byte i = 0; i < 4; i++){
+		returnedValue += sensordata[i];
 	}
+	return returnedValue.toInt();
 }
 
 //Three point pH water probe calibration

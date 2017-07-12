@@ -85,7 +85,7 @@ void savePumpCalibration(){
 		data["calibration"] = pumpCalibration = tmpInts[0];
 		setPumpsData(data);
 	}
-	if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
 		exitScreen();
 	}
@@ -97,7 +97,7 @@ void savePumpDelay(){
 		data["delay"] = pumpDelay = tmpInts[0];
 		setPumpsData(data);
 	}
-	if (cursorX == 1 && cursorY == 1 || cursorX == 13 && cursorY == 1){
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		tmpInts[0] = 0;
 		exitScreen();
 	}

@@ -48,6 +48,7 @@ void exitScreen(){
 	tmpFile = SD.open("dromatic/" + cropName + "/" + getMenuHistory());
 	getDirectoryMenus(tmpFile);
 	lcd.clear();
+	lcd.home();
 	lcd.noBlink();
 	tmpFile.close();
 	printScreenNames(menus.front());
@@ -58,9 +59,14 @@ void exitScreen(){
 void printHomeScreen(){
 	captureDateTime();
 	char monthsBuffer[8];
-	
-	int EC1Value = getWaterProbeValue(0);
-	float PH1Value = getWaterProbeValue(1);
+	byte i = NUMOFLEDS;
+	int EC1Value = getECProbeValue(0);
+	float PH1Value = getPHProbeValue(1);
+
+
+	int RED = (PH1Value < minPH) ? 255 : 0;
+	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
+	int BLUE = (PH1Value > maxPH) ? 255 : 0;
 	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
@@ -73,11 +79,9 @@ void printHomeScreen(){
 	lcd.home();
 	lcd.noBlink();
 
-	int RED = (PH1Value < minPH) ? 255 : 0;
-	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
-	int BLUE = (PH1Value > maxPH) ? 255 : 0;
 
-	for (int i = 0; i<NUMOFLEDS; i++){
+	
+	while (i--){
 		// pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
 		pixels.setPixelColor(i, pixels.Color(RED, GREEN, BLUE)); // Moderately bright green color.
 		pixels.show(); // This sends the updated pixel color to the hardware.
