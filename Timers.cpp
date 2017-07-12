@@ -68,7 +68,6 @@ void printTimerWeeks(int dir) {
 void printTimerStartEnd(int dir){
 
 	String DOW[7] = { "Su", "Mo", "Tu", "We", "Th", "Fi", "Sa" };
-	String DOWDisplay, startDisplay, endDisplay = "";
 	String AMPM1 = F("AM");
 	String AMPM2 = F("PM");
 	if (cursorY == 0){
@@ -117,7 +116,7 @@ void printTimerStartEnd(int dir){
 			
 		}
 
-		DOWDisplay = DOW[currentTimerSessionDayIndex];
+		tmpDisplay[2] = DOW[currentTimerSessionDayIndex];
 		
 		lcd.clear();
 		lcd.home();
@@ -125,24 +124,20 @@ void printTimerStartEnd(int dir){
 		//START
 		if (cursorX == 1){
 			tmpInts[0] += dir;
-			if (tmpInts[0] > 23){
-				tmpInts[0] = 23;
-			}
-			if (tmpInts[0] < 0) {
+			if (tmpInts[0] > 24){
 				tmpInts[0] = 0;
 			}
-			if (tmpInts[0] >= tmpInts[1] && tmpInts[1] < 24 && dir > 0){
-				tmpInts[1]++;
+			if (tmpInts[0] < 0) {
+				tmpInts[0] = 24;
 			}
 		}
 
 		if (tmpInts[0] > 12){
-			startDisplay = ((tmpInts[0] - 12) < 10) ? "0" + String(tmpInts[0] - 12) : String(tmpInts[0] - 12);
+			tmpDisplay[0] = ((tmpInts[0] - 12) < 10) ? "0" + String(tmpInts[0] - 12) : String(tmpInts[0] - 12);
 		}else{
+			tmpDisplay[0] = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
 			if (tmpInts[0] == 0){
-				startDisplay = String(12);
-			}else{
-				startDisplay = (tmpInts[0] < 10) ? "0" + String(tmpInts[0]) : String(tmpInts[0]);
+				tmpDisplay[0] = String(12);
 			}
 		}
 
@@ -151,40 +146,34 @@ void printTimerStartEnd(int dir){
 			tmpInts[1] += dir;
 
 			if (tmpInts[1] > 24){
+				tmpInts[1] = 0;
+			}
+			if (tmpInts[1] < 0) {
 				tmpInts[1] = 24;
-			}
-			if (tmpInts[1] < 1) {
-				tmpInts[1] = 1;
-			}
-			if (tmpInts[1] <= tmpInts[0] && tmpInts[0] > 0 && dir != 0){
-				tmpInts[0]--;
 			}
 		}
 
 		if (tmpInts[1] > 12){
-			endDisplay = ((tmpInts[1] - 12) < 10) ? "0" + String(tmpInts[1] - 12) : String(tmpInts[1] - 12);
-		}
-		else{
+			tmpDisplay[1] = ((tmpInts[1] - 12) < 10) ? "0" + String(tmpInts[1] - 12) : String(tmpInts[1] - 12);
+		}else{
+			tmpDisplay[1] = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
 			if (tmpInts[1] == 0){
-				endDisplay = String(12);
-			}
-			else{
-				endDisplay = (tmpInts[1] < 10) ? "0" + String(tmpInts[1]) : String(tmpInts[1]);
+				tmpDisplay[1] = String(12);
 			}
 		}
 
 		AMPM1 = (tmpInts[0] > 11 && tmpInts[0] < 24) ? F("PM") : F("AM");
 
-		lcd.print(startDisplay);
-		lcd.print(AMPM1);
+		lcd.print(tmpDisplay[0]); //start time
+		lcd.print(AMPM1);		  //am or pm
 		lcd.print(String("-"));
 
 		AMPM2 = (tmpInts[1] > 11 && tmpInts[1] < 24) ? F("PM") : F("AM");
 
-		lcd.print(endDisplay);
-		lcd.print(AMPM2);
+		lcd.print(tmpDisplay[1]); //end time
+		lcd.print(AMPM2);		  //am or pm
 		lcd.print(F(" "));
-		lcd.print(DOWDisplay);
+		lcd.print(tmpDisplay[2]); //day of week
 		lcd.print(F("/"));
 		if (currentTimerSessionIndex < 10){
 			lcd.print(F("0"));
@@ -200,12 +189,11 @@ void printTimerStartEnd(int dir){
 //Saves
 void saveStartEnd(){
 	if (cursorX == 11 && cursorY == 1){
-		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<timerBufferSize> jsonBuffer;
 		JsonObject& data = getTimerSessionData(jsonBuffer);
 		JsonArray& start = data["start"].asArray();
 		JsonArray& end = data["end"].asArray();
+
 		start[0] = tmpInts[0];
 		start[0] = tmpInts[1];
 		start[0] = tmpInts[2];
@@ -216,7 +204,10 @@ void saveStartEnd(){
 
 		setTimerSessionData(data);
 	}
-	if (cursorX == 1 && cursorY == 1){
+	if (cursorX == 1 || cursorX == 11 && cursorY == 1){
+		tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = tmpInts[4] = tmpInts[5] = 0;
+		tmpDisplay[0] = tmpDisplay[1] = tmpDisplay[2] = "";
+		currentTimerSessionDayIndex = currentTimerSessionIndex = 0;
 		exitScreen();
 	}
 }

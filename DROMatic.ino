@@ -106,14 +106,12 @@ void loop()
 	}
 
 	//60 seconds has passed - Check logic for action
-	if (previousMinute != rtc.getTime().min) {
+	if (previousMinute != rtc.getTime().min && cropStatus != 0) {
 		previousMinute = rtc.getTime().min;
 		if (screenName == "" && (millis() - menuMillis >= 10000)) {
-			if (cropStatus != 0){
-				correctRsvrPH();
-				correctPlantPH();
-				correctPlantEC();
-			}
+			correctRsvrPH();
+			correctPlantPH();
+			correctPlantEC();
 			//checkRecepticals();
 		}
 	}
@@ -162,7 +160,7 @@ void loop()
 		}
 		if (screenName == "NEW"){
 			matrix = {
-				{ { 0, 15 } },
+				{ { 0, 8 } },
 				{ { 11, 11 } }
 			};
 			if (Key == 0){

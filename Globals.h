@@ -80,10 +80,12 @@ topOffDelay,
 cropStatus, //Does user have crop paused or started
 feedingType,
 lastFeedingDay,
-lastFeedingWeek;
+lastFeedingWeek,
+pumpDelay;
 
+extern volatile byte pulseInFlowCount, pulseOutFlowCount;
 
-extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration, pumpDelay, pulseInFlowCount, pulseOutFlowCount;
+extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 extern double currentRsvrVol;
 
 //Tentical Sheild
@@ -93,7 +95,6 @@ extern byte sensor_bytes_received;       // We need to know how many characters 
 extern byte code;                        // used to hold the I2C response code.
 extern byte in_char;                     // used as a 1 byte buffer to store in bound bytes from the I2C Circuit.
 extern int channel_ids[];				 // tentical shield channel ids array
-extern char *channel_names[];			 // channe names (optional)
 
 extern File tmpFile; //Single location to store file data when interfacting with SD card files
 extern String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
@@ -103,6 +104,5 @@ extern float tmpFloats[2];
 extern const char* const alphabet[37] PROGMEM;
 extern const char* const screenNames[29][3] PROGMEM;
 extern const char* const months[12] PROGMEM;
-extern const char* const displayRepeats[6] PROGMEM;
 
 #endif
