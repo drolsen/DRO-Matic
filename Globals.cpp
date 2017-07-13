@@ -26,7 +26,7 @@ lastFeedingWeek,
 lastFeedingDay,
 pumpDelay;
 
-volatile byte pulseInFlowCount, pulseOutFlowCount;
+volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
 
 int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 double currentRsvrVol = 0;
@@ -165,7 +165,7 @@ const char Manual[14] PROGMEM = "MANUAL SYSTEM";
 
 
 
-const char* const screenNames[29][3] PROGMEM = {
+const char* const screenNames[28][3] PROGMEM = {
 	{ _sys, System, Settings },
 	{ _pump, Pump, Settings },
 	{ _crop, _crop, Settings },
@@ -184,7 +184,6 @@ const char* const screenNames[29][3] PROGMEM = {
 	{ _rsvrVol, Reservoir, VolumeConfig },
 	{ _topOffCcnt, TopOff, Concent },
 	{ _topOffAmnt, TopOff, Amount },
-	{ _topOffDly, TopOff, DelayConfig },
 	{ _drainTime, DrainLength, Configuration },
 	{ _doses, NumberOf, RegimensDoses },
 	{ _weeks, NumberOf, Weeks },

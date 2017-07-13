@@ -64,9 +64,9 @@ void printHomeScreen(){
 	float PH1Value = getPHProbeValue(1);
 
 
-	int RED = (PH1Value < minPH) ? 255 : 0;
+	int RED = (PH1Value > minPH) ? 255 : 0;
 	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
-	int BLUE = (PH1Value > maxPH) ? 255 : 0;
+	int BLUE = (PH1Value < maxPH) ? 255 : 0;
 	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
