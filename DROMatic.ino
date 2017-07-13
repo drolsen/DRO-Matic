@@ -424,7 +424,7 @@ void loop()
 					printECCalibrations("LOW", dir);
 				}
 				if (screenName == "ECCALHI"){
-					printECCalibrations("HI", dir);
+					printECCalibrations("HIGH", dir);
 				}
 			}
 		}

@@ -83,7 +83,7 @@ lastFeedingDay,
 lastFeedingWeek,
 pumpDelay;
 
-extern volatile byte pulseInFlowCount, pulseOutFlowCount;
+extern volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
 
 extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 extern double currentRsvrVol;
@@ -102,7 +102,7 @@ extern int tmpInts[6];
 extern float tmpFloats[2];
 
 extern const char* const alphabet[37] PROGMEM;
-extern const char* const screenNames[29][3] PROGMEM;
+extern const char* const screenNames[28][3] PROGMEM;
 extern const char* const months[12] PROGMEM;
 
 #endif
