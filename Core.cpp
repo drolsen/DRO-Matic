@@ -152,8 +152,7 @@ void correctPlantPH(){
 			phPlantMillis = millis();
 			tmpFloats[0] = 0;
 			printHomeScreen();
-		}
-		if (tmpFloats[0] < minPH){ //we must micro-ph-dose our plant water UP
+		}else if (tmpFloats[0] < minPH){ //we must micro-ph-dose our plant water UP
 			pumpSpin(1, 10, pumpCalibration);
 			phPlantMillis = millis();
 			tmpFloats[0] = 0;
@@ -166,7 +165,7 @@ void correctPlantPH(){
 void correctRsvrPH(){
 	//are we permitted to correct reservoir pH?
 	if ((flowInRate > 0 || flowOutRate > 0) && ((millis() - phRsvrMillis) < 60000)) { return; }
-	tmpFloats[0] = getPHProbeValue(1);
+	tmpFloats[0] = getPHProbeValue(3);
 
 	//if current ph is outside of configred ph ranges
 	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
