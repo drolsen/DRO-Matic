@@ -27,9 +27,6 @@
     <ClInclude Include="Crops.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Channels.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -51,15 +48,15 @@
     <ClInclude Include="Regimens.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Pumps.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Crops.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Channels.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Core.cpp">
@@ -81,6 +78,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Regimens.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Pumps.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

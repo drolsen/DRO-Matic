@@ -83,7 +83,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Channels.h" />
+    <ClInclude Include="Pumps.h" />
     <ClInclude Include="Core.h" />
     <ClInclude Include="Crops.h" />
     <ClInclude Include="DatesTime.h" />
@@ -96,7 +96,7 @@
     <ClInclude Include="__vm\.DROMatic.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Channels.cpp" />
+    <ClCompile Include="Pumps.cpp" />
     <ClCompile Include="Core.cpp" />
     <ClCompile Include="Crops.cpp" />
     <ClCompile Include="DatesTime.cpp" />

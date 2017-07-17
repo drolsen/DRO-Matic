@@ -14,10 +14,10 @@ extern byte currentTimerIndex, currentTimerSessionIndex, currentTimerSessionDayI
 
 //Read & Write from SD
 extern JsonObject& getTimerData(JsonBuffer& b);
-extern void setTimerData(JsonObject& d, int timerIndex = currentTimerIndex);
-extern JsonObject& getTimerSessionData(JsonBuffer& b, int timerIndex = currentTimerIndex, int sessionIndex = currentTimerSessionIndex);
-extern void setTimerSessionData(JsonObject& d, int timerIndex = currentTimerIndex, int sessionIndex = currentTimerSessionIndex);
-
+extern void setTimerData(JsonObject& d);
+extern JsonObject& getTimerSessionData(JsonBuffer& b, int timerIndex = currentTimerIndex, int weekIndex = currentTimerSessionIndex);
+extern void setTimerSessionData(JsonObject& d, int timerIndex = currentTimerIndex, int weekIndex = currentTimerSessionIndex);
+extern void checkTimers();
 //Print
 extern void printTimerWeeks(int dir);
 extern void printTimerStartEnd(int dir);

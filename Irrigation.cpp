@@ -80,18 +80,31 @@ void printTopOffConcentrate(int dir = 0){
 	if (tmpInts[0] == 5) {
 		lcd.print(F("5/6"));
 	}
-	lcd.print(" CONCENTRATE");
+	lcd.print(F(" CONCENTRATE"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(cursorX, 0);
 }
 void printTopOffAmount(int dir = 0){
+	String prefix = "";
 	if (dir != 0){
 		tmpInts[0] += dir;
+		//top off amount can't be lower than 1 gallon.
+		if (tmpInts[0] < 1){
+			tmpInts[0] = 1;
+		}
+		//top off amounts can't be higher than reservoir volume / 4
+		if (tmpInts[0] > (rsvrVol / 4)){
+			tmpInts[0] = (int)(rsvrVol / 4);
+		}
+	}
+	if (tmpInts[0] < 10){
+		prefix = "0";
 	}
 	lcd.clear();
+	lcd.print(prefix);
 	lcd.print(tmpInts[0]);
-	lcd.print(F(" TOPOFF GAL"));
+	lcd.print(F(" TOPOFF gal"));
 	lcd.setCursor(0,1);
 	lcd.print(F("<back>      <ok>"));
 }
@@ -310,6 +323,11 @@ void countRsvrDrain(){
 }
 //Flush only plant water (drainTime config based)
 void flushPlantWater(){
+	lcd.clear();
+	lcd.home();
+	lcd.print("FLUSHING PLANTS");
+	lcd.setCursor(0, 1);
+	lcd.print("PLEASE HOLD!!!");
 	RelayToggle(12, true);
 	int i = drainTime * 60; //mins x 60secs = loop total
 	while (i--){//loop to count i (aka seconds), then delay each loop by 1 second
@@ -322,8 +340,14 @@ void flushPlantWater(){
 //Flush only reservoir water (flowInRate event based)
 void flushRsvrWater(){
 	//while reservoir isn't filling up, flush remaining reservoir water to plants.
+	lcd.clear();
+	lcd.home();
+	lcd.print("FEEDING PLANTS");
+	lcd.setCursor(0, 1);
+	lcd.print("PLEASE HOLD!!!");
 	while (flowInRate == 0){
 		RelayToggle(11, true);
+		checkFlowRates();
 		if (flowInRate > 0){
 			RelayToggle(11, false);
 			break; //break the loop.

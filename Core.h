@@ -27,7 +27,6 @@ extern float getPHProbeValue(byte channel);
 extern int getECProbeValue(byte channel);
 extern void setPHWaterProbeCalibration(byte channel, int value, char type);
 extern void setECWaterProbeCalibration(byte channel, int value, char type);
-extern void checkRecepticals();
 
 //Pumping Functions
 extern void RelayToggle(int channel, bool gate);

@@ -19,7 +19,7 @@ extern void setRegimenData(JsonObject& d, byte pumpIndex = currentPumpIndex, byt
 
 //Prints
 extern void printRegimenNumber(int dir);
-extern void printRegimenAmount(int dir);
+extern void printRegimenAmount(int dir = 0);
 
 //Saves
 extern void saveRegimenAmount();

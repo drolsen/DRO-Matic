@@ -10,11 +10,10 @@
 #include "Regimens.h"
 #include "Menus.h"
 
-float flowInRate, flowOutRate, flowMeterConfig[2];
+float flowInRate, flowOutRate, flowMeterConfig[2], minPH, maxPH;
 boolean irrigationFlag = false;
 
 byte currentTimerSessions[4], 
-minPH, maxPH, 
 currentRegimen, maxRegimens, 
 drainTime, 
 topOffConcentrate,
@@ -24,7 +23,9 @@ cropStatus,
 feedingType,
 lastFeedingWeek,
 lastFeedingDay,
-pumpDelay;
+pumpDelay,
+timerStartHours[4],
+timerEndHours[4];
 
 volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
 
