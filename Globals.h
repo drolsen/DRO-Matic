@@ -65,13 +65,12 @@ extern LiquidCrystal lcd;
 extern DS3231  rtc;
 extern Adafruit_NeoPixel pixels;
 
-extern float flowInRate, flowOutRate, flowMeterConfig[2];
+extern float flowInRate, flowOutRate, flowMeterConfig[2], minPH, maxPH;
 extern boolean irrigationFlag;
 
 extern byte
 currentTimerSessions[4],
 maxRegimens,
-minPH, maxPH, //Where we store the min and max pH values of our crop configuration
 currentRegimen, //Where we store the current regimen we are on
 drainTime, //Where we store how long of a drain time we will take when flushing plants water
 topOffConcentrate,  //The fraction amount we dose our topoff water
@@ -81,7 +80,9 @@ cropStatus, //Does user have crop paused or started
 feedingType,
 lastFeedingDay,
 lastFeedingWeek,
-pumpDelay;
+pumpDelay,
+timerStartHours[4],
+timerEndHours[4];
 
 extern volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
 

@@ -31,8 +31,8 @@ extern void cropBuild();
 extern void cropLoad();
 
 //Saves
-extern void saveECData();
-extern void savePHData();
+extern void saveECRange();
+extern void savePHRange();
 extern void saveStatus();
 
 //Prints

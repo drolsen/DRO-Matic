@@ -20,25 +20,81 @@ JsonObject& getTimerData(JsonBuffer& b){
 	tmpFile.close();
 	return d;
 }
-void setTimerData(JsonObject& d, int timerIndex = currentTimerIndex){
+void setTimerData(JsonObject& d){
 	char b[128];
-	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + currentTimerSessionIndex + ".dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/Timer.dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
 }
-JsonObject& getTimerSessionData(JsonBuffer& b, int timerIndex = currentTimerIndex, int sessionIndex = currentTimerSessionIndex){
-	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + sessionIndex + ".dro", O_READ);
+JsonObject& getTimerSessionData(JsonBuffer& b, int timerIndex = currentTimerIndex, int weekIndex = currentTimerSessionIndex){
+	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + weekIndex + ".dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
-void setTimerSessionData(JsonObject& d, int timerIndex = currentTimerIndex, int sessionIndex = currentTimerSessionIndex){
+void setTimerSessionData(JsonObject& d, int timerIndex = currentTimerIndex, int weekIndex = currentTimerSessionIndex){
 	char b[128];
-	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + sessionIndex + ".dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/Timers/Recep0" + timerIndex + "/Week" + weekIndex + ".dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
+}
+
+void checkTimers(){
+	byte currentHour, currentDOW, startHour, endHour, currentReceptical, currentRecepticalWeek;
+	Time time = rtc.getTime();
+	currentHour = time.hour;
+	currentDOW = time.dow;
+	for (byte i = 0; i < 4; i++){
+		currentReceptical = 13 + i;
+		if (currentHour >= timerStartHours[i] && currentHour < timerEndHours[i]){
+			RelayToggle(currentReceptical, true);
+		}
+		else{
+			//Only if if a timer was previously on before turing it off, do we gather next start/end times.
+			boolean updateReceptical = false;
+			switch (i){
+			case 1:
+				if (digitalRead(RELAY13) == 'LOW'){
+					updateReceptical = true;
+				}
+				break;
+			case 2:
+				if (digitalRead(RELAY14) == 'LOW'){
+					updateReceptical = true;
+				}
+				break;
+			case 3:
+				if (digitalRead(RELAY15) == 'LOW'){
+					updateReceptical = true;
+				}
+				break;
+			case 4:
+				if (digitalRead(RELAY16) == 'LOW'){
+					updateReceptical = true;
+				}
+				break;
+			}
+			if (updateReceptical == true){
+				StaticJsonBuffer<timerBufferSize> timersBuffer;
+				JsonObject& timersData = getTimerData(timersBuffer);
+				int currentWeek = timersData["currents"].asArray()[i]; //i = current receptical
+				int maxWeeks = timersData["weeks"].asArray()[i]; //i = current receptical
+
+				//Update RAM & SD currents
+				timersData["currents"].asArray()[i] = currentTimerSessions[i] = ((currentTimerSessions[i] + 1) > maxWeeks) ? currentTimerSessions[i] : (currentTimerSessions[i] + 1);
+
+				StaticJsonBuffer<timerSessionBufferSize> timerSessionBuffer;
+				JsonObject& sessionData = getTimerSessionData(timerSessionBuffer, (i + 1), currentWeek);
+				timerStartHours[i] = sessionData["times"].asArray()[currentDOW].asArray()[0];
+				timerEndHours[i] = sessionData["times"].asArray()[currentDOW].asArray()[1];
+				setTimerData(timersData);
+			}
+			//Finally no matter what, we always turn off recepticals (hench all the checking above).
+			RelayToggle(currentReceptical, false);
+		}
+	}
 }
 
 //Prints

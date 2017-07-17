@@ -116,12 +116,14 @@ void correctPlantEC(){
 		lcd.print(F("PLEAES HOLD!!!"));
 		while (currentRsvrVol > (currentRsvrVol - topOffAmount)){
 			RelayToggle(11, true);
+			RelayToggle(12, true);
 			detachInterrupt(digitalPinToInterrupt(FlowPinIn));
 			detachInterrupt(digitalPinToInterrupt(FlowPinOut));
 			checkFlowRates();
 			if (flowInRate > 0){//OH CRAP! flowInRate is true, so we must of run out of reservoir topoff water.
 				//but was EC correction successful?.. if not, time to flush plants!
-				RelayToggle(11, false); //close up in-valve finish feeding early
+				RelayToggle(11, false); //close up in-valve and finish feeding early
+				RelayToggle(12, true); //close up out-value and finish feeding early
 				feedingType = 0; //now switch to full feeding for moving onto next regimen
 				cropData["feedingType"] = feedingType;
 				setCropData(cropData);
@@ -131,13 +133,14 @@ void correctPlantEC(){
 			attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
 		}
 		RelayToggle(11, false); //close up in-valve to finish feeding
+		RelayToggle(12, false); //close up out-valve to finish feeding
 	}
 }
 
 //is it time to fix ph dift of plant water?
 void correctPlantPH(){
 	//are we permitted to correct plant pH?
-	if (flowOutRate > 0 && ((millis() - phPlantMillis) < 60000)) { return; }
+	if (flowOutRate > 0 || ((millis() - phPlantMillis) < 60000) || feedingType == 0) { return; }
 	tmpFloats[0] = getPHProbeValue(1);
 
 	//is current ph is outside of configred ph ranges?
@@ -148,12 +151,12 @@ void correctPlantPH(){
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
 		if (tmpFloats[0] > maxPH){ //we must micro-ph-dose our plant water DOWN
-			pumpSpin(1, 9, pumpCalibration);
+			pumpSpin(1, 10, pumpCalibration);
 			phPlantMillis = millis();
 			tmpFloats[0] = 0;
 			printHomeScreen();
 		}else if (tmpFloats[0] < minPH){ //we must micro-ph-dose our plant water UP
-			pumpSpin(1, 10, pumpCalibration);
+			pumpSpin(1, 9, pumpCalibration);
 			phPlantMillis = millis();
 			tmpFloats[0] = 0;
 			printHomeScreen();
@@ -286,24 +289,6 @@ void setECWaterProbeCalibration(byte channel, int value, char type){
 	}
 }
 
-//is it time to turn on/off timer
-void checkRecepticals(){
-	byte currentHour, currentDOW, startHour, endHour, currentReceptical, currentRecepticalWeek;
-	currentHour = rtc.getTime().hour;
-	currentDOW = rtc.getTime().dow;
-	for (byte i = 0; i < 4; i++){
-		StaticJsonBuffer<timerSessionBufferSize> timerSessionBuffer;
-		currentReceptical = 13 + i;
-		JsonObject& sessionData = getTimerSessionData(timerSessionBuffer, (i + 1), currentTimerSessions[i]);
-		startHour = sessionData["times"].asArray()[currentDOW-1].asArray()[0];
-		endHour = sessionData["times"].asArray()[currentDOW-1].asArray()[1];
-		if (currentHour >= startHour && currentHour < endHour){
-			RelayToggle(currentReceptical, true);
-		}else{
-			RelayToggle(currentReceptical, false);
-		}
-	}
-}
 
 //Helpers
 void RelayToggle(int channel, bool gate) {

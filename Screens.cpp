@@ -59,14 +59,13 @@ void exitScreen(){
 void printHomeScreen(){
 	captureDateTime();
 	char monthsBuffer[8];
-	byte i = NUMOFLEDS;
+	
 	int EC1Value = getECProbeValue(0);
 	float PH1Value = getPHProbeValue(1);
 
-
-	int RED = (PH1Value > minPH) ? 255 : 0;
-	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
-	int BLUE = (PH1Value < maxPH) ? 255 : 0;
+	int RED = (PH1Value > maxPH) ? 255 : 0;
+	int GREEN = (PH1Value > minPH && PH1Value <= maxPH) ? 255 : 0;
+	int BLUE = (PH1Value < minPH) ? 255 : 0;
 	lcd.clear();
 
 	//hour					//minute		  //AM/PM											//Month														//Day
@@ -79,8 +78,7 @@ void printHomeScreen(){
 	lcd.home();
 	lcd.noBlink();
 
-
-	
+	byte i = NUMOFLEDS;
 	while (i--){
 		// pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
 		pixels.setPixelColor(i, pixels.Color(RED, GREEN, BLUE)); // Moderately bright green color.

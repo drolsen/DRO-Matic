@@ -247,13 +247,6 @@ void cropBuild(){
 }
 
 void cropLoad(){
-	//load timer currents
-	StaticJsonBuffer<timerBufferSize> timersBuffer;
-	JsonObject& timersData = getTimerData(timersBuffer);
-	currentTimerSessions[0] = timersData["currents"].asArray()[0];
-	currentTimerSessions[1] = timersData["currents"].asArray()[1];
-	currentTimerSessions[2] = timersData["currents"].asArray()[2];
-	currentTimerSessions[3] = timersData["currents"].asArray()[3];
 
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& cropData = getCropData(cropBuffer);
@@ -270,6 +263,22 @@ void cropLoad(){
 	//load current crop status
 	cropStatus = cropData["status"];
 
+	//load timer currents
+	StaticJsonBuffer<timerBufferSize> timersBuffer;
+	JsonObject& timersData = getTimerData(timersBuffer);
+	currentTimerSessions[0] = timersData["currents"].asArray()[0];
+	currentTimerSessions[1] = timersData["currents"].asArray()[1];
+	currentTimerSessions[2] = timersData["currents"].asArray()[2];
+	currentTimerSessions[3] = timersData["currents"].asArray()[3];
+	byte currentDOW = rtc.getTime().dow - 1;
+	for (byte i = 0; i < 4; i++){
+		StaticJsonBuffer<timerSessionBufferSize> timerSessionBuffer;
+		JsonObject& timersData = getTimerSessionData(timerSessionBuffer, (i + 1), currentTimerSessions[i]);
+		timerStartHours[i] = timersData["times"].asArray()[currentDOW].asArray()[0];
+		timerEndHours[i] = timersData["times"].asArray()[currentDOW].asArray()[1];
+	}
+
+	//load EC Conductivity ranges
 	StaticJsonBuffer<ecBufferSize> ecBuffer;
 	JsonObject& ECData = getECData(ecBuffer, currentRegimen);
 	//load current regimen min PPM
@@ -307,11 +316,11 @@ void cropLoad(){
 	pumpDelay = pumpsData["delay"];
 
 	//Check recepticals before proceeding
-	checkRecepticals();
+	checkTimers();
 }
 
 //Saves
-void saveECData(){
+void saveECRange(){
 	if (cursorX == 11 && cursorY == 1){
 		lcd.clear();
 		lcd.home();
@@ -325,7 +334,7 @@ void saveECData(){
 		exitScreen();
 	}
 }
-void savePHData(){
+void savePHRange(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
 		lcd.home();
@@ -360,8 +369,8 @@ void printStatus(int dir = 0){
 	}
 	lcd.clear();
 	lcd.home();
-	lcd.print("STATUS: ");
-	lcd.print((cropStatus == 0) ? "PAUSED" : "RUNNING");
+	lcd.print(F("STATUS: "));
+	lcd.print((cropStatus == 0) ? F("PAUSED") : F("RUNNING"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 }

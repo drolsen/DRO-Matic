@@ -106,13 +106,13 @@ void loop()
 	}
 
 	//60 seconds has passed - Check logic for action
-	if (previousMinute != rtc.getTime().min && cropStatus != 0) {
+	if (previousMinute != rtc.getTime().min) {
 		previousMinute = rtc.getTime().min;
-		if (screenName == "" && (millis() - menuMillis >= 10000)) {
+		checkTimers();
+		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus != 0) {
 			correctRsvrPH();
 			correctPlantPH();
 			correctPlantEC();
-			//checkRecepticals();
 		}
 	}
 	
@@ -128,7 +128,6 @@ void loop()
 	//1000 miliseconds has passed - Realtime UI Menus update
 	if ((millis() - homeMillis) >= 1000){
 		checkFlowRates();	//OS monitors change to in and out water flow directions
-		//doseCurrentRegimen();
 		if (screenName == "RSVRVOL"){
 			tmpFloats[0] += (flowInRate / 60) * 1000;
 			float liters = tmpFloats[0] / 1000;
@@ -519,38 +518,7 @@ void loop()
 					printPumpDelay();
 				}
 				if (screenName == "AMOUNT"){
-					String amountDisplay;
-					StaticJsonBuffer<regimenBufferSize> sessionBuffer;
-					JsonObject& data = getRegimenData(sessionBuffer);
-					tmpFloats[0] = data["ml"];
-					tmpInts[0] = 1;
-
-					StaticJsonBuffer<cropBufferSize> cropBuffer;
-					JsonObject& cropData = getCropData(cropBuffer);
-					tmpInts[1] = cropData["maxRegimens"];
-
-					if (tmpFloats[0] > 1000){
-						amountDisplay = F("");
-					}else if (tmpFloats[0] > 100){
-						amountDisplay = F("0");
-					}else if (tmpFloats[0] > 10){
-						amountDisplay = F("00");
-					} else if (tmpFloats[0] > 0.1){
-						amountDisplay = F("000");
-					} else {
-						amountDisplay = F("0000.00");
-					}
-
-					lcd.print(F("REGI "));
-					lcd.print(tmpInts[0]);
-					lcd.print(F(" "));
-					lcd.print(amountDisplay);
-					lcd.print(F("ml"));
-					lcd.setCursor(0, 1);
-					lcd.print(F("<back>    <next>"));
-					cursorX = 12;
-					cursorY = 0;
-					lcd.setCursor(cursorX, cursorY);
+					printRegimenAmount();
 				}
 				if (screenName == "TPFCCNT"){
 					tmpInts[0] = topOffConcentrate;
@@ -850,7 +818,7 @@ void loop()
 				saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[0] = tmpInts[0]; //start hour
 				saveData["times"].asArray()[currentTimerSessionDayIndex].asArray()[1] = tmpInts[1]; //end hour
 				setTimerSessionData(saveData);
-				checkRecepticals();
+				checkTimers();
 			}
 			if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 				tmpInts[0] = tmpInts[1] = tmpInts[2] = tmpInts[3] = 0;
@@ -863,10 +831,10 @@ void loop()
 			}
 		}
 		if (screenName == "EC"){
-			saveECData();
+			saveECRange();
 		}
 		if (screenName == "PH"){
-			savePHData();
+			savePHRange();
 		}
 		if (screenName == "PHCAL"){
 			if (cursorX == 1 && cursorY == 1){ //back

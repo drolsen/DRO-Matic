@@ -49,10 +49,20 @@ void printRegimenNumber(int dir){
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(1, 0);
 }
-void printRegimenAmount(int dir){
-	if (cursorX == 12){
+void printRegimenAmount(int dir = 0){
+	String amountDisplay = F("0000.0");
+	StaticJsonBuffer<regimenBufferSize> sessionBuffer;
+	JsonObject& data = getRegimenData(sessionBuffer, currentPumpIndex, 0);
+	tmpFloats[0] = data["ml"];
+	tmpInts[0] = 1;
+
+	StaticJsonBuffer<cropBufferSize> cropBuffer;
+	JsonObject& cropData = getCropData(cropBuffer);
+	tmpInts[1] = cropData["maxRegimens"];
+
+	if (dir != 0 && cursorX == 12){ 
+		//only when changing value
 		lcd.clear();
-		String amountDisplay = F("0000.0");
 		if (dir > 0){
 			tmpFloats[0] += .1;
 		}else{
@@ -62,34 +72,41 @@ void printRegimenAmount(int dir){
 		if (tmpFloats[0] < 0){
 			tmpFloats[0] = 0;
 		}
-
-		if (tmpFloats[0] > 100){
-			amountDisplay = F("0");
-		}
-		else if (tmpFloats[0] > 10){
-			amountDisplay = F("00");
-		} else{
-			amountDisplay = F("000");
-		}
-
-		lcd.print(F("REGI "));
-		lcd.print(tmpInts[0]);
-		lcd.print(F(" "));
-		lcd.print(amountDisplay);
-		lcd.print(String(tmpFloats[0]));
-		lcd.print(F("ml"));
-		lcd.setCursor(0, 1);
-		if (tmpInts[0] == 1){
-			lcd.print(F("<back>    <next>"));
-		}
-		else if (tmpInts[0] < tmpInts[1]){
-			lcd.print(F("<prev>    <next>"));
-		}
-		else{
-			lcd.print(F("<prev>    <done>"));
-		}
-		lcd.setCursor(cursorX, cursorY);
 	}
+
+	if (tmpFloats[0] > 1000){
+		amountDisplay = F("");
+	}
+	else if (tmpFloats[0] > 100){
+		amountDisplay = F("0");
+	}
+	else if (tmpFloats[0] > 10){
+		amountDisplay = F("00");
+	}
+	else if (tmpFloats[0] > 0.1){
+		amountDisplay = F("000");
+	}
+	else{
+		amountDisplay = F("0000.00");
+	}
+	lcd.clear();
+	lcd.print(F("REGI "));
+	lcd.print(tmpInts[0]);
+	lcd.print(F(" "));
+	lcd.print(amountDisplay);
+	lcd.print(String(tmpFloats[0]));
+	lcd.print(F("ml"));
+	lcd.setCursor(0, 1);
+	if (tmpInts[0] == 1){
+		lcd.print(F("<back>    <next>"));
+	}
+	else if (tmpInts[0] < tmpInts[1]){
+		lcd.print(F("<prev>    <next>"));
+	}
+	else{
+		lcd.print(F("<prev>    <done>"));
+	}
+	lcd.setCursor(cursorX, cursorY);
 }
 
 //Saves
@@ -117,53 +134,11 @@ void saveRegimenAmount(){
 
 		//Move on to next session
 		if (tmpInts[0] < tmpInts[1]){
-
 			tmpInts[0] += 1;
 			currentRegimenIndex = tmpInts[0];
-
-			String amountDisplay;
-			StaticJsonBuffer<regimenBufferSize> openBuffer;
-			JsonObject& data = getRegimenData(openBuffer);
-			tmpFloats[0] = data["ml"];
-
-			if (tmpFloats[0] > 1000){
-				amountDisplay = F("");
-			}
-			else if (tmpFloats[0] > 100){
-				amountDisplay = F("0");
-			}
-			else if (tmpFloats[0] > 10){
-				amountDisplay = F("00");
-			}
-			else if (tmpFloats[0] > 0.1){
-				amountDisplay = F("000");
-			}
-			else{
-				amountDisplay = F("0000.00");
-			}
-
-			lcd.clear();
-			lcd.home();
-			lcd.print(F("REGI "));
-			lcd.print((tmpInts[0] <= 9) ? F("0") : F(""));
-			lcd.print(tmpInts[0]);
-			lcd.print(F(" "));
-			lcd.print(amountDisplay);
-			lcd.print(F("ml"));
-			lcd.setCursor(0, 1);
-
-			if (tmpInts[0] == 1){
-				lcd.print(F("<back>    <next>"));
-			}
-			else if (tmpInts[0] < tmpInts[1]){
-				lcd.print(F("<prev>    <next>"));
-			}
-			else{
-				lcd.print(F("<prev>    <done>"));
-			}
 			cursorX = 12;
 			cursorY = 0;
-			lcd.setCursor(cursorX, cursorY);
+			printRegimenAmount();
 		}
 		else if (tmpInts[0] == tmpInts[1]){
 			exitScreen();
@@ -178,48 +153,9 @@ void saveRegimenAmount(){
 			//Move on to previous session
 			tmpInts[0] -= 1;
 			currentRegimenIndex = tmpInts[0];
-			String amountDisplay;
-			StaticJsonBuffer<regimenBufferSize> openBuffer;
-			JsonObject& data = getRegimenData(openBuffer);
-			tmpFloats[0] = data["ml"];
-
-			if (tmpFloats[0] > 1000){
-				amountDisplay = F("");
-			}
-			else if (tmpFloats[0] > 100){
-				amountDisplay = F("0");
-			}
-			else if (tmpFloats[0] > 10){
-				amountDisplay = F("00");
-			}
-			else if (tmpFloats[0] > 0.1){
-				amountDisplay = F("000");
-			}
-			else{
-				amountDisplay = F("0000.00");
-			}
-
-			lcd.clear();
-			lcd.home();
-			lcd.print(F("REGI "));
-			lcd.print(tmpInts[0]);
-			lcd.print(F(" "));
-			lcd.print(amountDisplay);
-			lcd.print(F("ml"));
-			lcd.setCursor(0, 1);
-
-			if (tmpInts[0] == 1){
-				lcd.print(F("<back>    <next>"));
-			}
-			else if (tmpInts[0] < tmpInts[1]){
-				lcd.print(F("<prev>    <next>"));
-			}
-			else{
-				lcd.print(F("<prev>    <done>"));
-			}
 			cursorX = 12;
 			cursorY = 0;
-			lcd.setCursor(cursorX, cursorY);
+			printRegimenAmount();
 		}
 	}
 }
