@@ -10,7 +10,7 @@
 #include "Regimens.h"
 #include "Menus.h"
 
-float flowInRate, flowOutRate, flowMeterConfig[2], minPH, maxPH;
+float flowMeterConfig[2], minPH, maxPH;
 boolean irrigationFlag = false;
 
 byte currentTimerSessions[4], 
@@ -28,6 +28,7 @@ timerStartHours[4],
 timerEndHours[4];
 
 volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
+float flowInRate, flowOutRate;
 
 int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 double currentRsvrVol = 0;

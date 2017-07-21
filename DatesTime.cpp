@@ -13,7 +13,7 @@
 byte currentMinute;
 byte previousMinute;
 byte days[12] = { 31, ((tmpInts[5] % 4 == 0 && tmpInts[5] % 100 != 0) || (tmpInts[5] % 400 == 0)) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-unsigned long menuMillis, homeMillis, phRsvrMillis, phPlantMillis;  //stored timestamps
+unsigned long menuMillis, homeMillis, flowMillis, ecMillis, phRsvrMillis, phPlantMillis;  //stored timestamps
 
 //Read & Write from SD
 void captureDateTime(){

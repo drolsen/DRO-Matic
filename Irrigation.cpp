@@ -274,7 +274,7 @@ void saveDrainTime(){
 
 //Helpers
 void checkFlowRates(){
-	//detach & re-attach flow meters to counter methods per OS loop
+	//detach ISRs
 	detachInterrupt(digitalPinToInterrupt(FlowPinIn));
 	detachInterrupt(digitalPinToInterrupt(FlowPinOut));
 
@@ -286,19 +286,21 @@ void checkFlowRates(){
 	//we don't want to store or capture currentRsvrVol while configuring OS
 	if (screenName == ""){
 		//do we have a flow rate for in?
-		if (flowInRate > 0){
+		if (flowInRate > 0.01){
 			currentRsvrVol += (flowInRate / 60) * 1000;
 			irrigationFlag = true; //flag OS while irrigation is taking place
+			RelayToggle(11, false); //ensures that we are not feeding un-dosed water to plants
 		}
 
 		//do we have a flow rate for out?
-		if (flowOutRate > 0){
+		if (flowOutRate > 0.01){
 			currentRsvrVol -= (flowOutRate / 60) * 1000;
 			irrigationFlag = true; //flag OS while irrigation is taking place
+			if (flowInRate > 0.01){ RelayToggle(11, false); } //ensures that we are not feeding un-dosed water to plants
 		}
 
-		//did we previously have a flow rate, but now it it seems to have stopped?
-		if (irrigationFlag == true && flowInRate <= 0 && flowOutRate <= 0){
+		//when all flowRates have stopped, we store data
+		if (irrigationFlag == true && flowInRate < 0.01 && flowOutRate < 0.01){
 			//store the final size once know we are done filling
 			StaticJsonBuffer<irrigateBufferSize> irrigationBuffer;
 			JsonObject& irrigationData = getIrrigationData(irrigationBuffer);
@@ -309,7 +311,7 @@ void checkFlowRates(){
 	}
 	pulseInFlowCount = pulseOutFlowCount = 0; //reset pulse counts for next time around
 
-	//re-attach interrupts
+	//re-attach ISRs
 	attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, FALLING);
 	attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, FALLING);
 }
@@ -328,6 +330,7 @@ void flushPlantWater(){
 	lcd.print("FLUSHING PLANTS");
 	lcd.setCursor(0, 1);
 	lcd.print("PLEASE HOLD!!!");
+	RelayToggle(11, false);
 	RelayToggle(12, true);
 	int i = drainTime * 60; //mins x 60secs = loop total
 	while (i--){//loop to count i (aka seconds), then delay each loop by 1 second
@@ -339,18 +342,17 @@ void flushPlantWater(){
 }
 //Flush only reservoir water (flowInRate event based)
 void flushRsvrWater(){
-	//while reservoir isn't filling up, flush remaining reservoir water to plants.
-	lcd.clear();
-	lcd.home();
-	lcd.print("FEEDING PLANTS");
-	lcd.setCursor(0, 1);
-	lcd.print("PLEASE HOLD!!!");
-	while (flowInRate == 0){
-		RelayToggle(11, true);
-		checkFlowRates();
-		if (flowInRate > 0){
-			RelayToggle(11, false);
-			break; //break the loop.
+	RelayToggle(11, true);
+	flowInRate = pulseInFlowCount = 0;
+	while (flowInRate < 0.01){
+		if ((millis() - flowMillis) >= 1000){
+			checkFlowRates();
+			lcd.clear();
+			lcd.home();
+			lcd.print("FEEDING PLANTS");
+			lcd.setCursor(0, 1);
+			lcd.print("PLEASE HOLD!!!");
+			flowMillis = millis();
 		}
 	}
 }

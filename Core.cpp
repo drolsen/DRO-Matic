@@ -91,56 +91,45 @@ int tmpIntsToInt(byte decimalPlaces){
 
 //time feed plants some top off water?
 void correctPlantEC(){
-	if (flowInRate > 0){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
-	int PPM = getECProbeValue(0);
-	if ((PPM > maxPPM || PPM < minPPM) && feedingType == 1){
+	tmpFloats[0] = getPHProbeValue(1);
+	if (flowInRate > 0.01){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
+	if (feedingType != 2) { return; } //only after we have dosed our reservoir with topoff concentrates can we being to correct EC drift on plants
+	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH) { return; } //sorry, no EC correction while pH is a drift
+	if (((millis() - phPlantMillis) < phWaitPeriord) || ((millis() - ecMillis) < ecWaitPeriord)) { return; } //has we waited long enough since eiher last pH adjustment or EC adjustment?
+	
+	int EC = getECProbeValue(0);
+	if ((EC > maxPPM || EC < minPPM)){
 		lcd.clear();
 		lcd.home();
 
-		Time current = rtc.getTime();
+		unsigned long topOffWait = millis(); //10 seconds
 		StaticJsonBuffer<cropBufferSize> cropBuffer;
 		JsonObject& cropData = getCropData(cropBuffer);
-
-		if (lastFeedingWeek != current.dow && lastFeedingDay == calcDayOfWeek(current.year, current.mon, current.date)){
-			//we seem to have run out of time for this feeding water before we have run out of feeding water.
-			//full flushing must happen now
-			fullFlushing();
-			feedingType = 0; //now switch to full feeding for moving onto next regimen
-			cropData["feedingType"] = feedingType;
-			setCropData(cropData);
-			return;
-		}
 
 		lcd.print(F("TOPPING OFF EC"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
-		while (currentRsvrVol > (currentRsvrVol - topOffAmount)){
-			RelayToggle(11, true);
-			RelayToggle(12, true);
-			detachInterrupt(digitalPinToInterrupt(FlowPinIn));
-			detachInterrupt(digitalPinToInterrupt(FlowPinOut));
+		flowInRate = pulseInFlowCount = 0;
+		while (flowInRate < 0.01){
 			checkFlowRates();
-			if (flowInRate > 0){//OH CRAP! flowInRate is true, so we must of run out of reservoir topoff water.
-				//but was EC correction successful?.. if not, time to flush plants!
-				RelayToggle(11, false); //close up in-valve and finish feeding early
-				RelayToggle(12, true); //close up out-value and finish feeding early
-				feedingType = 0; //now switch to full feeding for moving onto next regimen
-				cropData["feedingType"] = feedingType;
-				setCropData(cropData);
-				break; //finally we break out of while loop for topOff feeding early
+			RelayToggle(11, true); //open up in-valve
+			if ((millis() - topOffWait) >= 10000){ //wait 10 seconds before opening out valve
+				RelayToggle(12, true);
 			}
-			attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
-			attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
+			if ((millis() - topOffWait) > 20000){
+				RelayToggle(11, false); //close up in-valve to finish feeding
+				RelayToggle(12, false); //close up out-valve to finish feeding
+				break;
+			}
 		}
-		RelayToggle(11, false); //close up in-valve to finish feeding
-		RelayToggle(12, false); //close up out-valve to finish feeding
+		ecMillis = millis();
 	}
 }
 
 //is it time to fix ph dift of plant water?
 void correctPlantPH(){
 	//are we permitted to correct plant pH?
-	if (flowOutRate > 0 || ((millis() - phPlantMillis) < 60000) || feedingType == 0) { return; }
+	if (flowOutRate > 0.01 || ((millis() - phPlantMillis) < phWaitPeriord) || feedingType == 0) { return; }
 	tmpFloats[0] = getPHProbeValue(1);
 
 	//is current ph is outside of configred ph ranges?
@@ -167,7 +156,7 @@ void correctPlantPH(){
 //is it time fix reservoir pH drift?
 void correctRsvrPH(){
 	//are we permitted to correct reservoir pH?
-	if ((flowInRate > 0 || flowOutRate > 0) && ((millis() - phRsvrMillis) < 60000)) { return; }
+	if ((flowInRate > 0 || flowOutRate > 0) && ((millis() - phRsvrMillis) < phWaitPeriord)) { return; } //put back to 60000
 	tmpFloats[0] = getPHProbeValue(3);
 
 	//if current ph is outside of configred ph ranges
@@ -183,9 +172,7 @@ void correctRsvrPH(){
 		printHomeScreen();
 	}else{
 		//if ph corrected and 5 mins has past since last pH dosing
-		if ((millis() - phRsvrMillis) > 600000){
-			checkRegimenDosing();
-		}
+		checkRegimenDosing();
 	}
 }
 
@@ -398,18 +385,14 @@ void RelayToggle(int channel, bool gate) {
 	}
 }
 
-void pumpSpin(int setAmount, int pumpNumber, int pumpFlowRate = 100){
-	RelayToggle(pumpNumber, true); //turn pump gate power on
+void pumpSpin(float setAmount, int pumpNumber, int pumpFlowRate = 100){
 	//int setAmount, int setCalibration, int pumpSize, int pumpNumber
-	int mlPerSec = pumpFlowRate / 60; //100m (per minute) / 60sec = 1.6ml per seconds
-	int pumpLength = setAmount / mlPerSec; //25ml target / 1.6ml per seconds = 15.625 seconds
-
-	for (int i = 0; i < pumpLength; i++){
-		delay(1000);
-		//printHomeScreen();
-		Serial.flush();
-	}
-	RelayToggle(pumpNumber, false); //turn pump gate power on
+	int pumpLength = (setAmount / (pumpFlowRate / 60)) * 1000; //25ml / 1.6ml per seconds = 15.625 seconds * 1000 = 15625 miliseconds
+	unsigned long pumpMillis = millis();
+	do {
+		RelayToggle(pumpNumber, true); //keep pump turning
+	} while ((millis() - pumpMillis) < (pumpLength * 1000));
+	RelayToggle(pumpNumber, false); //turn pump off
 }
 
 void makeNewFile(String path, JsonObject& data){
