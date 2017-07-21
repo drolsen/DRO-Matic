@@ -56,8 +56,11 @@ const byte ECPower[3] = { 39, 41, 43 };
 #define regimenSessionBufferSize 64
 #define timerBufferSize 164
 #define timerSessionBufferSize 512
-#define irrigateBufferSize 220
+#define irrigateBufferSize 260
 #define ecBufferSize 64
+
+#define phWaitPeriord 120000
+#define ecWaitPeriord 300000
 
 using namespace std; //Prefence of developer, I don't like typing std:: everywhere.
 
@@ -65,7 +68,7 @@ extern LiquidCrystal lcd;
 extern DS3231  rtc;
 extern Adafruit_NeoPixel pixels;
 
-extern float flowInRate, flowOutRate, flowMeterConfig[2], minPH, maxPH;
+extern float flowMeterConfig[2], minPH, maxPH;
 extern boolean irrigationFlag;
 
 extern byte
@@ -85,6 +88,7 @@ timerStartHours[4],
 timerEndHours[4];
 
 extern volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
+extern float flowInRate, flowOutRate;
 
 extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 extern double currentRsvrVol;

@@ -198,10 +198,16 @@ void trimRegimens(int currentSize, int trimAmount){
 void checkRegimenDosing(){
 	//First, lets check to make sure we are even allowed to be within a dosing state
 	//We can't be within a dosing state if any of the following are true:
-	//1) currently filling reservoir with water
-	//2) plant water is less than maxPPM for current regimen
-	//3) we have remaining topOff water within reservoir
-	if (flowInRate == true || feedingType == 2) { return; }
+	//1) currently filling reservoir with water or under a state of 2 for feedingType.
+	//2) water is out of configured pH range.
+	//3) has not been 5 minutes since we last pH adjusted the water.
+	tmpFloats[0] = getPHProbeValue(3);
+	if (flowInRate > 0.01 || feedingType == 2) { return; } //if we are a feeding type of 2, or have a flowInRate, we can't proceed.
+	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH) {    //if we still have a pH lower or higher than configured range, we can't proceed.
+		correctRsvrPH(); //lets just kick off correctRsvrPH() method here to make system more responsive to pH drifts.
+		return; 
+	} 
+	if (((millis() - phRsvrMillis) < phWaitPeriord)){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
 
 	StaticJsonBuffer<pumpBufferSize> pumpConfigBuffer;
 	JsonObject& pumpConfig = getPumpsData(pumpConfigBuffer);
@@ -228,25 +234,23 @@ void checkRegimenDosing(){
 		//we need to update our crop settings to let OS know if current reservoir water is full feeding water, or topoff feeding water
 		if (i == 7){
 			//if this is a full feedingType dosing, we flush the whole
-			if (feedingType == 0){ //we now must flush this water to our plants.
-				Time current = rtc.getTime();
-				flushPlantWater(); //first we must make sure all our poopy plant water is drained.
-				flushRsvrWater(); //then after poopy water is out, we flush our freshly nute dosed water to plants.
-				feedingType = 1;
-				lastFeedingWeek = current.dow;
-				lastFeedingDay = calcDayOfWeek(current.year, current.mon, current.date);
+			if (feedingType == 0){	//only while under full feeding type do we flush entire batch of water to plants
+				flushPlantWater();	//flush any exsisting poopy water away from plants
+				flushRsvrWater();	//next, we feed our enture batch of freshly dosed water to plants.
+				feedingType = cropData["feedingType"] = 1;	//lastly we progress crop to next feeding type to being top off dosing
+				setCropData(cropData); //and save
+				return;				   //exit checkRegimenDosing prematurly.
 			}
-			if (feedingType == 1){ feedingType = 2; } //this prevents topOff water from being dosed twice
-			//now we have to update our currentRegimen records
+			if (feedingType == 1){ feedingType = 2; } 
+
+			//only after top off dosing do we progress / store next regimen and feedingType to SD
 			currentRegimen++; 
 			currentRegimen = (currentRegimen >= maxRegimens) ? maxRegimens : currentRegimen;
 			cropData["currentRegimen"] = currentRegimen;
-
-			//lastly we flipping our global feedingType variable around so we are alternating between full feedings and topoff feedings
-
 			cropData["feedingType"] = feedingType;
 			setCropData(cropData);
 		}else{
+			//Our delay logic between each pump's dosing
 			byte pumpDelay = pumpConfig["delay"];
 			int i = pumpDelay * 60; //mins x 60secs = loop total
 			while (i--){ //count down total seconds

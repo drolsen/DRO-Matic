@@ -75,6 +75,7 @@ void setup()
 		digitalWrite(RELAY9, HIGH);
 		pinMode(RELAY10, OUTPUT);	//perstaltic pump 10
 		digitalWrite(RELAY10, HIGH);
+
 		pinMode(RELAY11, OUTPUT);	//irrigation "in" valve
 		digitalWrite(RELAY11, HIGH);
 		pinMode(RELAY12, OUTPUT);	//irrigation "out" valve
@@ -104,29 +105,9 @@ void loop()
 	if (Key >= 0 && Key <= 650){
 		homeMillis = menuMillis = millis();
 	}
-
-	//60 seconds has passed - Check logic for action
-	if (previousMinute != rtc.getTime().min) {
-		previousMinute = rtc.getTime().min;
-		checkTimers();
-		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus != 0) {
-			correctRsvrPH();
-			correctPlantPH();
-			correctPlantEC();
-		}
-	}
 	
-	//if 2 seconds has passed, reprint home screen
-	//10 seconds has passed since interacting with menus start printing home screen
-	if ((millis() - homeMillis) >= 2000 && (millis() - menuMillis >= 10000)) {
-		if (screenName == ""){//of course non of this happens while we have a menu open
-			homeMillis = millis(); //reset home millis so 2 seconds can happen again.
-			printHomeScreen(); //finally we call the print home method
-		}
-	}
-
-	//1000 miliseconds has passed - Realtime UI Menus update
-	if ((millis() - homeMillis) >= 1000){
+	//1 second has passed
+	if ((millis() - flowMillis) >= 1000){
 		checkFlowRates();	//OS monitors change to in and out water flow directions
 		if (screenName == "RSVRVOL"){
 			tmpFloats[0] += (flowInRate / 60) * 1000;
@@ -146,6 +127,26 @@ void loop()
 			lcd.blink();
 			homeMillis = millis();
 		}
+		flowMillis = millis();
+	}
+
+	//if 2 seconds has passed since last homeScreen print && 10 seconds since menu interaction
+	if ((millis() - homeMillis) >= 2000 && (millis() - menuMillis >= 10000)) {
+		if (screenName == ""){	   //only if not currently in a screen
+			printHomeScreen();	   //finally we call the print home method
+			homeMillis = millis(); //reset home millis
+		}
+	}
+
+	//60 seconds has passed - Check logic for action
+	if (previousMinute != rtc.getTime().min) {
+		checkTimers();
+		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus == 1) {
+			correctRsvrPH();
+			correctPlantPH();
+			correctPlantEC();
+		}
+		previousMinute = rtc.getTime().min;
 	}
 
 	//UI Menus
