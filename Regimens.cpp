@@ -204,7 +204,7 @@ void checkRegimenDosing(){
 	tmpFloats[0] = getPHProbeValue(3);
 	if (flowInRate > 0.01 || feedingType == 2) { return; } //if we are a feeding type of 2, or have a flowInRate, we can't proceed.
 	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH) {    //if we still have a pH lower or higher than configured range, we can't proceed.
-		correctRsvrPH(); //lets just kick off correctRsvrPH() method here to make system more responsive to pH drifts.
+		//correctRsvrPH(); //lets just kick off correctRsvrPH() method here to make system more responsive to pH drifts.
 		return; 
 	} 
 	if (((millis() - phRsvrMillis) < phWaitPeriord)){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
