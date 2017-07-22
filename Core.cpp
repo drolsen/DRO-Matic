@@ -386,12 +386,11 @@ void RelayToggle(int channel, bool gate) {
 }
 
 void pumpSpin(float setAmount, int pumpNumber, int pumpFlowRate = 100){
-	//int setAmount, int setCalibration, int pumpSize, int pumpNumber
-	int pumpLength = (setAmount / (pumpFlowRate / 60)) * 1000; //25ml / 1.6ml per seconds = 15.625 seconds * 1000 = 15625 miliseconds
+	int pumpLength = (setAmount / (pumpFlowRate / 60)) * 1000; //1ml / 1.6ml per second * 1000ms per second = 625ms
 	unsigned long pumpMillis = millis();
 	do {
 		RelayToggle(pumpNumber, true); //keep pump turning
-	} while ((millis() - pumpMillis) < (pumpLength * 1000));
+	} while ((millis() - pumpMillis) < pumpLength);
 	RelayToggle(pumpNumber, false); //turn pump off
 }
 
