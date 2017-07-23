@@ -35,6 +35,5 @@ extern void countRsvrFill();
 extern void countRsvrDrain();
 extern void flushPlantWater();
 extern void flushRsvrWater();
-extern void fullFlushing();
 #endif
 

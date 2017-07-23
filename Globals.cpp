@@ -10,7 +10,6 @@
 #include "Regimens.h"
 #include "Menus.h"
 
-float flowMeterConfig[2], minPH, maxPH;
 boolean irrigationFlag = false;
 
 byte currentTimerSessions[4], 
@@ -21,18 +20,17 @@ topOffAmount,
 topOffDelay,
 cropStatus, 
 feedingType,
-lastFeedingWeek,
-lastFeedingDay,
 pumpDelay,
 timerStartHours[4],
 timerEndHours[4];
 
 volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
-float flowInRate, flowOutRate;
+float tmpFloats[2], flowMeterConfig[2], minPH, maxPH, flowInRate, flowOutRate;
 
-int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
+int tmpInts[6], Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 double currentRsvrVol = 0;
 
+File tmpFile;
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 DS3231  rtc(SDA, SCL);
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMOFLEDS, LEDPIN, NEO_GRB + NEO_KHZ800);
@@ -44,11 +42,7 @@ byte sensor_bytes_received = 0;       // We need to know how many characters byt
 byte code = 0;                        // used to hold the I2C response code.
 byte in_char = 0;                     // used as a 1 byte buffer to store in bound bytes from the I2C Circuit.
 
-
-File tmpFile;
 String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
-int tmpInts[6];
-float tmpFloats[2];
 
 const char blank[2] PROGMEM = " ";
 const char a[2] PROGMEM = "A";

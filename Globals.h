@@ -28,9 +28,6 @@
 #define FlowPinOut 2
 #define FlowPinIn  3
 
-const byte PHPower[3] = { 38, 40, 42 };
-const byte ECPower[3] = { 39, 41, 43 };
-
 #define RELAY1  22
 #define RELAY2  23
 #define RELAY3  24
@@ -68,7 +65,6 @@ extern LiquidCrystal lcd;
 extern DS3231  rtc;
 extern Adafruit_NeoPixel pixels;
 
-extern float flowMeterConfig[2], minPH, maxPH;
 extern boolean irrigationFlag;
 
 extern byte
@@ -81,15 +77,12 @@ topOffAmount, //The topoff amount we dose plant water with to correct over conce
 topOffDelay,
 cropStatus, //Does user have crop paused or started
 feedingType,
-lastFeedingDay,
-lastFeedingWeek,
 pumpDelay,
 timerStartHours[4],
 timerEndHours[4];
 
 extern volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
-extern float flowInRate, flowOutRate;
-
+extern float tmpFloats[2], flowMeterConfig[2], flowInRate, flowOutRate, minPH, maxPH;
 extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
 extern double currentRsvrVol;
 
@@ -104,7 +97,6 @@ extern int channel_ids[];				 // tentical shield channel ids array
 extern File tmpFile; //Single location to store file data when interfacting with SD card files
 extern String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 extern int tmpInts[6];
-extern float tmpFloats[2];
 
 extern const char* const alphabet[37] PROGMEM;
 extern const char* const screenNames[28][3] PROGMEM;

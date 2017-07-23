@@ -327,9 +327,9 @@ void countRsvrDrain(){
 void flushPlantWater(){
 	lcd.clear();
 	lcd.home();
-	lcd.print("FLUSHING PLANTS");
+	lcd.print(F("FLUSHING PLANTS"));
 	lcd.setCursor(0, 1);
-	lcd.print("PLEASE HOLD!!!");
+	lcd.print(F("PLEASE HOLD!!!"));
 	RelayToggle(11, false);
 	RelayToggle(12, true);
 	int i = drainTime * 60; //mins x 60secs = loop total
@@ -349,28 +349,10 @@ void flushRsvrWater(){
 			checkFlowRates();
 			lcd.clear();
 			lcd.home();
-			lcd.print("FEEDING PLANTS");
+			lcd.print(F("FEEDING PLANTS"));
 			lcd.setCursor(0, 1);
-			lcd.print("PLEASE HOLD!!!");
+			lcd.print(F("PLEASE HOLD!!!"));
 			flowMillis = millis();
-		}
-	}
-}
-//Flush both plant and reservoir water, 
-//but with premature stopping of plant water drain based on OS drain time configuration.
-void fullFlushing(){
-	RelayToggle(11, true); //in
-	RelayToggle(12, true); //out
-	int i = drainTime * 60; //mins x 60secs = loop total
-	while (i--){
-		delay(1000);
-		if (i == 0){ //if out of drainTime loops, we close off both irrigation values.
-			RelayToggle(11, false); //in
-			RelayToggle(12, false); //out
-		}
-		//if reservoir begins filling, we prematurely close off in valve.
-		if (flowInRate > 0){ 
-			RelayToggle(11, false); //in
 		}
 	}
 }
