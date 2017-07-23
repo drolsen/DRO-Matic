@@ -201,13 +201,11 @@ void checkRegimenDosing(){
 	//1) currently filling reservoir with water or under a state of 2 for feedingType.
 	//2) water is out of configured pH range.
 	//3) has not been 5 minutes since we last pH adjusted the water.
-	tmpFloats[0] = getPHProbeValue(3);
 	if (flowInRate > 0.01 || feedingType == 2) { return; } //if we are a feeding type of 2, or have a flowInRate, we can't proceed.
-	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH) {    //if we still have a pH lower or higher than configured range, we can't proceed.
-		//correctRsvrPH(); //lets just kick off correctRsvrPH() method here to make system more responsive to pH drifts.
-		return; 
-	} 
 	if (((millis() - phRsvrMillis) < phWaitPeriord)){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
+	float pH = getPHProbeValue(RSVRPH);
+	delay(250);
+	if (pH > maxPH || pH < minPH) { return; } //if we still have a pH lower or higher than configured range, we can't proceed.
 
 	StaticJsonBuffer<pumpBufferSize> pumpConfigBuffer;
 	JsonObject& pumpConfig = getPumpsData(pumpConfigBuffer);
@@ -224,8 +222,8 @@ void checkRegimenDosing(){
 	for (byte i = 1; i <= 7; i++){
 		//Second, lets open our SD data up and get this current regimen's ml dosing amount for this pump
 		StaticJsonBuffer<regimenBufferSize> regimenBuffer;
-		JsonObject& regimenData = getRegimenData(regimenBuffer, i, currentRegimen); //remember, this is a single pump instance (aka getPumpData)
-		int amount = regimenData["ml"];
+		JsonObject& regimenData = getRegimenData(regimenBuffer, i, (currentRegimen - 1)); //remember, this is a single pump instance (aka getPumpData)
+		float amount = regimenData["ml"];
 		int concentrate = (amount / 6) * topOffConcentrate;
 		float ml = (feedingType == 0) ? (amount * rsvrVol) : (concentrate * rsvrVol);
 		pumpSpin(ml, i, pumpCalibration); //perform dosing 
@@ -255,6 +253,7 @@ void checkRegimenDosing(){
 			int i = pumpDelay * 60; //mins x 60secs = loop total
 			while (i--){ //count down total seconds
 				delay(1000); //delay for 1 second each loop
+				Serial.flush();
 			}
 		}
 	}

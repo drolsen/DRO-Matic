@@ -104,19 +104,21 @@ void savePumpDelay(){
 }
 
 //Helpers
-void pumpCreate(String path, int totalSessions, JsonObject& regimenData){
+void pumpCreate(String path, byte pumpIndex, int totalRegimens, JsonObject& regimenData){
 	byte j;
 	SD.mkdir(path);
 	SD.mkdir(path + "/Prime");
-	SD.mkdir(path + "/Amount");
-	SD.mkdir(path + "/Delay");
-
-	for (j = 0; j < totalSessions; j++){
-		makeNewFile(path + "/pmpse" + j + ".dro", regimenData);
-		Serial.flush();
+	if (pumpIndex <= 7){
+		SD.mkdir(path + "/Amount");
+		SD.mkdir(path + "/Delay");
+		for (j = 0; j < totalRegimens; j++){
+			makeNewFile(path + "/pmpse" + j + ".dro", regimenData);
+			Serial.flush();
+		}
 	}
 	Serial.flush();
 }
+
 void primePump(int dir){
 	RelayToggle(currentPumpIndex, true);
 	delay(1000);
