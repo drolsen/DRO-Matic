@@ -60,8 +60,8 @@ void printHomeScreen(){
 	captureDateTime();
 	char monthsBuffer[8];
 	
-	int EC1Value = getECProbeValue(0);
-	float PH1Value = getPHProbeValue(1);
+	int EC1Value = getECProbeValue(PLANTEC);
+	float PH1Value = getPHProbeValue(PLANTPH);
 
 	int RED = (PH1Value > maxPH) ? 255 : 0;
 	int GREEN = (PH1Value > minPH && PH1Value <= maxPH) ? 255 : 0;
