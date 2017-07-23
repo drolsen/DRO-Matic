@@ -334,10 +334,11 @@ void flushPlantWater(){
 	RelayToggle(12, true);
 	int i = drainTime * 60; //mins x 60secs = loop total
 	while (i--){//loop to count i (aka seconds), then delay each loop by 1 second
-		delay(1000); //1 second delay ensures we don't exceed 30k delay max
 		if (i == 0){ //we done waiting?
 			RelayToggle(12, false); //if out of wait loops, we turn drain valve off.
 		}
+		delay(1000); //1 second delay ensures we don't exceed 30k delay max
+		Serial.flush();
 	}
 }
 //Flush only reservoir water (flowInRate event based)
@@ -353,6 +354,7 @@ void flushRsvrWater(){
 			lcd.setCursor(0, 1);
 			lcd.print(F("PLEASE HOLD!!!"));
 			flowMillis = millis();
+			Serial.flush();
 		}
 	}
 }

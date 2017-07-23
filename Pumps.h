@@ -26,7 +26,7 @@ extern void savePumpCalibration();
 extern void savePumpDelay();
 
 //Helpers
-extern void pumpCreate(String path, int numberOfSessions, JsonObject& sessionData);
+extern void pumpCreate(String path, byte pumpIndex, int totalRegimens, JsonObject& sessionData);
 extern void primePump(int dir);
 
 

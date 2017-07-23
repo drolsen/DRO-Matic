@@ -252,6 +252,7 @@ void checkRegimenDosing(){
 			int i = pumpDelay * 60; //mins x 60secs = loop total
 			while (i--){ //count down total seconds
 				delay(1000); //delay for 1 second each loop
+				Serial.flush();
 			}
 		}
 	}

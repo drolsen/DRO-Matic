@@ -211,9 +211,9 @@ void cropBuild(){
 	regimen["ml"] = 0.0;
 
 	//Make pump folders and their regimen files
-	for (i = 1; i <= 8; i++){
+	for (i = 1; i <= 10; i++){
 		pump["id"] = i;
-		pumpCreate("dromatic/" + cropName + "/Pumps/SysPmp" + i, 12, regimen);
+		pumpCreate("dromatic/" + cropName + "/Pumps/SysPmp" + i, i, 12, regimen);
 		lcd.print(F("*"));
 		Serial.flush();
 	}

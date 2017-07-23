@@ -91,7 +91,6 @@ int tmpIntsToInt(byte decimalPlaces){
 
 //time feed plants some top off water?
 void correctPlantEC(){
-	
 	if (flowInRate > 0.01){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
 	if (feedingType != 2) { return; } //only after we have dosed our reservoir with topoff concentrates can we being to correct EC drift on plants
 	if (((millis() - phPlantMillis) < phWaitPeriord) || ((millis() - ecMillis) < ecWaitPeriord)) { return; } //has we waited long enough since eiher last pH adjustment or EC adjustment?
@@ -135,6 +134,7 @@ void correctPlantEC(){
 				checkFlowRates();
 				flowMillis = millis();
 			}
+			Serial.flush();
 		}
 		ecMillis = millis(); //reset EC millis
 	}
