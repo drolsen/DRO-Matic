@@ -95,18 +95,18 @@ void correctPlantEC(){
 	if (feedingType != 2) { return; } //only after we have dosed our reservoir with topoff concentrates can we being to correct EC drift on plants
 	if (((millis() - phPlantMillis) < phWaitPeriord) || ((millis() - ecMillis) < ecWaitPeriord)) { return; } //has we waited long enough since eiher last pH adjustment or EC adjustment?
 	
-	tmpFloats[0] = getPHProbeValue(1);
+	float plantpH = getPHProbeValue(PLANTPH);
 	delay(250); //too much power consumed if you don't delay between probe requests
-	tmpFloats[1] = getPHProbeValue(3);
+	float rsvrpH = getPHProbeValue(RSVRPH);
 	delay(250); //too much power consumed if you don't delay between probe requests
 	
-	if (tmpFloats[1] > maxPH || tmpFloats[1] < minPH) { return; } //sorry, no EC correction while reservoir pH is out of range
-	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH) { return; } //sorry, no EC correction while plants pH is out of range
+	if (rsvrpH > maxPH || rsvrpH < minPH) { return; } //sorry, no EC correction while reservoir pH is out of range
+	if (plantpH > maxPH || plantpH < minPH) { return; } //sorry, no EC correction while plants pH is out of range
 	
-	tmpInts[0] = getECProbeValue(0); 
+	int EC = getECProbeValue(PLANTEC); 
 	delay(250); //too much power consumed if you don't delay between probe requests
 
-	if ((tmpInts[0] > maxPPM || tmpInts[0] < minPPM)){
+	if ((EC > maxPPM || EC < minPPM)){
 		unsigned long topOffWait = millis(); //10 seconds
 		StaticJsonBuffer<cropBufferSize> cropBuffer;
 		JsonObject& cropData = getCropData(cropBuffer);
@@ -138,40 +138,37 @@ void correctPlantEC(){
 		}
 		ecMillis = millis(); //reset EC millis
 	}
-	tmpInts[0] = tmpFloats[1] = tmpFloats[3] = 0;
 }
 
 //is it time to fix ph dift of plant water?
 void correctPlantPH(){
 	//are we permitted to correct plant pH?
 	if (flowOutRate > 0.01 || ((millis() - phPlantMillis) < phWaitPeriord) || feedingType == 0) { return; }
-	tmpFloats[0] = getPHProbeValue(1);
+	float pH = getPHProbeValue(PLANTPH);
 
 	//is current ph is outside of configred ph ranges?
-	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
+	if (pH > maxPH || pH < minPH){
 		lcd.clear();
 		lcd.home();
 		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
-		if (tmpFloats[0] > maxPH){			//we must micro-ph-dose our plant water DOWN
+		if (pH > maxPH){			//we must micro-ph-dose our plant water DOWN
 			pumpSpin(1, 10, pumpCalibration);
-		}else if (tmpFloats[0] < minPH){	//we must micro-ph-dose our plant water UP
+		}
+		else if (pH < minPH){	//we must micro-ph-dose our plant water UP
 			pumpSpin(1, 9, pumpCalibration);
 		}
 		phPlantMillis = millis();
 	}
-	tmpFloats[0] = 0;
 }
 
 //is it time fix reservoir pH drift?
 void correctRsvrPH(){
 	//are we permitted to correct reservoir pH?
 	if ((flowInRate > 0.01 || flowOutRate > 0.01) || ((millis() - phRsvrMillis) < phWaitPeriord)) { return; }
-	tmpFloats[0] = getPHProbeValue(3);
-
-	//if current ph is outside of configred ph ranges
-	if (tmpFloats[0] > maxPH || tmpFloats[0] < minPH){
+	float pH = getPHProbeValue(RSVRPH);
+	if (pH > maxPH || pH < minPH){ //if current ph is outside of configred ph ranges
 		lcd.clear();
 		lcd.home();
 		lcd.print(F("PH DRIFT FIXING"));
@@ -179,11 +176,7 @@ void correctRsvrPH(){
 		lcd.print(F("PLEAES HOLD!!!"));
 		pumpSpin(1, 8, pumpCalibration);
 		phRsvrMillis = millis();
-	}else{
-		//time to dose reservoir?
-		checkRegimenDosing();
 	}
-	tmpFloats[0] = 0;
 }
 
 //Open channel of tentical sheild to get probe reading value

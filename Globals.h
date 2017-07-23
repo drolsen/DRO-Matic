@@ -56,8 +56,13 @@
 #define irrigateBufferSize 260
 #define ecBufferSize 64
 
-#define phWaitPeriord 120000
-#define ecWaitPeriord 60000//300000
+#define RSVREC 0
+#define RSVRPH 1
+#define PLANTEC 2
+#define PLANTPH 3
+
+#define phWaitPeriord 60000
+#define ecWaitPeriord 120000 //300000
 
 using namespace std; //Prefence of developer, I don't like typing std:: everywhere.
 

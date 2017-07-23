@@ -109,6 +109,12 @@ void loop()
 	//1 second has passed
 	if ((millis() - flowMillis) >= 1000){
 		checkFlowRates();	//OS monitors change to in and out water flow directions
+		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus == 1) {
+			correctRsvrPH();
+			correctPlantPH();
+			correctPlantEC();
+			checkRegimenDosing();
+		}
 		if (screenName == "RSVRVOL"){
 			tmpFloats[0] += (flowInRate / 60) * 1000;
 			float liters = tmpFloats[0] / 1000;
@@ -141,11 +147,6 @@ void loop()
 	//60 seconds has passed - Check logic for action
 	if (previousMinute != rtc.getTime().min) {
 		checkTimers();
-		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus == 1) {
-			correctRsvrPH();
-			correctPlantPH();
-			correctPlantEC();
-		}
 		previousMinute = rtc.getTime().min;
 	}
 
