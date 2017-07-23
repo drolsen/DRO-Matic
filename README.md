@@ -21,13 +21,13 @@ However, the big down side to moving to vertical farming or hydroponics in gener
 
 In steps the DRO-Matic OS to take care of all the heavy lifting in hydroponic farming for you. Our goal is curve the time spent learning and maintaining hydroponic farms in hopes to better bring this much more efficient way of food production to a lot more farmers.
 
-##OS Overview
+## OS Overview
 Th DRO-Matic OS has the ability to fully automate the follow process for you:
-- ## Regimen dosing (full feedings and top off feedings with drifting amounts)
-- ## pH adjusting (both plant and reservoir water sources)
-- ## eC adjusting (plant water source topoffs)
-- ## Irrigation (feeding, draining and topping off)
-- ## Timers (4 120v/10amp power recepticals that can be timed)
+- Regimen dosing (full feedings and top off feedings with drifting amounts)
+- pH adjusting (both plant and reservoir water sources)
+- eC adjusting (plant water source topoffs)
+- Irrigation (feeding, draining and topping off)
+- Timers (4 120v/10amp power recepticals that can be timed)
 
 Because of the sheer flexibility of the DRO-Matic OS, there is a lot of a screens to configure a single crop. 
 Below is a overview of the available OS features.
