@@ -54,7 +54,7 @@ void printPumpCalibration(int dir = 0){
 		if (tmpInts[0] < 10) { tmpInts[0] = 10; }
 		if (tmpInts[0] > 900) { tmpInts[0] = 900; }
 	}
-	displaySize = (tmpInts[0] >= 100)? "" : (tmpInts[0] >= 10)? "0" :  "";
+	displaySize = (tmpInts[0] >= 100)? F("") : (tmpInts[0] >= 10)? F("0") :  F("");
 
 	lcd.home();
 	lcd.print(displaySize + tmpInts[0] + F("(ml) per min"));
@@ -105,13 +105,12 @@ void savePumpDelay(){
 
 //Helpers
 void pumpCreate(String path, byte pumpIndex, int totalRegimens, JsonObject& regimenData){
-	byte j;
 	SD.mkdir(path);
 	SD.mkdir(path + "/Prime");
 	if (pumpIndex <= 7){
 		SD.mkdir(path + "/Amount");
 		SD.mkdir(path + "/Delay");
-		for (j = 0; j < totalRegimens; j++){
+		for (byte j = 1; j <= totalRegimens; j++){
 			makeNewFile(path + "/pmpse" + j + ".dro", regimenData);
 			Serial.flush();
 		}

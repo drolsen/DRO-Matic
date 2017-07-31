@@ -51,24 +51,33 @@ void setECData(JsonObject& d, byte ecRangeIndex = 1){
 
 
 void cropChange(){
-	lcd.clear();
-	lcd.noBlink();
-	lcd.home();
-	lcd.print(F(" LOADING  CROP  "));
-	DynamicJsonBuffer b;
-	tmpFile = SD.open("dromatic/core.dro");
-	JsonObject& core = b.parseObject(tmpFile.readString());
-	core["crop"] = menus[menuIndex];
-	tmpFile.close();
-	setCoreData(core);
-	menuIndex = currentPumpIndex = currentRegimenIndex = currentAlphaIndex = 0;
-	menus.clear();
-	menusHistory.clear();
-	coreInit();
+	if (cursorX == 9 && cursorY == 1){
+		if (menus[menuIndex] != cropName){
+			lcd.clear();
+			lcd.noBlink();
+			lcd.print(F(" LOADING  CROP  "));
+			DynamicJsonBuffer b;
+			tmpFile = SD.open("dromatic/core.dro");
+			JsonObject& core = b.parseObject(tmpFile.readString());
+			core["crop"] = menus[menuIndex];
+			tmpFile.close();
+			setCoreData(core);
+			menuIndex = currentAlphaIndex = 0;
+			currentPumpIndex = currentRegimenIndex = 1;
+			menus.clear();
+			menusHistory.clear();
+			coreInit();
+		} else {
+			exitScreen();
+		}
+	}
+	if (cursorX == 1 || cursorX == 9 && cursorY == 1){
+		exitScreen();
+	}
 }
 
 void cropCreate(){
-	screenName = "NEW";
+	screenName = F("NEW");
 	lcd.clear();
 	lcd.setCursor(0, 1);
 	lcd.print(F("Crop Name <done>"));
@@ -91,6 +100,51 @@ void cropRename(int dir){
 	lcd.setCursor(cursorX, cursorY);
 }
 
+void cropReset(){
+	if (cursorX == 11 && cursorY == 1){
+		lcd.clear();
+		lcd.print(F("CROP RESETTING"));
+		lcd.setCursor(0, 1);
+		lcd.print(F("PLEASE HOLD!!"));
+
+		//Reset Crop
+		StaticJsonBuffer<cropBufferSize> cropBuffer;
+		JsonObject& cropData = getCropData(cropBuffer);
+		cropData["currentReg"] = currentRegimen = 1; //take us back to first regimen
+		cropData["feedType"] = feedingType = 0; //set us up to feedingType 0
+		cropData["status"] = cropStatus = 0;
+		setCropData(cropData);
+
+		//Reset Timers
+		StaticJsonBuffer<timerBufferSize> timersBuffer;
+		JsonObject& timersData = getTimerData(timersBuffer);
+		timersData["currents"].asArray()[0] = currentTimerSessions[0] = 1;
+		timersData["currents"].asArray()[1] = currentTimerSessions[1] = 1;
+		timersData["currents"].asArray()[2] = currentTimerSessions[2] = 1;
+		timersData["currents"].asArray()[3] = currentTimerSessions[3] = 1;
+		byte currentDOW = rtc.getTime().dow - 1;
+		for (byte i = 0; i < 4; i++){
+			StaticJsonBuffer<timerSessionBufferSize> timerSessionBuffer;
+			JsonObject& timersData = getTimerSessionData(timerSessionBuffer, (i + 1), currentTimerSessions[i]);
+			timerStartHours[i] = timersData["times"].asArray()[currentDOW].asArray()[0];
+			timerEndHours[i] = timersData["times"].asArray()[currentDOW].asArray()[1];
+		}
+		setTimerData(timersData);
+
+		//Reset EC
+		StaticJsonBuffer<ecBufferSize> ecBuffer;
+		JsonObject& ECData = getECData(ecBuffer, currentRegimen);
+		minPPM = ECData["ec"].asArray()[0];
+		maxPPM = ECData["ec"].asArray()[1];
+
+		//Reset Timestamps
+		phPlantMillis = phRsvrMillis = ecMillis = flowMillis = millis();
+	}
+	if (cursorX == 1 || cursorX == 11 && cursorY == 1){
+		exitScreen();
+	}
+}
+
 void cropBuild(){
 	File pumpSettingsFile;
 	File sessionSettingsFile;
@@ -104,7 +158,6 @@ void cropBuild(){
 	core["crop"] = cropName;
 	setCoreData(core);
 	lcd.clear();
-	lcd.home();
 	lcd.print(F("Building Crop..."));
 
 	/////////////////////////////////////////////////////////////////////////
@@ -118,6 +171,8 @@ void cropBuild(){
 	SD.mkdir("dromatic/" + cropName + "/Sys/DateTime");
 	SD.mkdir("dromatic/" + cropName + "/Sys/ECCal");
 	SD.mkdir("dromatic/" + cropName + "/Sys/PHCal");
+	SD.mkdir("dromatic/" + cropName + "/Sys/PHDly");
+	SD.mkdir("dromatic/" + cropName + "/Sys/PHAmnt");
 	SD.mkdir("dromatic/" + cropName + "/Sys/PumpCal");
 
 	//Crop Settings
@@ -127,9 +182,9 @@ void cropBuild(){
 	SD.mkdir("dromatic/" + cropName + "/Crop/Delete");
 	SD.mkdir("dromatic/" + cropName + "/Crop/Reset");
 	SD.mkdir("dromatic/" + cropName + "/Crop/Status");
-	SD.mkdir("dromatic/" + cropName + "/Crop/EC");
-	SD.mkdir("dromatic/" + cropName + "/Crop/PH");
-	SD.mkdir("dromatic/" + cropName + "/Crop/Doses");
+	SD.mkdir("dromatic/" + cropName + "/Crop/ECRange");
+	SD.mkdir("dromatic/" + cropName + "/Crop/PHRange");
+	SD.mkdir("dromatic/" + cropName + "/Crop/Regimens");
 
 	//Pumps and ml volumes for each pump's regimen
 	SD.mkdir("dromatic/" + cropName + "/Pumps");
@@ -138,8 +193,6 @@ void cropBuild(){
 	SD.mkdir("dromatic/" + cropName + "/Irri");
 	SD.mkdir("dromatic/" + cropName + "/Irri/RsvrVol");
 	SD.mkdir("dromatic/" + cropName + "/Irri/TpfCcnt");
-	SD.mkdir("dromatic/" + cropName + "/Irri/TpfAmt");
-	SD.mkdir("dromatic/" + cropName + "/Irri/TpfDly");
 	SD.mkdir("dromatic/" + cropName + "/Irri/DrnTime");
 	SD.mkdir("dromatic/" + cropName + "/Irri/FlowCal");
 	SD.mkdir("dromatic/" + cropName + "/Irri/ManFlush");
@@ -152,12 +205,13 @@ void cropBuild(){
 	//Crop file
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& crop = cropBuffer.createObject();
-	JsonArray& PH = crop.createNestedArray("ph");
-	crop["ppm"] = 5;
-	crop["maxRegimens"] = 12;
-	crop["currentRegimen"] = 1;
+	JsonArray& PH = crop.createNestedArray("phRange");
+	crop["maxReg"] = 12;
+	crop["currentReg"] = 1;
 	crop["status"] = 0; //0 = paused or stopped, 1 = running
-	crop["feedingType"] = 0; //0 = full dose feeding, 1 = topoff dose feeding
+	crop["feedType"] = 0; //0 = full dose feeding, 1 = topoff dose feeding
+	crop["phAmnt"] = 2.0;
+	crop["phDly"] = 3;
 	PH.add(5.70);
 	PH.add(6.00);
 
@@ -171,7 +225,7 @@ void cropBuild(){
 	irrigate["rsvrvol"] = 0;
 	irrigate["tpfccnt"] = 2;
 	irrigate["tpfdly"] = 5;
-	irrigate["tpfamt"] = 1;
+	irrigate["tpfamt"] = 0.25;
 	irrigate["currentVol"] = 0;
 	irrigate["drntime"] = 10;
 	flMeters.add(5.5);
@@ -207,7 +261,6 @@ void cropBuild(){
 	//Regimen files (these live under each pump's folder)
 	StaticJsonBuffer<32> regimenBuffer;
 	JsonObject& regimen = regimenBuffer.createObject();
-	regimen["expired"] = false;
 	regimen["ml"] = 0.0;
 
 	//Make pump folders and their regimen files
@@ -237,7 +290,7 @@ void cropBuild(){
 	makeNewFile("dromatic/" + cropName + "/pump.dro", pump);
 	makeNewFile("dromatic/" + cropName + "/Timer.dro", timer);
 
-	screenName = "";
+	screenName = F("");
 	lcd.noBlink();
 	lcd.clear();
 	File root = SD.open("dromatic/" + cropName);
@@ -251,15 +304,19 @@ void cropLoad(){
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& cropData = getCropData(cropBuffer);
 	//load crops current regimen number
-	currentRegimen = cropData["currentRegimen"];
+	currentRegimen = cropData["currentReg"];
 	//load crops max regimen number
-	maxRegimens = cropData["maxRegimens"];
+	maxRegimens = cropData["maxReg"];
 	//load crops min pH setting
-	minPH = cropData["ph"].asArray()[0];
+	minPH = cropData["phRange"].asArray()[0];
 	//load crops max pH setting
-	maxPH = cropData["ph"].asArray()[1];
+	maxPH = cropData["phRange"].asArray()[1];
+	//load crops ph adjustment amount
+	phAmount = cropData["phAmnt"];
+	//load crop's ph delay minutes
+	phDelay = cropData["phDly"];
 	//load current feeding type
-	feedingType = cropData["feedingType"];
+	feedingType = cropData["feedType"];
 	//load current crop status
 	cropStatus = cropData["status"];
 
@@ -319,11 +376,11 @@ void cropLoad(){
 	checkTimers();
 }
 
+
 //Saves
 void saveECRange(){
 	if (cursorX == 11 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<ecBufferSize> ecBuffer;
 		JsonObject& ecData = getECData(ecBuffer, tmpInts[2]);
 		ecData["ec"].asArray()[0] = minPPM = tmpInts[0];
@@ -337,12 +394,11 @@ void saveECRange(){
 void savePHRange(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<cropBufferSize> jsonBuffer;
-		JsonObject& data = getCropData(jsonBuffer);
-		data["ph"].asArray()[0] = minPH = tmpFloats[0];
-		data["ph"].asArray()[1] = maxPH = tmpFloats[1];
-		setCropData(data, false);
+		JsonObject& cropData = getCropData(jsonBuffer);
+		cropData["phRange"].asArray()[0] = minPH = tmpFloats[0];
+		cropData["phRange"].asArray()[1] = maxPH = tmpFloats[1];
+		setCropData(cropData, false);
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
 		exitScreen();
@@ -359,6 +415,30 @@ void saveStatus(){
 		exitScreen();
 	}
 }
+void savePHAmount(){
+	if (cursorX == 13 && cursorY == 1){
+		StaticJsonBuffer<cropBufferSize> cropBuffer;
+		JsonObject& cropData = getCropData(cropBuffer);
+		cropData["phAmnt"] = phAmount = tmpFloats[0];
+		setCropData(cropData);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpFloats[0] = 0;
+		exitScreen();
+	}
+}
+void savePHDelay(){
+	if (cursorX == 13 && cursorY == 1){
+		StaticJsonBuffer<cropBufferSize> cropBuffer;
+		JsonObject& cropData = getCropData(cropBuffer);
+		cropData["phDly"] = phDelay = tmpInts[0];
+		setCropData(cropData);
+	}
+	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
+		tmpInts[0] = 0;
+		exitScreen();
+	}
+}
 
 //Prints
 void printStatus(int dir = 0){
@@ -368,9 +448,66 @@ void printStatus(int dir = 0){
 		if (cropStatus < 0){ cropStatus = 0; }
 	}
 	lcd.clear();
-	lcd.home();
 	lcd.print(F("STATUS: "));
 	lcd.print((cropStatus == 0) ? F("PAUSED") : F("RUNNING"));
+	lcd.setCursor(0, 1);
+	lcd.print(F("<back>      <ok>"));
+}
+void printPHAmount(int dir = 0){
+	if (dir != 0){
+		tmpFloats[0] += (dir > 0) ? 0.1 : -0.1;
+		//min & max check
+		if (tmpFloats[0] < 0.1){
+			tmpFloats[0] = 1;
+		}
+		if (tmpFloats[0] > 999){
+			tmpFloats[0] = 999;
+		}
+	}
+	lcd.clear();
+
+	if (tmpFloats[0] > 100) {
+		tmpDisplay[0] = "";
+	}
+	else if (tmpFloats[0] > 10) {
+		tmpDisplay[0] = "0";
+	}
+	else if (tmpFloats[0] > 1) {
+		tmpDisplay[0] = "00";
+	}
+
+	lcd.print(F("PH ADJ (ml) "));
+	lcd.print(tmpDisplay[0]);
+	lcd.print(tmpFloats[0]);
+	lcd.setCursor(0, 1);
+	lcd.print(F("<back>      <ok>"));
+}
+void printPHDelay(int dir = 0){
+	if (dir != 0){
+		tmpInts[0] += (dir > 0) ? 1 : -1;
+		//min & max check
+		if (tmpInts[0] < 1){
+			tmpInts[0] = 1;
+		}
+		if (tmpInts[0] > 999){
+			tmpInts[0] = 999;
+		}
+	}
+	lcd.clear();
+
+	if (tmpInts[0] > 100) {
+		tmpDisplay[0] = "";
+	}
+	else if (tmpInts[0] > 10) {
+		tmpDisplay[0] = "0";
+	}
+	else if (tmpInts[0] > 1) {
+		tmpDisplay[0] = "00";
+	}
+
+	lcd.print(F("PH DLY (min) "));
+	lcd.print(tmpDisplay[0]);
+	lcd.print(tmpInts[0]);
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 }
@@ -378,9 +515,9 @@ void printPHRange(double dir = 0){
 	float minMaxDiff = 0.01;
 	if (dir == 0){
 		StaticJsonBuffer<cropBufferSize> buffer;
-		JsonObject& data = getCropData(buffer);
-		tmpFloats[0] = data["ph"].asArray()[0];
-		tmpFloats[1] = data["ph"].asArray()[1];
+		JsonObject& cropData = getCropData(buffer);
+		tmpFloats[0] = cropData["phRange"].asArray()[0];
+		tmpFloats[1] = cropData["phRange"].asArray()[1];
 		cursorX = 3;
 		cursorY = 0;
 	} else {
@@ -444,7 +581,6 @@ void printECRange(int dir = 0){
 
 	if (cursorX == 15 && cursorY == 0){
 		lcd.clear();
-		lcd.home();
 		lcd.print((dir == 1) ? F("NEXT REGIMEN") : F("PREV REGIMEN"));
 
 		lcd.setCursor(0, 1);
@@ -484,6 +620,30 @@ void printECRange(int dir = 0){
 	lcd.print(F("<back>    <done>"));
 	lcd.setCursor(cursorX, 0);
 }
+void printOpen(int dir = 0){
+	lcd.clear();
+	if (dir == 0){
+		menuIndex = 0;
+		tmpFile = SD.open("dromatic/");
+		getDirectoryMenus(tmpFile);
+		lcd.print(menus[menuIndex]);
+	} else {
+		scrollMenus(dir);
+	}
+	lcd.setCursor(0, 1);
+	lcd.print(F("<back>  <open>"));
+	lcd.home();
+	printScrollArrows();
+	lcd.setCursor(cursorX, cursorY);
+}
+void printReset(){
+	lcd.clear();
+	lcd.print(F(" CONFIRM RESET "));
+	lcd.setCursor(0, 1);
+	lcd.print(F("<no>      <yes>"));
+	lcd.home();
+}
+
 
 void printECCalibrations(String type, int dir = 0){
 	if (dir != 0){
@@ -528,7 +688,6 @@ void printECCalibrations(String type, int dir = 0){
 	else{
 		lcd.noBlink();
 		lcd.clear();
-		lcd.home();
 		lcd.print(type);
 		lcd.print(F(" CALIBRATION"));
 		lcd.setCursor(0, 1);
@@ -546,7 +705,6 @@ void printECCalibrations(String type, int dir = 0){
 
 		if (type == "HIGH" || type == "LOW"){
 			lcd.clear();
-			lcd.home();
 			lcd.print(F("PLACE EC PROBES"));
 			lcd.setCursor(0, 1);
 			lcd.print(F("IN "));
@@ -557,7 +715,6 @@ void printECCalibrations(String type, int dir = 0){
 	}
 
 	lcd.clear();
-	lcd.home();
 	if (type == "DRY" || type == "LOW"){
 		lcd.print(type);
 		lcd.print(F(" CAL - "));
@@ -598,7 +755,6 @@ void printECCalibrations(String type, int dir = 0){
 void printPHCalibrations(String type, byte value){
 	lcd.noBlink();
 	lcd.clear();
-	lcd.home();
 	lcd.print(type);
 	lcd.print(F(" CALIBRATION"));
 	lcd.setCursor(0, 1);
@@ -615,7 +771,6 @@ void printPHCalibrations(String type, byte value){
 	delay(5000);
 
 	lcd.clear();
-	lcd.home();
 	lcd.print(type);
 	lcd.print(F(" CAL - "));
 	lcd.print(value);

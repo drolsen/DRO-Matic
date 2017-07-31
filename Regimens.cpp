@@ -35,7 +35,6 @@ void setRegimenData(JsonObject& d, byte pumpIndex = currentPumpIndex, byte sessi
 
 //Prints
 void printRegimenNumber(int dir){
-	char instructions[15] = " REGIMEN DOSES";
 	if (cursorX == 1 && cursorY == 0){
 		tmpInts[0] = tmpInts[0] + dir;
 		if (tmpInts[0] < 1){ tmpInts[0] = 1; }
@@ -44,7 +43,7 @@ void printRegimenNumber(int dir){
 	if (tmpInts[0] < 10){ lcd.print(0); }
 
 	lcd.print(tmpInts[0]);
-	lcd.print(instructions);
+	lcd.print(F(" REGIMEN DOSES"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
 	lcd.setCursor(1, 0);
@@ -52,13 +51,13 @@ void printRegimenNumber(int dir){
 void printRegimenAmount(int dir = 0){
 	String amountDisplay = F("0000.0");
 	StaticJsonBuffer<regimenBufferSize> sessionBuffer;
-	JsonObject& data = getRegimenData(sessionBuffer, currentPumpIndex, 0);
+	JsonObject& data = getRegimenData(sessionBuffer, currentPumpIndex, 1);
 	tmpFloats[0] = data["ml"];
 	tmpInts[0] = 1;
 
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& cropData = getCropData(cropBuffer);
-	tmpInts[1] = cropData["maxRegimens"];
+	tmpInts[1] = cropData["maxReg"];
 
 	if (dir != 0 && cursorX == 12){ 
 		//only when changing value
@@ -113,7 +112,6 @@ void printRegimenAmount(int dir = 0){
 void saveRegimenAmount(){
 	if (cursorX == 11 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		lcd.print(F("SAVING REGIMEN"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEASE HOLD..."));
@@ -127,7 +125,7 @@ void saveRegimenAmount(){
 			JsonObject& cropData = getCropData(cropBuffer);
 
 			maxRegimens = currentRegimenIndex;
-			cropData["maxRegimens"] = currentRegimenIndex;
+			cropData["maxReg"] = currentRegimenIndex;
 			setCropData(cropData);
 		}
 		setRegimenData(sessionData, currentPumpIndex, currentRegimenIndex, false);
@@ -162,32 +160,24 @@ void saveRegimenAmount(){
 
 //Helpers
 void addRegimens(int currentSize, int addAmount){
-	byte i, j;
-	String path;
 	StaticJsonBuffer<regimenSessionBufferSize> buffer;
 	JsonObject& data = buffer.createObject();
 	data["ml"] = 80;
-	data["expired"] = false;
 
-	for (i = 1; i <= 8; i++){
-		path = "dromatic/" + cropName + "/pumps/syspmp" + String(i);
-		for (j = 0; j < addAmount; j++){
+	for (byte i = 1; i <= 8; i++){
+		for (byte j = 0; j < addAmount; j++){
 			if (j > currentSize){
-				makeNewFile(path + j + ".dro", data);
+				makeNewFile("dromatic/" + cropName + "/pumps/syspmp" + String(i) + j + ".dro", data);
 			}
 			Serial.flush();
 		}
 	}
 }
 void trimRegimens(int currentSize, int trimAmount){
-	byte i, j;
-	String path;
-	i = 8; //number of pumps
-	for (i = 1; i <= 8; i++){
-		path = "dromatic/" + cropName + "/pumps/syspmp" + String(i);
-		for (j = 0; j <= currentSize; j++){
+	for (byte i = 1; i <= 8; i++){
+		for (byte j = 0; j <= currentSize; j++){
 			if (j > trimAmount-1){
-				SD.remove(path + "/pmpse" + String(j) + ".dro");
+				SD.remove("dromatic/" + cropName + "/pumps/syspmp" + String(i) + "/pmpse" + String(j) + ".dro");
 			}
 			Serial.flush();
 		}
@@ -202,7 +192,7 @@ void checkRegimenDosing(){
 	//2) water is out of configured pH range.
 	//3) has not been 5 minutes since we last pH adjusted the water.
 	if (flowInRate > 0.01 || feedingType == 2) { return; } //if we are a feeding type of 2, or have a flowInRate, we can't proceed.
-	if (((millis() - phRsvrMillis) < phWaitPeriord)){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
+	if (((millis() - phRsvrMillis) < phDelay)){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
 	float pH = getPHProbeValue(RSVRPH);
 	delay(250);
 	if (pH > maxPH || pH < minPH) { return; } //if we still have a pH lower or higher than configured range, we can't proceed.
@@ -214,7 +204,6 @@ void checkRegimenDosing(){
 	JsonObject& cropData = getCropData(cropBuffer);
 
 	lcd.clear();
-	lcd.home();
 	lcd.print(F("DOSING REGIMEN"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("PLEASE HOLD!!"));
@@ -222,9 +211,9 @@ void checkRegimenDosing(){
 	for (byte i = 1; i <= 7; i++){
 		//Second, lets open our SD data up and get this current regimen's ml dosing amount for this pump
 		StaticJsonBuffer<regimenBufferSize> regimenBuffer;
-		JsonObject& regimenData = getRegimenData(regimenBuffer, i, (currentRegimen - 1)); //remember, this is a single pump instance (aka getPumpData)
+		JsonObject& regimenData = getRegimenData(regimenBuffer, i, currentRegimen); //remember, this is a single pump instance (aka getPumpData)
 		float amount = regimenData["ml"];
-		int concentrate = (amount / 6) * topOffConcentrate;
+		float concentrate = (amount / 6) * topOffConcentrate;
 		float ml = (feedingType == 0) ? (amount * rsvrVol) : (concentrate * rsvrVol);
 		pumpSpin(ml, i, pumpCalibration); //perform dosing 
 
@@ -235,20 +224,13 @@ void checkRegimenDosing(){
 			if (feedingType == 0){	//only while under full feeding type do we flush entire batch of water to plants
 				flushPlantWater();	//flush any exsisting poopy water away from plants
 				flushRsvrWater();	//next, we feed our enture batch of freshly dosed water to plants.
-				feedingType = cropData["feedingType"] = 1;	//lastly we progress crop to next feeding type to being top off dosing
-				setCropData(cropData); //and save
-				return;				   //exit checkRegimenDosing prematurly.
+				cropData["feedType"] = feedingType = 1;	//lastly we progress crop to next feeding type to being top off dosing
+			}else if (feedingType == 1){ 
+				cropData["feedType"] = feedingType = 2; 
 			}
-			if (feedingType == 1){ feedingType = 2; } 
-
-			//only after top off dosing do we progress / store next regimen and feedingType to SD
-			currentRegimen++; 
-			currentRegimen = (currentRegimen >= maxRegimens) ? maxRegimens : currentRegimen;
-			cropData["currentRegimen"] = currentRegimen;
-			cropData["feedingType"] = feedingType;
-			setCropData(cropData);
+			setCropData(cropData); //save
 		}else{
-			//Our delay logic between each pump's dosing
+			//Delay logic between each pump's dosing
 			byte pumpDelay = pumpConfig["delay"];
 			int i = pumpDelay * 60; //mins x 60secs = loop total
 			while (i--){ //count down total seconds

@@ -13,7 +13,7 @@ extern JsonObject& getIrrigationData(JsonBuffer& b);
 extern void setIrrigationData(JsonObject& d);
 
 //Prints
-extern void printReservoirVolume(int dir);
+extern void printReservoirVolume();
 extern void printTopOffConcentrate(int dir = 0);
 extern void printTopOffAmount(int dir = 0);
 extern void printTopOffDelay(int dir = 0);
