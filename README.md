@@ -1,11 +1,11 @@
 # DRO<img src="https://raw.githubusercontent.com/devinrayolsen/DRO-Matic/master/Docs/images/hydro-hyphen.png" width="64">Matic OS
 
-DRO-Matic is an Arduino (MicroController) based automated hydroponics OS built for any scale hydroponics farm.
-The DRO-Matic has been built to allow users to create, configure and share what are called "crops" by interfacing with a LCD screen and external MicroSD card. 
+DRO-Matic OS automates nutrient dosing, pH & EC drift fixing, feedings, drainings, topoffs and timers for hydroponics. The OS has been built to scale of nearly any size hydroponics farm.
+The OS allow users to create, configure and share what are called "crops" by interfacing with a LCD screen and external MicroSD card. 
 A single DRO-Matic crop disk size (SD card) can very, but in very extreme crop configurations (10 channels, 100 weeks of dosing sessions per channel) were found to be just under 5MB.
 
-##Why?
-DRO-Matic has been built to allow you be flexible in any way which you would like to configure the dosings of your hydroponic solutions. 
+## Why?
+With a DRO-Matic you are allowed you be flexible in any way which you would like to configure both the dosings of your hydroponic solutions. 
 However, before we get into the settings and configuration of the OS, its important to ask our selfs why this even exists? 
 It's undoubtedly true across almost all cultures that agriculture and food growth is not only a necessity but also expensive. 
 Agriculture is expensive in the amount of land used, energy spent to get to harvest, and even time spent consistency with successful crops year after year.
@@ -58,8 +58,6 @@ Below is a overview of the available OS features.
 ### <a href="https://github.com/drolsen/DRO-Matic/wiki/4)-Irrigation-Settings">Irrigation Settings</a>
 - **Reservoir Volume** = Configure the volume of water your reseroivr / plants will be using throughout the life of plants.
 - **TopOff Concentrate** = Configure the fraction amount of dosing amount topoff water gets.
-- **TopOff Amount** = Configure how much topoff water ought to be given to plants to correct EC drift.
-- **TopOff Delay** = Configure how long of a delay between topoff / EC drift correcting should take place.
 - **Drain Time** = Configure how long of a plant water drain time you will need. You can may want to over estimate this.
 - **Flow Calibration** = Configure pulse count per second IN and OUT flow meters are manufactured to send. These numbers are different for per size/manufacturers of flow meters.
 - **Manual Flush** = Utility that allows you to flow either IN and OUT irrigation valvels to do any manual flushing during setup / testing.

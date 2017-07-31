@@ -37,7 +37,7 @@ void coreInit(){
 
 		cropName = coreData["crop"].asString();
 		if (cropName != "" && SD.exists("dromatic/" + cropName)){ //Loading up exisiting core file's crop directory
-			screenName = "";
+			screenName = F("");
 			tmpFile = SD.open("dromatic/" + cropName);
 			getDirectoryMenus(tmpFile);
 			tmpFile.close();
@@ -67,7 +67,6 @@ void coreInit(){
 		tmpFile.close();
 
 		lcd.clear();
-		lcd.home();
 		lcd.print(F("New Crop Setup"));
 		lcd.setCursor(0, 1);
 		lcd.print(F(" Please Hold... "));
@@ -93,49 +92,71 @@ int tmpIntsToInt(byte decimalPlaces){
 void correctPlantEC(){
 	if (flowInRate > 0.01){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
 	if (feedingType != 2) { return; } //only after we have dosed our reservoir with topoff concentrates can we being to correct EC drift on plants
-	if (((millis() - phPlantMillis) < phWaitPeriord) || ((millis() - ecMillis) < ecWaitPeriord)) { return; } //has we waited long enough since eiher last pH adjustment or EC adjustment?
+	if (((millis() - phPlantMillis) < phDelay) || ((millis() - ecMillis) < topOffDelay)) { return; } //has we waited long enough since eiher last pH adjustment or EC adjustment?
 	
 	float plantpH = getPHProbeValue(PLANTPH);
-	delay(250); //too much power consumed if you don't delay between probe requests
 	float rsvrpH = getPHProbeValue(RSVRPH);
-	delay(250); //too much power consumed if you don't delay between probe requests
 	
 	if (rsvrpH > maxPH || rsvrpH < minPH) { return; } //sorry, no EC correction while reservoir pH is out of range
 	if (plantpH > maxPH || plantpH < minPH) { return; } //sorry, no EC correction while plants pH is out of range
 	
 	int EC = getECProbeValue(PLANTEC); 
-	delay(250); //too much power consumed if you don't delay between probe requests
 
 	if ((EC > maxPPM || EC < minPPM)){
 		unsigned long topOffWait = millis(); //10 seconds
+		float gallons = 0;
 		StaticJsonBuffer<cropBufferSize> cropBuffer;
 		JsonObject& cropData = getCropData(cropBuffer);
 
 		lcd.clear();
-		lcd.home();
 		lcd.print(F("TOPPING OFF EC"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEASE HOLD!!!"));
 		flowInRate = pulseInFlowCount = 0;
-		RelayToggle(11, true); //open up in-valve
-		while (flowInRate < 0.01){
-			if ((millis() - topOffWait) > 5000){ //keeps in-valve open for 5 seconds, then close.
-				RelayToggle(11, false);
-			}
-			if ((millis() - topOffWait) > 35000){ //after 20 seconds, open out-valve for 5 seconds, then close.
-				RelayToggle(12, true);
-				break;
-			}
-			if ((millis() - topOffWait) > 40000){ //after 5 seconds, close up out-valve and finish EC correction.
-				RelayToggle(12, false);
-				break;
-			}
-			if ((millis() - flowMillis) >= 1000){ //after 1 second, we checkFlowRates();, then reset flowMillis time stamp.
+		while (gallons < topOffAmount){
+			//check flow rates every 1 second of topoff length
+			if ((millis() - flowMillis) > 1000){ 
 				checkFlowRates();
+				gallons += ((flowInRate / 60) * 1000) / 4546.091879;
 				flowMillis = millis();
+				//have we run out of topoff water?
+				if (flowInRate > 0.01 && feedingType == 2){ //Moving into next regimen
+					lcd.clear();
+					lcd.print("MOVING INTO");
+					lcd.setCursor(0, 1);
+					lcd.print("NEXT REGIMEN");
+					currentRegimen++;
+					currentRegimen = (currentRegimen > maxRegimens) ? maxRegimens : currentRegimen;
+					StaticJsonBuffer<cropBufferSize> cropBuffer;
+					JsonObject& cropData = getCropData(cropBuffer);
+					cropData["currentReg"] = currentRegimen;
+					cropData["feedType"] = feedingType = 0;
+
+					//are we loading new regimen ranges, or continuing last ones?
+					if (currentRegimen != maxRegimens){
+						//load EC Conductivity ranges
+						StaticJsonBuffer<ecBufferSize> ecBuffer;
+						JsonObject& ECData = getECData(ecBuffer, currentRegimen);
+						minPPM = ECData["ec"].asArray()[0];
+						maxPPM = ECData["ec"].asArray()[1];
+					}
+					setCropData(cropData);
+					break;
+				}
 			}
-			Serial.flush();
+
+			//first flush
+			if (gallons <= (topOffAmount/2)){
+				RelayToggle(12, true); //out
+				RelayToggle(11, false); //in
+			}else{
+			//then feed
+				RelayToggle(12, false); //out
+				RelayToggle(11, true); //in
+			}
 		}
+		RelayToggle(11, false);
+		RelayToggle(12, false);
 		ecMillis = millis(); //reset EC millis
 	}
 }
@@ -143,21 +164,20 @@ void correctPlantEC(){
 //is it time to fix ph dift of plant water?
 void correctPlantPH(){
 	//are we permitted to correct plant pH?
-	if (flowOutRate > 0.01 || ((millis() - phPlantMillis) < phWaitPeriord) || feedingType == 0) { return; }
+	if (flowOutRate > 0.01 || ((millis() - phPlantMillis) < phDelay) || feedingType == 0) { return; }
 	float pH = getPHProbeValue(PLANTPH);
 
 	//is current ph is outside of configred ph ranges?
 	if (pH > maxPH || pH < minPH){
 		lcd.clear();
-		lcd.home();
 		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
 		if (pH > maxPH){			//we must micro-ph-dose our plant water DOWN
-			pumpSpin(1, 10, pumpCalibration);
+			pumpSpin(phAmount, 10, pumpCalibration);
 		}
 		else if (pH < minPH){	//we must micro-ph-dose our plant water UP
-			pumpSpin(1, 9, pumpCalibration);
+			pumpSpin(phAmount, 9, pumpCalibration);
 		}
 		phPlantMillis = millis();
 	}
@@ -166,15 +186,14 @@ void correctPlantPH(){
 //is it time fix reservoir pH drift?
 void correctRsvrPH(){
 	//are we permitted to correct reservoir pH?
-	if ((flowInRate > 0.01 || flowOutRate > 0.01) || ((millis() - phRsvrMillis) < phWaitPeriord)) { return; }
+	if ((flowInRate > 0.01 || flowOutRate > 0.01) || ((millis() - phRsvrMillis) < phDelay)) { return; }
 	float pH = getPHProbeValue(RSVRPH);
 	if (pH > maxPH || pH < minPH){ //if current ph is outside of configred ph ranges
 		lcd.clear();
-		lcd.home();
 		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
-		pumpSpin(1, 8, pumpCalibration);
+		pumpSpin(phAmount, 8, pumpCalibration);
 		phRsvrMillis = millis();
 	}
 }
@@ -278,7 +297,6 @@ void setECWaterProbeCalibration(byte channel, int value, char type){
 		Wire.write("\r"); // <CR> carriage return to terminate message
 	}
 }
-
 
 //Helpers
 void RelayToggle(int channel, bool gate) {

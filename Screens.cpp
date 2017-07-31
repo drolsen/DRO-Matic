@@ -44,11 +44,10 @@ void exitScreen(){
 	cursorX = cursorY = 0;
 	menusHistory.pop_back();
 	menuIndex = 0;
-	screenName = "";
+	screenName = F("");
 	tmpFile = SD.open("dromatic/" + cropName + "/" + getMenuHistory());
 	getDirectoryMenus(tmpFile);
 	lcd.clear();
-	lcd.home();
 	lcd.noBlink();
 	tmpFile.close();
 	printScreenNames(menus.front());
@@ -64,7 +63,7 @@ void printHomeScreen(){
 	float PH1Value = getPHProbeValue(PLANTPH);
 
 	int RED = (PH1Value > maxPH) ? 255 : 0;
-	int GREEN = (PH1Value > minPH && PH1Value <= maxPH) ? 255 : 0;
+	int GREEN = (PH1Value >= minPH && PH1Value <= maxPH) ? 255 : 0;
 	int BLUE = (PH1Value < minPH) ? 255 : 0;
 	lcd.clear();
 
@@ -148,12 +147,11 @@ void printScreenNames(String menu){
 	bool hasMatch = false;
 	const byte isPump = strstr(menu.c_str(), "SYSPMP") != NULL; //Pumps
 	const byte isTimer = strstr(menu.c_str(), "RECEP") != NULL; //Timers
-	const String index = String(menuIndex + 1);
 	if (isPump){
 		lcd.print(F("SYSTEM"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PUMP "));
-		lcd.print(index);
+		lcd.print(String(menuIndex + 1));
 		currentPumpIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
@@ -161,26 +159,22 @@ void printScreenNames(String menu){
 		lcd.print(F("TIMED"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("RECEPTACLE "));
-		lcd.print(index);
+		lcd.print(String(menuIndex + 1));
 		currentTimerIndex = menuIndex + 1;
 		lcd.home();
 		hasMatch = true;
 	}
 	else {
-		byte i;
-		for (i = 0; i < 27; i++){
+		for (byte i = 0; i < menusBufferSize; i++){
 			char match1Buffer[18];
 			char match2Buffer[18];
 			char match3Buffer[18];
-			String match1 = strcpy_P(match1Buffer, (char*)pgm_read_word(&(screenNames[i][0])));
-			String match2 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][1])));
-			String match3 = strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][2])));
 
-			if (menu == match1){
+			if (menu == strcpy_P(match1Buffer, (char*)pgm_read_word(&(screenNames[i][0])))){
 				hasMatch = true;
-				lcd.print(match2);
+				lcd.print(strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][1]))));
 				lcd.setCursor(0, 1);
-				lcd.print(match3);
+				lcd.print(strcpy_P(match2Buffer, (char*)pgm_read_word(&(screenNames[i][2]))));
 				break;
 			}
 		}

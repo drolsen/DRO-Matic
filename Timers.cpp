@@ -123,7 +123,7 @@ void printTimerWeeks(int dir) {
 }
 void printTimerStartEnd(int dir){
 
-	String DOW[7] = { "Su", "Mo", "Tu", "We", "Th", "Fi", "Sa" };
+	String DOW[7] = { F("Su"), F("Mo"), F("Tu"), F("We"), F("Th"), F("Fi"), F("Sa") };
 	String AMPM1 = F("AM");
 	String AMPM2 = F("PM");
 	if (cursorY == 0){
@@ -175,7 +175,6 @@ void printTimerStartEnd(int dir){
 		tmpDisplay[2] = DOW[currentTimerSessionDayIndex];
 		
 		lcd.clear();
-		lcd.home();
 
 		//START
 		if (cursorX == 1){

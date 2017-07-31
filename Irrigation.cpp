@@ -28,33 +28,24 @@ void setIrrigationData(JsonObject& d){
 }
 
 //Prints
-void printReservoirVolume(int dir){
-	tmpInts[0] += dir;
-	String rsvrVol;
-	if (tmpInts[0] > 9999){ //max
-		rsvrVol = F("9999");
-		tmpInts[0] = 9999;
-	} else if(tmpInts[0] < 1000) {
-		rsvrVol = F("0");
-	} else if (tmpInts[0] < 100){
-		rsvrVol = F("00");
-	} else if (tmpInts[0] < 10){
-		rsvrVol = F("000");
-	} else if (tmpInts[0] < 0){ //min
-		rsvrVol = F("0000");
-		tmpInts[0] = 0;
-	}
+void printReservoirVolume(){
+	tmpFloats[0] += (flowInRate / 60) * 1000;
+	float liters = tmpFloats[0] / 1000;
+	float USgallons = tmpFloats[0] / 4546.091879;
+	float UKgallons = USgallons * 0.83267384;
+	currentRsvrVol = USgallons;
 
 	lcd.clear();
-	lcd.print(rsvrVol);
-	lcd.print(tmpInts[0]);
-	lcd.print(F(" Gallons"));
+	lcd.print(USgallons, 1);
+	lcd.print(F("lqd/"));
+	lcd.print(UKgallons, 1);
+	lcd.print(F("gal"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("<back>      <ok>"));
-	lcd.setCursor(cursorX, 0);
+	lcd.setCursor(cursorX, cursorY);
+	lcd.blink();
 }
 void printTopOffConcentrate(int dir = 0){
-	String fraction;
 	if (dir != 0){
 		tmpInts[0] += dir;
 		//min - max prevention
@@ -86,25 +77,32 @@ void printTopOffConcentrate(int dir = 0){
 	lcd.setCursor(cursorX, 0);
 }
 void printTopOffAmount(int dir = 0){
-	String prefix = "";
 	if (dir != 0){
-		tmpInts[0] += dir;
+		tmpFloats[0] += (dir > 0) ? 0.05 : -0.05;
 		//top off amount can't be lower than 1 gallon.
-		if (tmpInts[0] < 1){
-			tmpInts[0] = 1;
+		if (tmpFloats[0] < 0.05){
+			tmpFloats[0] = 0.05;
 		}
 		//top off amounts can't be higher than reservoir volume / 4
-		if (tmpInts[0] > (rsvrVol / 4)){
-			tmpInts[0] = (int)(rsvrVol / 4);
+		if (tmpFloats[0] > rsvrVol){
+			tmpFloats[0] = rsvrVol;
 		}
 	}
-	if (tmpInts[0] < 10){
-		prefix = "0";
-	}
 	lcd.clear();
-	lcd.print(prefix);
-	lcd.print(tmpInts[0]);
-	lcd.print(F(" TOPOFF gal"));
+
+	if (tmpInts[0] > 100) {
+		tmpDisplay[0] = "";
+	}
+	else if (tmpFloats[0] > 10) {
+		tmpDisplay[0] = "0";
+	}
+	else if (tmpFloats[0] > 1) {
+		tmpDisplay[0] = "00";
+	}
+	
+	lcd.print(F("TPF (gal) "));
+	lcd.print(tmpDisplay[0]);
+	lcd.print(tmpFloats[0]);
 	lcd.setCursor(0,1);
 	lcd.print(F("<back>      <ok>"));
 }
@@ -188,10 +186,9 @@ void printFullFlushing(){
 void saveReservoirVolume(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
 		JsonObject& data = getIrrigationData(jsonBuffer);
-		data["rsvrvol"] = rsvrVol;
+		data["rsvrvol"] = rsvrVol = currentRsvrVol;
 		setIrrigationData(data);
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
@@ -201,7 +198,6 @@ void saveReservoirVolume(){
 void saveTopOffConcentrate(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> buffer;
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfccnt"] = topOffConcentrate = tmpInts[0];
@@ -215,21 +211,19 @@ void saveTopOffConcentrate(){
 void saveTopOffAmount(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> buffer;
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfamt"] = topOffAmount = tmpInts[0];
 		setIrrigationData(data);
 	}
 	if (cursorX == 1 || cursorX == 13 && cursorY == 1){
-		tmpInts[0] = 0;
+		tmpFloats[0] = 0;
 		exitScreen();
 	}
 }
 void saveTopOffDelay(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> buffer;
 		JsonObject& data = getIrrigationData(buffer);
 		data["tpfdly"] = topOffDelay = tmpInts[0];
@@ -243,7 +237,6 @@ void saveTopOffDelay(){
 void saveFlowCalibration(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> jsonBuffer;
 		JsonObject& data = getIrrigationData(jsonBuffer);
 		data["flMeters"].asArray()[0] = tmpFloats[0];
@@ -260,7 +253,6 @@ void saveFlowCalibration(){
 void saveDrainTime(){
 	if (cursorX == 13 && cursorY == 1){
 		lcd.clear();
-		lcd.home();
 		StaticJsonBuffer<irrigateBufferSize> buffer;
 		JsonObject& data = getIrrigationData(buffer);
 		data["drntime"] = drainTime = tmpInts[0];
@@ -286,27 +278,34 @@ void checkFlowRates(){
 	//we don't want to store or capture currentRsvrVol while configuring OS
 	if (screenName == ""){
 		//do we have a flow rate for in?
-		if (flowInRate > 0.01){
+		if (flowInRate > 0.025){ //true irrigations will be over .025 (for safe measure)
 			currentRsvrVol += (flowInRate / 60) * 1000;
-			irrigationFlag = true; //flag OS while irrigation is taking place
+			irrigationInFlag = true; //flag OS while irrigation is taking place
 			RelayToggle(11, false); //ensures that we are not feeding un-dosed water to plants
 		}
 
 		//do we have a flow rate for out?
-		if (flowOutRate > 0.01){
+		if (flowOutRate > 0.025){ //true irrigations will be over .025 (for safe measure)
 			currentRsvrVol -= (flowOutRate / 60) * 1000;
-			irrigationFlag = true; //flag OS while irrigation is taking place
+			currentRsvrVol = (currentRsvrVol > 0) ? currentRsvrVol : 0; //prevents rsvr vol from falling below 0
+			irrigationOutFlag = true; //flag OS while irrigation is taking place
 			if (flowInRate > 0.01){ RelayToggle(11, false); } //ensures that we are not feeding un-dosed water to plants
 		}
 
 		//when all flowRates have stopped, we store data
-		if (irrigationFlag == true && flowInRate < 0.01 && flowOutRate < 0.01){
-			//store the final size once know we are done filling
+		if ((irrigationInFlag == true || irrigationOutFlag == true) && flowInRate < 0.01 && flowOutRate < 0.01){
+			if (irrigationInFlag == true){
+				irrigationInFlag = false; //reset irrigation flag for OS
+			}
+			if (irrigationOutFlag == true){
+				irrigationOutFlag = false; //reset irrigation flag for OS
+			}
+
+			//store the reservoir's remaining volume
 			StaticJsonBuffer<irrigateBufferSize> irrigationBuffer;
 			JsonObject& irrigationData = getIrrigationData(irrigationBuffer);
 			irrigationData["currentVol"] = currentRsvrVol;
 			setIrrigationData(irrigationData);
-			irrigationFlag = false; //reset irrigation flag for OS
 		}
 	}
 	pulseInFlowCount = pulseOutFlowCount = 0; //reset pulse counts for next time around
@@ -326,7 +325,6 @@ void countRsvrDrain(){
 //Flush only plant water (drainTime config based)
 void flushPlantWater(){
 	lcd.clear();
-	lcd.home();
 	lcd.print(F("FLUSHING PLANTS"));
 	lcd.setCursor(0, 1);
 	lcd.print(F("PLEASE HOLD!!!"));
@@ -349,7 +347,6 @@ void flushRsvrWater(){
 		if ((millis() - flowMillis) >= 1000){
 			checkFlowRates();
 			lcd.clear();
-			lcd.home();
 			lcd.print(F("FEEDING PLANTS"));
 			lcd.setCursor(0, 1);
 			lcd.print(F("PLEASE HOLD!!!"));

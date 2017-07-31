@@ -26,6 +26,8 @@ extern void cropCreate();
 
 extern void cropRename(int dir);
 
+extern void cropReset();
+
 extern void cropBuild();
 
 extern void cropLoad();
@@ -34,12 +36,19 @@ extern void cropLoad();
 extern void saveECRange();
 extern void savePHRange();
 extern void saveStatus();
+extern void savePHDelay();
+extern void savePHAmount();
 
 //Prints
 extern void printStatus(int dir = 0);
+extern void printPHAmount(int dir = 0);
+extern void printPHDelay(int dir = 0);
 extern void printPHRange(double dir);
 extern void printECRange(int dir);
 extern void printECCalibrations(String type, int dir = 0);
 extern void printPHCalibrations(String type, byte value);
+extern void printOpen(int dir = 0);
+extern void printReset();
+
 #endif
 

@@ -46,8 +46,8 @@
 #define RELAY15 37
 #define RELAY16 36
 
-#define coreBufferSize 32
-#define cropBufferSize 220
+#define coreBufferSize 64
+#define cropBufferSize 300
 #define pumpBufferSize 196
 #define regimenBufferSize 512
 #define regimenSessionBufferSize 64
@@ -61,8 +61,7 @@
 #define PLANTEC 2
 #define PLANTPH 3
 
-#define phWaitPeriord 60000
-#define ecWaitPeriord 120000 //300000
+#define menusBufferSize 31
 
 using namespace std; //Prefence of developer, I don't like typing std:: everywhere.
 
@@ -70,7 +69,7 @@ extern LiquidCrystal lcd;
 extern DS3231  rtc;
 extern Adafruit_NeoPixel pixels;
 
-extern boolean irrigationFlag;
+extern boolean irrigationInFlag, irrigationOutFlag;
 
 extern byte
 currentTimerSessions[4],
@@ -78,7 +77,6 @@ maxRegimens,
 currentRegimen, //Where we store the current regimen we are on
 drainTime, //Where we store how long of a drain time we will take when flushing plants water
 topOffConcentrate,  //The fraction amount we dose our topoff water
-topOffAmount, //The topoff amount we dose plant water with to correct over concentrated PPMs
 topOffDelay,
 cropStatus, //Does user have crop paused or started
 feedingType,
@@ -87,9 +85,8 @@ timerStartHours[4],
 timerEndHours[4];
 
 extern volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
-extern float tmpFloats[2], flowMeterConfig[2], flowInRate, flowOutRate, minPH, maxPH;
-extern int Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
-extern double currentRsvrVol;
+extern float tmpFloats[2], flowMeterConfig[2], rsvrVol, currentRsvrVol, topOffAmount, flowInRate, flowOutRate, minPH, maxPH, phAmount;
+extern int Key, minPPM, maxPPM, phDelay, pumpCalibration;
 
 //Tentical Sheild
 extern char sensordata[30];                  // A 30 byte character array to hold incoming data from the sensors
@@ -104,7 +101,8 @@ extern String nameArry[15], tmpDisplay[5]; //tmpDisplay = suffix, hour, min, day
 extern int tmpInts[6];
 
 extern const char* const alphabet[37] PROGMEM;
-extern const char* const screenNames[28][3] PROGMEM;
+extern const char* const screenNames[menusBufferSize][3] PROGMEM;
 extern const char* const months[12] PROGMEM;
+
 
 #endif

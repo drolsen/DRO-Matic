@@ -10,13 +10,12 @@
 #include "Regimens.h"
 #include "Menus.h"
 
-boolean irrigationFlag = false;
+boolean irrigationInFlag, irrigationOutFlag = false;
 
 byte currentTimerSessions[4], 
 currentRegimen, maxRegimens, 
 drainTime, 
 topOffConcentrate,
-topOffAmount,
 topOffDelay,
 cropStatus, 
 feedingType,
@@ -25,10 +24,9 @@ timerStartHours[4],
 timerEndHours[4];
 
 volatile unsigned long pulseInFlowCount, pulseOutFlowCount;
-float tmpFloats[2], flowMeterConfig[2], minPH, maxPH, flowInRate, flowOutRate;
+float tmpFloats[2], flowMeterConfig[2], rsvrVol, currentRsvrVol, topOffAmount, minPH, maxPH, phAmount, flowInRate, flowOutRate;
 
-int tmpInts[6], Key, minPPM, maxPPM, rsvrVol, pumpCalibration;
-double currentRsvrVol = 0;
+int tmpInts[6], Key, minPPM, maxPPM, phDelay, pumpCalibration;
 
 File tmpFile;
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -95,8 +93,14 @@ const char _irri[5] PROGMEM = "IRRI";
 const char _pump[6] PROGMEM = "PUMPS";
 const char _timer[7] PROGMEM = "TIMERS";
 const char _datetime[9] PROGMEM = "DATETIME";
-const char _EC[3] PROGMEM = "EC";
-const char _PH[3] PROGMEM = "PH";
+const char _ECCal[6] PROGMEM = "ECCAL";
+const char _ECRange[8] PROGMEM = "ECRANGE";
+
+const char _PHCal[6] PROGMEM = "PHCAL";
+const char _PHRange[8] PROGMEM = "PHRANGE";
+const char _PHDly[6] PROGMEM = "PHDLY";
+const char _PHAmnt[7] PROGMEM = "PHAMNT";
+
 const char _open[5] PROGMEM = "OPEN";
 const char _new[4] PROGMEM = "NEW";
 const char _delete[7] PROGMEM = "DELETE";
@@ -109,14 +113,13 @@ const char _topOffCcnt[8] PROGMEM = "TPFCCNT";
 const char _topOffAmnt[8] PROGMEM = "TPFAMT";
 const char _topOffDly[8] PROGMEM = "TPFDLY";
 const char _drainTime[8] PROGMEM = "DRNTIME";
-const char _doses[6] PROGMEM = "DOSES";
+const char _regimens[9] PROGMEM = "REGIMENS";
 const char _prime[6] PROGMEM = "PRIME";
 const char _startend[9] PROGMEM = "STARTEND";
 const char _weeks[6] PROGMEM = "WEEKS";
 const char _flowcal[8] PROGMEM = "FLOWCAL";
 const char _manFlush[9] PROGMEM = "MANFLUSH";
-const char _ECCal[6] PROGMEM = "ECCAL";
-const char _PHCal[6] PROGMEM = "PHCAL";
+
 const char _delay[6] PROGMEM = "DELAY";
 
 
@@ -143,9 +146,10 @@ const char Flush[9] PROGMEM = "FLUSHING";
 //Direct Translations
 const char DateTime[12] PROGMEM = "DATE & TIME";
 const char EC[13] PROGMEM = "EC/PPM RANGE";
-const char ECS[13] PROGMEM = "EC SENSORS";
+const char ECProbe[13] PROGMEM = "EC PROBE";
 const char PH[9] PROGMEM = "PH RANGE";
-const char PHS[11] PROGMEM = "PH SENSORS";
+const char PHProbe[11] PROGMEM = "PH PROBE";
+const char PHAdjustment[14] PROGMEM = "PH ADJUSTMENT";
 const char Open[5] PROGMEM = "OPEN";
 const char New[4] PROGMEM = "NEW";
 const char Delete[7] PROGMEM = "DELETE";
@@ -156,22 +160,23 @@ const char PrimePump[14] PROGMEM = "PRIME PUMP";
 const char VolumeConfig[14] PROGMEM = "VOLUME CONFIG";
 const char PumpDose[16] PROGMEM = "PUMP DOSEING";
 const char DelayConfig[16] PROGMEM = "DELAY CONFIGURE";
+const char AmntConfig[14] PROGMEM = "AMOUNT CONFIG";
 const char FlowMeters[12] PROGMEM = "FLOW METERS";
 const char Manual[14] PROGMEM = "MANUAL SYSTEM";
 
-
-
-const char* const screenNames[28][3] PROGMEM = {
+const char* const screenNames[menusBufferSize][3] PROGMEM = {
 	{ _sys, System, Settings },
 	{ _pump, Pump, Settings },
 	{ _crop, _crop, Settings },
 	{ _irri, Irrigation, Settings },
 	{ _timer, Timer, Settings },
 	{ _datetime, DateTime, Configuration },
-	{ _EC, EC, Configuration },
-	{ _PH, PH, Configuration },
-	{ _ECCal, ECS, Calib },
-	{ _PHCal, PHS, Calib },
+	{ _ECRange, EC, Configuration },
+	{ _PHRange, PH, Configuration },
+	{ _ECCal, ECProbe, Calib },
+	{ _PHCal, PHProbe, Calib },
+	{ _PHDly, PHAdjustment, DelayConfig },
+	{ _PHAmnt, PHAdjustment, AmntConfig },
 	{ _open, Open, _crop },
 	{ _new, New, _crop },
 	{ _delete, Delete, _crop },
@@ -179,9 +184,10 @@ const char* const screenNames[28][3] PROGMEM = {
 	{ _status, _crop, _status },
 	{ _rsvrVol, Reservoir, VolumeConfig },
 	{ _topOffCcnt, TopOff, Concent },
+	{ _topOffDly, TopOff, DelayConfig },
 	{ _topOffAmnt, TopOff, Amount },
 	{ _drainTime, DrainLength, Configuration },
-	{ _doses, NumberOf, RegimensDoses },
+	{ _regimens, NumberOf, RegimensDoses },
 	{ _weeks, NumberOf, Weeks },
 	{ _amt, RegimensML, Configuration },
 	{ _delay, PumpDose, DelayConfig },
@@ -207,9 +213,3 @@ const char dec[4] PROGMEM = "Dec";
 
 const char* const months[12] PROGMEM = { jan, feb, mar, apl, may, jun, jul, aug, sep, oct, nov, dec };
 
-const char none[5] PROGMEM = "None";
-const char hourly[7] PROGMEM = "Hourly";
-const char daily[6] PROGMEM = "Daily";
-const char weekly[7] PROGMEM = "Weekly";
-const char monthly[8] PROGMEM = "Monthly";
-const char yearly[7] PROGMEM = "Yearly";
