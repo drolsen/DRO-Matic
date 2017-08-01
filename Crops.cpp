@@ -193,6 +193,8 @@ void cropBuild(){
 	SD.mkdir("dromatic/" + cropName + "/Irri");
 	SD.mkdir("dromatic/" + cropName + "/Irri/RsvrVol");
 	SD.mkdir("dromatic/" + cropName + "/Irri/TpfCcnt");
+	SD.mkdir("dromatic/" + cropName + "/Irri/TpfAmnt");
+	SD.mkdir("dromatic/" + cropName + "/Irri/TpfDly");
 	SD.mkdir("dromatic/" + cropName + "/Irri/DrnTime");
 	SD.mkdir("dromatic/" + cropName + "/Irri/FlowCal");
 	SD.mkdir("dromatic/" + cropName + "/Irri/ManFlush");
