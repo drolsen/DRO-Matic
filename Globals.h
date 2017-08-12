@@ -56,10 +56,11 @@
 #define irrigateBufferSize 260
 #define ecBufferSize 64
 
-#define RSVREC 0
-#define RSVRPH 1
-#define PLANTEC 2
-#define PLANTPH 3
+#define PLANTEC 0
+#define PLANTPH 1
+#define RSVREC 2
+#define RSVRPH 3
+
 
 #define menusBufferSize 31
 

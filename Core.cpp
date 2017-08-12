@@ -205,11 +205,11 @@ void openWaterProbeChannel(byte channel) {
 }
 
 //Get either EC or pH live probe values
-float getPHProbeValue(byte channel){ //default is channel 0 aka EC1. 0 = EC1, 1 = PH1, 2 = EC2, 3 = PH2
+float getPHProbeValue(byte channel){
 	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
-	Wire.write('r');                          // request a reading by sending 'r'
-	Wire.endTransmission();                         // end the I2C data transmission.
-	delay(1000);  // AS circuits need a 1 second before the reading is ready
+	Wire.write('r');                    // request a reading by sending 'r'
+	Wire.endTransmission();             // end the I2C data transmission.
+	delay(1000);						// AS circuits need a 1 second before the reading is ready
 	
 	sensor_bytes_received = 0;                        // reset data counter
 	memset(sensordata, 0, sizeof(sensordata));        // clear sensordata array;
@@ -408,11 +408,14 @@ void RelayToggle(int channel, bool gate) {
 }
 
 void pumpSpin(float setAmount, int pumpNumber){
-	int pumpLength = (setAmount / (pumpCalibration / 60)) * 1000; //1ml / 1.6ml per second * 1000ms per second = 625ms
-	unsigned long pumpMillis = millis();
-	do {
+	//Cast a float to avoid implicit int rounding
+	float mlPerSec = ((float)pumpCalibration) / 60; //100ml per min / 60 seconds = 1.6ml per second
+	//Now it is ok to rounding to whole number
+	int pumpTimeLength = (setAmount / mlPerSec); //amount / mlPerSec = total ml time in seconds
+	while (pumpTimeLength--){
 		RelayToggle(pumpNumber, true); //keep pump turning
-	} while ((millis() - pumpMillis) < pumpLength);
+		delay(1000);
+	}
 	RelayToggle(pumpNumber, false); //turn pump off
 }
 
