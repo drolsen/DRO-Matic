@@ -192,7 +192,7 @@ void checkRegimenDosing(){
 	//2) water is out of configured pH range.
 	//3) has not been 5 minutes since we last pH adjusted the water.
 	if (flowInRate > 0.01 || feedingType == 2) { return; } //if we are a feeding type of 2, or have a flowInRate, we can't proceed.
-	if (((millis() - phRsvrMillis) < phDelay)){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
+	if (((millis() - phRsvrMillis) < (phDelay * 60))){ return; } //if we still have not waited longer than 5 minutes since last pH adjustment, we can't proceed. 
 	float pH = getPHProbeValue(RSVRPH);
 	delay(250);
 	if (pH > maxPH || pH < minPH) { return; } //if we still have a pH lower or higher than configured range, we can't proceed.
@@ -215,7 +215,7 @@ void checkRegimenDosing(){
 		float amount = regimenData["ml"];
 		float concentrate = (amount / 6) * topOffConcentrate;
 		float ml = (feedingType == 0) ? (amount * rsvrVol) : (concentrate * rsvrVol);
-		pumpSpin(ml, i, pumpCalibration); //perform dosing 
+		pumpSpin(ml, i); //perform dosing 
 
 		//Third, if we have reached the end of our 7 available pumps
 		//we need to update our crop settings to let OS know if current reservoir water is full feeding water, or topoff feeding water
