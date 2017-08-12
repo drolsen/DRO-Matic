@@ -33,6 +33,8 @@ void setup()
 	lcd.createChar(1, downArrow);
 	lcd.begin(16, 2);
 	pixels.begin(); // This initializes the NeoPixel library.
+	pixels.setBrightness(128);
+	pixels.show();
 
 	//If SD Card is not found, we can't proceed
 	if (!SD.begin(53)){
@@ -43,6 +45,7 @@ void setup()
 	} else {//if SD card is found, proceed with crop load or setup
 		rtc.begin(); //Realtime Clock setup AFTER having built and loaded crop
 		captureDateTime(); //Capture current time from real time clock
+		phRsvrMillis = phPlantMillis = ecMillis = millis(); //set first time use of timestamps
 
 		//Setup Flow Sensor Pins
 		pinMode(FlowPinIn, INPUT);	//irrigation "in" flow meter

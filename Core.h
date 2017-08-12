@@ -30,7 +30,7 @@ extern void setECWaterProbeCalibration(byte channel, int value, char type);
 
 //Pumping Functions
 extern void RelayToggle(int channel, bool gate);
-extern void pumpSpin(float setAmount, int pumpNumber, int pumpFlowRate = 100);
+extern void pumpSpin(float setAmount, int pumpNumber);
 
 
 

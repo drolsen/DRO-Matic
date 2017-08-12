@@ -22,7 +22,7 @@
 
 //Leds
 #define LEDPIN 0
-#define NUMOFLEDS 12
+#define NUMOFLEDS 10
 
 //Pin Configuration For Power Relay
 #define FlowPinOut 2
