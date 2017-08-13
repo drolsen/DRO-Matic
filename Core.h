@@ -16,23 +16,18 @@
 extern JsonObject& getCoreData(JsonBuffer& b);
 extern void setCoreData(JsonObject& d);
 extern void coreInit();
-extern void makeNewFile(String path, JsonObject& data);
-extern int tmpIntsToInt(byte decimalPlaces);
 extern void correctPlantPH();
 extern void correctRsvrPH();
 extern void correctPlantEC();
 extern void correctRsvrEC();
-extern void openWaterProbeChannel(byte channel);
 extern float getPHProbeValue(byte channel);
 extern int getECProbeValue(byte channel);
-extern void setPHWaterProbeCalibration(byte channel, int value, char type);
-extern void setECWaterProbeCalibration(byte channel, int value, char type);
 
-//Pumping Functions
+
+//Helper Functions
 extern void RelayToggle(int channel, bool gate);
-extern void pumpSpin(float setAmount, int pumpNumber);
-
-
-
+extern void makeNewFile(String path, JsonObject& data);
+extern void openWaterProbeChannel(byte channel);
+extern int tmpIntsToInt(byte decimalPlaces);
 #endif
 

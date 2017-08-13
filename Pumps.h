@@ -28,6 +28,7 @@ extern void savePumpDelay();
 //Helpers
 extern void pumpCreate(String path, byte pumpIndex, int totalRegimens, JsonObject& sessionData);
 extern void primePump(int dir);
+extern void pumpSpin(float setAmount, int pumpNumber);
 
 
 
