@@ -442,7 +442,7 @@ void savePHDelay(){
 	}
 }
 void setPHWaterProbeCalibration(byte channel, int value, char type){
-	openWaterProbeChannel(channel);
+	Wire.beginTransmission(channel_ids[channel]);
 	delay(100);
 	if (type == 'low'){
 		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for low calibration of pH probe
@@ -456,9 +456,10 @@ void setPHWaterProbeCalibration(byte channel, int value, char type){
 		Wire.write("Cal,high," + value);  // Send the command from OS to the Atlas Scientific device for high calibration of pH probe
 		Wire.write("\r"); // <CR> carriage return to terminate message
 	}
+	Wire.endTransmission();
 }
 void setECWaterProbeCalibration(byte channel, int value, char type){
-	openWaterProbeChannel(channel);
+	Wire.beginTransmission(channel_ids[channel]);
 	delay(100);
 	if (type == 'dry'){
 		Wire.write("Cal,dry,0");  // Manufacture says this calibration only needs to happen once, but never said it can't happen more than once, so we include it in all EC probrobe calibrations
@@ -472,6 +473,7 @@ void setECWaterProbeCalibration(byte channel, int value, char type){
 		Wire.write("Cal," + value);  // There is no "high" value for this command cause this calibration only has low + high, or high as single point calibration
 		Wire.write("\r"); // <CR> carriage return to terminate message
 	}
+	Wire.endTransmission();
 }
 
 //Prints
