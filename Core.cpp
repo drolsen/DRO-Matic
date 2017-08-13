@@ -103,8 +103,6 @@ void correctPlantEC(){
 	int EC = getECProbeValue(PLANTEC); 
 
 	if ((EC > maxPPM || EC < minPPM)){
-		unsigned long topOffWait = millis(); //10 seconds
-		float gallons = 0;
 		StaticJsonBuffer<cropBufferSize> cropBuffer;
 		JsonObject& cropData = getCropData(cropBuffer);
 
@@ -112,48 +110,71 @@ void correctPlantEC(){
 		lcd.print(F("TOPPING OFF EC"));
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEASE HOLD!!!"));
-		flowInRate = pulseInFlowCount = 0;
-		while (gallons < topOffAmount){
-			//check flow rates every 1 second of topoff length
-			if ((millis() - flowMillis) > 1000){ 
-				checkFlowRates();
-				gallons += ((flowInRate / 60) * 1000) / 4546.091879;
-				flowMillis = millis();
-				//have we run out of topoff water?
-				if (flowInRate > 0.01 && feedingType == 2){ //Moving into next regimen
-					lcd.clear();
-					lcd.print("MOVING INTO");
-					lcd.setCursor(0, 1);
-					lcd.print("NEXT REGIMEN");
-					currentRegimen++;
-					currentRegimen = (currentRegimen > maxRegimens) ? maxRegimens : currentRegimen;
-					StaticJsonBuffer<cropBufferSize> cropBuffer;
-					JsonObject& cropData = getCropData(cropBuffer);
-					cropData["currentReg"] = currentRegimen;
-					cropData["feedType"] = feedingType = 0;
+		flowOutRate = flowInRate = pulseInFlowCount = 0;
 
-					//are we loading new regimen ranges, or continuing last ones?
-					if (currentRegimen != maxRegimens){
-						//load EC Conductivity ranges
-						StaticJsonBuffer<ecBufferSize> ecBuffer;
-						JsonObject& ECData = getECData(ecBuffer, currentRegimen);
-						minPPM = ECData["ec"].asArray()[0];
-						maxPPM = ECData["ec"].asArray()[1];
-					}
-					setCropData(cropData);
-					break;
+		float secondsPerGallon = (60 / flowMeterConfig[1]) * 3.78; //60sec / meter's liters per min * 3.78 lpg = 41 seconds per gallon
+		int feedingSeconds = secondsPerGallon * topOffAmount; //41 seconds * topOff gallons
+		int drainingSeconds = secondsPerGallon * topOffAmount; //41 seconds * topOff gallons
+
+		//Drain configured gallons first by drainingSeconds
+		while (drainingSeconds--){
+			RelayToggle(12, false); //out
+			RelayToggle(11, true); //in
+			lcd.clear();
+			if (drainingSeconds < 10){
+				lcd.print(F("00"));
+			}
+			else if (drainingSeconds < 100){
+				lcd.print(F("0"));
+			}
+			lcd.print(drainingSeconds);
+			lcd.print(" SECONDS IN");
+			lcd.setCursor(0, 1);
+			lcd.print("DRAINING REMAIN");
+			delay(1000);
+		}
+
+		//Feed configured gallons next by feedingSeconds
+		while (feedingSeconds--){
+			RelayToggle(12, true); //out
+			RelayToggle(11, false); //in
+			checkFlowRates();
+			lcd.clear();
+			if (feedingSeconds < 10){
+				lcd.print(F("00"));
+			}
+			else if (feedingSeconds < 100){
+				lcd.print(F("0"));
+			}
+			lcd.print(feedingSeconds);
+			lcd.print(" SECONDS IN");
+			lcd.setCursor(0,1);
+			lcd.print("FEEDING REMAIN");
+			//have we run out of topoff water?
+			if (flowInRate > 0.01 && feedingType == 2){ //Moving into next regimen
+				lcd.clear();
+				lcd.print("MOVING ONTO");
+				lcd.setCursor(0, 1);
+				lcd.print("NEXT REGIMEN");
+				currentRegimen++;
+				currentRegimen = (currentRegimen > maxRegimens) ? maxRegimens : currentRegimen;
+				StaticJsonBuffer<cropBufferSize> cropBuffer;
+				JsonObject& cropData = getCropData(cropBuffer);
+				cropData["currentReg"] = currentRegimen;
+				cropData["feedType"] = feedingType = 0;
+
+				//are we loading new regimen ranges, or continuing last ones?
+				if (currentRegimen != maxRegimens){
+					//load EC Conductivity ranges
+					StaticJsonBuffer<ecBufferSize> ecBuffer;
+					JsonObject& ECData = getECData(ecBuffer, currentRegimen);
+					minPPM = ECData["ec"].asArray()[0];
+					maxPPM = ECData["ec"].asArray()[1];
 				}
+				setCropData(cropData);
+				break;
 			}
-
-			//first flush
-			if (gallons <= (topOffAmount/2)){
-				RelayToggle(12, true); //out
-				RelayToggle(11, false); //in
-			}else{
-			//then feed
-				RelayToggle(12, false); //out
-				RelayToggle(11, true); //in
-			}
+			delay(1000);
 		}
 		RelayToggle(11, false);
 		RelayToggle(12, false);
