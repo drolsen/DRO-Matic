@@ -314,6 +314,7 @@ void checkFlowRates(){
 	attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, FALLING);
 	attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, FALLING);
 }
+
 //flow rate counter for in
 void countRsvrFill(){
 	pulseInFlowCount++;
