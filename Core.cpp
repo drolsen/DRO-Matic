@@ -151,7 +151,7 @@ void correctPlantEC(){
 			lcd.setCursor(0,1);
 			lcd.print("FEEDING REMAIN");
 			//have we run out of topoff water?
-			if (flowInRate > 0.01 && feedingType == 2){ //Moving into next regimen
+			if (flowInRate > 0.05 && feedingType == 2){ //Moving into next regimen
 				lcd.clear();
 				lcd.print("MOVING ONTO");
 				lcd.setCursor(0, 1);
