@@ -27,7 +27,6 @@ extern int getECProbeValue(byte channel);
 //Helper Functions
 extern void RelayToggle(int channel, bool gate);
 extern void makeNewFile(String path, JsonObject& data);
-extern void openWaterProbeChannel(byte channel);
 extern int tmpIntsToInt(byte decimalPlaces);
 #endif
 

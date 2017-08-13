@@ -139,9 +139,8 @@ void correctPlantEC(){
 			lcd.setCursor(0,1);
 			lcd.print(F("FEEDING REMAIN"));
 			//have we run out of topoff water?
-			if (flowInRate > 0.025 && feedingType == 2){ //Moving into next regimen
-				moveToNextRegimen();
-				break;
+			if (flowInRate > 0.025 && feedingType == 2){ 
+				break; //Stop EC correction if reservoir beings filling up
 			}
 			delay(1000);
 		}
@@ -189,26 +188,25 @@ void correctRsvrPH(){
 	}
 }
 
-//Get either EC or pH live probe values
+//Get either pH probe values
 float getPHProbeValue(byte channel){
-	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
-	Wire.write('r');                    // request a reading by sending 'r'
-	Wire.endTransmission();             // end the I2C data transmission.
-	delay(1000);						// AS circuits need a 1 second before the reading is ready
+	Wire.beginTransmission(channel_ids[channel]);			// open EC1 tentical shield channel
+	Wire.write('r');										// request a reading by sending 'r'
+	Wire.endTransmission();									// end the I2C data transmission.
+	delay(1000);											// AS circuits need a 1 second before the reading is ready
 	
-	sensor_bytes_received = 0;                        // reset data counter
-	memset(sensordata, 0, sizeof(sensordata));        // clear sensordata array;
+	sensor_bytes_received = 0;								// reset data counter
+	memset(sensordata, 0, sizeof(sensordata));				// clear sensordata array;
 
-	Wire.requestFrom(channel_ids[channel], 48, 1);    // call the circuit and request 48 bytes (this is more then we need).
+	Wire.requestFrom(channel_ids[channel], 32, 1);			// call the circuit and request 48 bytes (this is more then we need).
 	code = Wire.read();
-	while (Wire.available()) {          // are there bytes to receive?
-		in_char = Wire.read();            // receive a byte.
-		if (in_char == 0) {               // null character indicates end of command
-			Wire.endTransmission();         // end the I2C data transmission.
-			break;                          // exit the while loop, we're done here
+	while (Wire.available()) {								// are there bytes to receive?
+		in_char = Wire.read();								// receive a byte.
+		if (in_char == 0) {									// null character indicates end of command
+			break;											// exit the while loop, we're done here
 		}
 		else {
-			sensordata[sensor_bytes_received] = in_char;      // append this byte to the sensor data array.
+			sensordata[sensor_bytes_received] = in_char;	// append this byte to the sensor data array.
 			sensor_bytes_received++;
 		}
 	}
@@ -218,26 +216,25 @@ float getPHProbeValue(byte channel){
 	}
 	return returnedValue.toFloat();
 }
+//Get either EC probe values
+int getECProbeValue(byte channel){					
+	Wire.beginTransmission(channel_ids[channel]);			// open a EC channel
+	Wire.write('r');										// request a reading by sending 'r'
+	Wire.endTransmission();									// end the I2C data transmission.
+	delay(1000);											// AS circuits need a 1 second before the reading is ready
 
-int getECProbeValue(byte channel){ //default is channel 0 aka EC1. 0 = EC1, 1 = PH1, 2 = EC2, 3 = PH2
-	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
-	Wire.write('r');                          // request a reading by sending 'r'
-	Wire.endTransmission();                         // end the I2C data transmission.
-	delay(1000);  // AS circuits need a 1 second before the reading is ready
+	sensor_bytes_received = 0;								// reset data counter
+	memset(sensordata, 0, sizeof(sensordata));				// clear sensordata array;
 
-	sensor_bytes_received = 0;                        // reset data counter
-	memset(sensordata, 0, sizeof(sensordata));        // clear sensordata array;
-
-	Wire.requestFrom(channel_ids[channel], 48, 1);    // call the circuit and request 48 bytes (this is more then we need).
+	Wire.requestFrom(channel_ids[channel], 32, 1);			// call the circuit and request 48 bytes (this is more then we need).
 	code = Wire.read();
-	while (Wire.available()) {          // are there bytes to receive?
-		in_char = Wire.read();            // receive a byte.
-		if (in_char == 0) {               // null character indicates end of command
-			Wire.endTransmission();         // end the I2C data transmission.
-			break;                          // exit the while loop, we're done here
+	while (Wire.available()) {								// are there bytes to receive?
+		in_char = Wire.read();								// receive a byte.
+		if (in_char == 0) {									// null character indicates end of command
+			break;											// exit the while loop, we're done here
 		}
 		else {
-			sensordata[sensor_bytes_received] = in_char;      // append this byte to the sensor data array.
+			sensordata[sensor_bytes_received] = in_char;	// append this byte to the sensor data array.
 			sensor_bytes_received++;
 		}
 	}
@@ -356,7 +353,6 @@ void RelayToggle(int channel, bool gate) {
 		}
 	}
 }
-
 void makeNewFile(String path, JsonObject& data){
 	char buffer[1024];
 	tmpFile = SD.open(path, FILE_WRITE);
@@ -366,10 +362,6 @@ void makeNewFile(String path, JsonObject& data){
 	Serial.flush();
 }
 
-//Open channel of tentical sheild to get probe reading value
-void openWaterProbeChannel(byte channel) {
-	Wire.beginTransmission(channel_ids[channel]);     // call the circuit by its ID number.
-}
 
 //converts tmpInts array into a whole number that send to our EC circuts.
 int tmpIntsToInt(byte decimalPlaces){
