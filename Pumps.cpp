@@ -123,3 +123,15 @@ void primePump(int dir){
 	delay(1000);
 	RelayToggle(currentPumpIndex, false);
 }
+
+void pumpSpin(float setAmount, int pumpNumber){
+	//Cast a float to avoid implicit int rounding
+	float mlPerSec = ((float)pumpCalibration) / 60; //100ml per min / 60 seconds = 1.6ml per second
+	//Now it is ok to rounding to whole number
+	int pumpTimeLength = (setAmount / mlPerSec); //amount / mlPerSec = total ml time in seconds
+	while (pumpTimeLength--){
+		RelayToggle(pumpNumber, true); //keep pump turning
+		delay(1000);
+	}
+	RelayToggle(pumpNumber, false); //turn pump off
+}

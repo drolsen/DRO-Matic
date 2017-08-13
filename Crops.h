@@ -38,6 +38,8 @@ extern void savePHRange();
 extern void saveStatus();
 extern void savePHDelay();
 extern void savePHAmount();
+extern void setPHWaterProbeCalibration(byte channel, int value, char type);
+extern void setECWaterProbeCalibration(byte channel, int value, char type);
 
 //Prints
 extern void printStatus(int dir = 0);

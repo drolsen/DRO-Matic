@@ -441,6 +441,38 @@ void savePHDelay(){
 		exitScreen();
 	}
 }
+void setPHWaterProbeCalibration(byte channel, int value, char type){
+	openWaterProbeChannel(channel);
+	delay(100);
+	if (type == 'low'){
+		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for low calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'mid'){
+		Wire.write("Cal,mid," + value);  // Send the command from OS to the Atlas Scientific device for mid calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'high'){
+		Wire.write("Cal,high," + value);  // Send the command from OS to the Atlas Scientific device for high calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+}
+void setECWaterProbeCalibration(byte channel, int value, char type){
+	openWaterProbeChannel(channel);
+	delay(100);
+	if (type == 'dry'){
+		Wire.write("Cal,dry,0");  // Manufacture says this calibration only needs to happen once, but never said it can't happen more than once, so we include it in all EC probrobe calibrations
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'low'){
+		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for mid calibration of pH probe
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+	if (type == 'high'){
+		Wire.write("Cal," + value);  // There is no "high" value for this command cause this calibration only has low + high, or high as single point calibration
+		Wire.write("\r"); // <CR> carriage return to terminate message
+	}
+}
 
 //Prints
 void printStatus(int dir = 0){
@@ -645,8 +677,6 @@ void printReset(){
 	lcd.print(F("<no>      <yes>"));
 	lcd.home();
 }
-
-
 void printECCalibrations(String type, int dir = 0){
 	if (dir != 0){
 		if (cursorX == 10){

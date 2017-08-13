@@ -76,18 +76,6 @@ void coreInit(){
 	}
 }
 
-//converts tmpInts array into a whole number that send to our EC circuts.
-int tmpIntsToInt(byte decimalPlaces){
-	if (decimalPlaces > ((sizeof tmpInts) / (sizeof *tmpInts))){
-		decimalPlaces = ((sizeof tmpInts) / (sizeof *tmpInts)); //we never want to exceed the size of our tmpInts array
-	}
-	String number;
-	for (byte i = 0; i <= decimalPlaces; i++){
-		number += tmpInts[i];
-	}
-	return number.toInt(); //return our string that is converte to int
-}
-
 //time feed plants some top off water?
 void correctPlantEC(){
 	if (flowInRate > 0.01){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
@@ -128,9 +116,9 @@ void correctPlantEC(){
 				lcd.print(F("0"));
 			}
 			lcd.print(drainingSeconds);
-			lcd.print(" SECONDS IN");
+			lcd.print(F(" SECONDS IN"));
 			lcd.setCursor(0, 1);
-			lcd.print("DRAINING REMAIN");
+			lcd.print(F("DRAINING REMAIN"));
 			delay(1000);
 		}
 
@@ -147,15 +135,15 @@ void correctPlantEC(){
 				lcd.print(F("0"));
 			}
 			lcd.print(feedingSeconds);
-			lcd.print(" SECONDS IN");
+			lcd.print(F(" SECONDS IN"));
 			lcd.setCursor(0,1);
-			lcd.print("FEEDING REMAIN");
+			lcd.print(F("FEEDING REMAIN"));
 			//have we run out of topoff water?
 			if (flowInRate > 0.05 && feedingType == 2){ //Moving into next regimen
 				lcd.clear();
-				lcd.print("MOVING ONTO");
+				lcd.print(F("MOVING ONTO"));
 				lcd.setCursor(0, 1);
-				lcd.print("NEXT REGIMEN");
+				lcd.print(F("NEXT REGIMEN"));
 				currentRegimen++;
 				currentRegimen = (currentRegimen > maxRegimens) ? maxRegimens : currentRegimen;
 				StaticJsonBuffer<cropBufferSize> cropBuffer;
@@ -220,11 +208,6 @@ void correctRsvrPH(){
 	}
 }
 
-//Open channel of tentical sheild to get probe reading value
-void openWaterProbeChannel(byte channel) {
-	Wire.beginTransmission(channel_ids[channel]);     // call the circuit by its ID number.
-}
-
 //Get either EC or pH live probe values
 float getPHProbeValue(byte channel){
 	openWaterProbeChannel(channel);     // open EC1 tentical shield channel
@@ -284,41 +267,6 @@ int getECProbeValue(byte channel){ //default is channel 0 aka EC1. 0 = EC1, 1 = 
 	return returnedValue.toInt();
 }
 
-//Three point pH water probe calibration
-void setPHWaterProbeCalibration(byte channel, int value, char type){
-	openWaterProbeChannel(channel);
-	delay(100);
-	if (type == 'low'){
-		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for low calibration of pH probe
-		Wire.write("\r"); // <CR> carriage return to terminate message
-	}
-	if (type == 'mid'){
-		Wire.write("Cal,mid," + value);  // Send the command from OS to the Atlas Scientific device for mid calibration of pH probe
-		Wire.write("\r"); // <CR> carriage return to terminate message
-	}
-	if (type == 'high'){
-		Wire.write("Cal,high," + value);  // Send the command from OS to the Atlas Scientific device for high calibration of pH probe
-		Wire.write("\r"); // <CR> carriage return to terminate message
-	}
-}
-
-//Three point EC water probe calibration
-void setECWaterProbeCalibration(byte channel, int value, char type){
-	openWaterProbeChannel(channel);
-	delay(100);
-	if (type == 'dry'){
-		Wire.write("Cal,dry,0");  // Manufacture says this calibration only needs to happen once, but never said it can't happen more than once, so we include it in all EC probrobe calibrations
-		Wire.write("\r"); // <CR> carriage return to terminate message
-	}
-	if (type == 'low'){
-		Wire.write("Cal,low," + value);  // Send the command from OS to the Atlas Scientific device for mid calibration of pH probe
-		Wire.write("\r"); // <CR> carriage return to terminate message
-	}
-	if (type == 'high'){
-		Wire.write("Cal," + value);  // There is no "high" value for this command cause this calibration only has low + high, or high as single point calibration
-		Wire.write("\r"); // <CR> carriage return to terminate message
-	}
-}
 
 //Helpers
 void RelayToggle(int channel, bool gate) {
@@ -428,18 +376,6 @@ void RelayToggle(int channel, bool gate) {
 	}
 }
 
-void pumpSpin(float setAmount, int pumpNumber){
-	//Cast a float to avoid implicit int rounding
-	float mlPerSec = ((float)pumpCalibration) / 60; //100ml per min / 60 seconds = 1.6ml per second
-	//Now it is ok to rounding to whole number
-	int pumpTimeLength = (setAmount / mlPerSec); //amount / mlPerSec = total ml time in seconds
-	while (pumpTimeLength--){
-		RelayToggle(pumpNumber, true); //keep pump turning
-		delay(1000);
-	}
-	RelayToggle(pumpNumber, false); //turn pump off
-}
-
 void makeNewFile(String path, JsonObject& data){
 	char buffer[1024];
 	tmpFile = SD.open(path, FILE_WRITE);
@@ -447,4 +383,21 @@ void makeNewFile(String path, JsonObject& data){
 	tmpFile.print(buffer);
 	tmpFile.close();
 	Serial.flush();
+}
+
+//Open channel of tentical sheild to get probe reading value
+void openWaterProbeChannel(byte channel) {
+	Wire.beginTransmission(channel_ids[channel]);     // call the circuit by its ID number.
+}
+
+//converts tmpInts array into a whole number that send to our EC circuts.
+int tmpIntsToInt(byte decimalPlaces){
+	if (decimalPlaces > ((sizeof tmpInts) / (sizeof *tmpInts))){
+		decimalPlaces = ((sizeof tmpInts) / (sizeof *tmpInts)); //we never want to exceed the size of our tmpInts array
+	}
+	String number;
+	for (byte i = 0; i <= decimalPlaces; i++){
+		number += tmpInts[i];
+	}
+	return number.toInt(); //return our string that is converte to int
 }
