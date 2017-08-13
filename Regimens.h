@@ -27,6 +27,7 @@ extern void saveRegimenAmount();
 //Helpers
 extern void addRegimens(int currentSize, int addAmount);
 extern void trimRegimens(int currentSize, int trimAmount);
+extern void moveToNextRegimen();
 
 //Dosing functionality
 extern void checkRegimenDosing();

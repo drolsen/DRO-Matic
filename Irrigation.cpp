@@ -282,6 +282,9 @@ void checkFlowRates(){
 			currentRsvrVol += (flowInRate / 60) * 1000;
 			irrigationInFlag = true; //flag OS while irrigation is taking place
 			RelayToggle(11, false); //ensures that we are not feeding un-dosed water to plants
+			if (feedingType == 2){
+				moveToNextRegimen();
+			}
 		}
 
 		//do we have a flow rate for out?

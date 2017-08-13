@@ -139,27 +139,8 @@ void correctPlantEC(){
 			lcd.setCursor(0,1);
 			lcd.print(F("FEEDING REMAIN"));
 			//have we run out of topoff water?
-			if (flowInRate > 0.05 && feedingType == 2){ //Moving into next regimen
-				lcd.clear();
-				lcd.print(F("MOVING ONTO"));
-				lcd.setCursor(0, 1);
-				lcd.print(F("NEXT REGIMEN"));
-				currentRegimen++;
-				currentRegimen = (currentRegimen > maxRegimens) ? maxRegimens : currentRegimen;
-				StaticJsonBuffer<cropBufferSize> cropBuffer;
-				JsonObject& cropData = getCropData(cropBuffer);
-				cropData["currentReg"] = currentRegimen;
-				cropData["feedType"] = feedingType = 0;
-
-				//are we loading new regimen ranges, or continuing last ones?
-				if (currentRegimen != maxRegimens){
-					//load EC Conductivity ranges
-					StaticJsonBuffer<ecBufferSize> ecBuffer;
-					JsonObject& ECData = getECData(ecBuffer, currentRegimen);
-					minPPM = ECData["ec"].asArray()[0];
-					maxPPM = ECData["ec"].asArray()[1];
-				}
-				setCropData(cropData);
+			if (flowInRate > 0.025 && feedingType == 2){ //Moving into next regimen
+				moveToNextRegimen();
 				break;
 			}
 			delay(1000);
