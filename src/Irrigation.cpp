@@ -282,7 +282,7 @@ void drainPlants(int min = 0, int sec = 0){
 }
 
 //Flush only reservoir water (flowInRate event based)
-void feedPlants(int min = 0, int sec = 0){
+void feedPlants(float amount = 0){
 	lcd.clear();
 	lcd.print(F("FEEDING PLANTS"));
 	lcd.setCursor(0, 1);
@@ -290,18 +290,19 @@ void feedPlants(int min = 0, int sec = 0){
 	RelayToggle(11, true);
 	RelayToggle(12, false);
 	flowInRate = flowOutRate = pulseInFlowCount = pulseOutFlowCount = 0;
-	if (min == 0 && sec == 0){ //event based drain
-		while (flowInRate < 0.025){
+	checkFlowRates();
+	if (amount == 0){ //event based drain
+		while (flowInRate < 1){
 			checkFlowRates();
 		}
 	}
 	else {
-		int i = (min * 60) + sec;
-		while (i--){ //time based drain
+		float gallons = 0;
+		while (gallons < amount){ //time based drain
 			checkFlowRates();
-			if (flowInRate > 0.025 && feedingType == 2){ //early stop if reservoir starts filling up
-				break; //Stop EC correction if reservoir beings filling up
-			}
+			//break cause reservoir started filling up
+			if (flowInRate > 1 && feedingType == 2){ break; }
+			gallons = ((flowInRate / 60) * 1000) / 4546.091879;
 			delay(1000);
 		}
 	}
@@ -316,12 +317,6 @@ void checkFlowRates(){
 	//detachInterrupt(digitalPinToInterrupt(FlowPinOut));
 
 	//Capture our flow rates for both irrigation directions
-	//lcd.clear();
-	//lcd.print(pulseInFlowCount);
-	//lcd.setCursor(0,1);
-	//lcd.print(pulseOutFlowCount);
-	//delay(2000);
-
 	flowInRate = ((1000.0 / (millis() - flowMillis)) * pulseInFlowCount) / flowMeterConfig[0];
 	flowOutRate = ((1000.0 / (millis() - flowMillis)) * pulseOutFlowCount) / flowMeterConfig[1];
 
@@ -333,8 +328,6 @@ void checkFlowRates(){
 			currentRsvrVol += (flowInRate / 60) * 1000;
 			irrigationInFlag = true; //flag OS while irrigation is taking place
 			RelayToggle(11, false); //ensures that we are not feeding un-dosed water to plants
-			//lcd.clear();
-			//lcd.print("IN FLOW RATE");
 			if (feedingType == 2 && cropStatus == 1){
 				moveToNextRegimen();
 			}
@@ -345,22 +338,16 @@ void checkFlowRates(){
 			currentRsvrVol -= (flowOutRate / 60) * 1000;
 			currentRsvrVol = (currentRsvrVol > 0) ? currentRsvrVol : 0; //prevents rsvr vol from falling below 0
 			irrigationOutFlag = true; //flag OS while irrigation is taking place
-			//lcd.clear();
-			//lcd.print("OUT FLOW RATE");
-			if (flowInRate > 0.05){ RelayToggle(11, false); } //ensures that we are not feeding un-dosed water to plants
+			if (flowInRate > 1){ RelayToggle(11, false); } //ensures that we are not feeding un-dosed water to plants
 		}
 
 		//when all flowRates have stopped, we store data
-		if ((irrigationInFlag == true || irrigationOutFlag == true) && flowInRate < 0.01 && flowOutRate < 0.01){
+		if ((irrigationInFlag == true || irrigationOutFlag == true) && flowInRate < 0.025 && flowOutRate < 0.025){
 			if (irrigationInFlag == true){
 				irrigationInFlag = false; //reset irrigation flag for OS
-				//lcd.clear();
-				//lcd.print("IN RATE STOP");
 			}
 			if (irrigationOutFlag == true){
 				irrigationOutFlag = false; //reset irrigation flag for OS
-				//lcd.clear();
-				//lcd.print("OUT RATE STOP");
 			}
 
 			//store the reservoir's remaining volume
