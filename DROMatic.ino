@@ -15,16 +15,16 @@
 #include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
 #include <DS3231.h> //Real time clock lib
  
-#include "Globals.h" //All temp and PROGMEM global variables
-#include "Core.h" //All core functions and variables
-#include "Crops.h" //All crop functions and variables
-#include "Pumps.h" //All pump functions and variables
-#include "Regimens.h" //All session functions and variables
-#include "Screens.h" //All screen functions and variables
-#include "Menus.h" //All menu functions and variables
-#include "DatesTime.h" //All date & time functions and variables
-#include "Irrigation.h" //All irrigation related functions and variables
-#include "Timers.h" //All timer related functions and variables
+#include "src\Globals.h" //All temp and PROGMEM global variables
+#include "src\Core.h" //All core functions and variables
+#include "src\Crops.h" //All crop functions and variables
+#include "src\Pumps.h" //All pump functions and variables
+#include "src\Regimens.h" //All session functions and variables
+#include "src\Screens.h" //All screen functions and variables
+#include "src\Menus.h" //All menu functions and variables
+#include "src\DatesTime.h" //All date & time functions and variables
+#include "src\Irrigation.h" //All irrigation related functions and variables
+#include "src\Timers.h" //All timer related functions and variables
 
 //OS main setup
 void setup()
@@ -218,7 +218,7 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "DELAY"){
+		if (screenName == "PUMPDLY"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
@@ -347,7 +347,7 @@ void loop()
 				printPumpCalibration(dir);
 			}
 		}
-		if (screenName == "DELAY"){
+		if (screenName == "PUMPDLY"){
 			if (cursorX == 2 && cursorY == 0){
 				printPumpDelay(dir);
 			}
@@ -501,7 +501,7 @@ void loop()
 					tmpInts[0] = pumpCalibration;
 					printPumpCalibration();
 				}
-				if (screenName == "DELAY"){
+				if (screenName == "PUMPDLY"){
 					tmpInts[0] = pumpDelay;
 					printPumpDelay();
 				}
@@ -743,7 +743,7 @@ void loop()
 		if (screenName == "PUMPCAL"){
 			savePumpCalibration();
 		}
-		if (screenName == "DELAY"){
+		if (screenName == "PUMPDLY"){
 			savePumpDelay();
 		}
 		if (screenName == "AMOUNT"){
