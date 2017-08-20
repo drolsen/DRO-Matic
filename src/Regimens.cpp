@@ -229,7 +229,8 @@ void checkRegimenDosing(){
 			lcd.print(F("DOSING TOPOFF"));
 		}
 		lcd.setCursor(0, 1);
-		lcd.print(F("PLEASE HOLD!!"));
+		lcd.print(F("RSVR EC:"));
+		lcd.print(getECProbeValue(RSVREC));
 		lcd.home();
 		//Get current regimen's ml dosing amount for this pump
 		StaticJsonBuffer<regimenBufferSize> regimenBuffer;

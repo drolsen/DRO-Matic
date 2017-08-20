@@ -127,7 +127,8 @@ void correctPlantPH(){
 		lcd.clear();
 		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("PLEAES HOLD!!!"));
+		lcd.print(F("PLANT PH:"));
+		lcd.print(pH);
 		if (pH > maxPH){			//we must micro-ph-dose our plant water DOWN
 			pumpSpin(phAmount, 10);
 		}
@@ -152,7 +153,8 @@ void correctRsvrPH(){
 		lcd.clear();
 		lcd.print(F("PH DRIFT FIXING"));
 		lcd.setCursor(0, 1);
-		lcd.print(F("PLEAES HOLD!!!"));
+		lcd.print(F("RSVR PH:"));
+		lcd.print(pH);
 		pumpSpin(phAmount, 8);
 		//Proventative measures
 		resetTimestamps();

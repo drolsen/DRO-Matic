@@ -1,5 +1,9 @@
+/.vs/
 /__vm/
 /Debug/
 /Release/
 *.TMP
 !.gitignore
+.gitattributes
+*.suo
+*.sln
