@@ -78,7 +78,7 @@ void coreInit(){
 
 //time feed plants some top off water?
 void correctPlantEC(){
-	if (flowInRate > 0.01){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
+	if (flowInRate > 0.025){ return; } //we are not allowed to topoff plant water if rsvr is filling up flowInRate
 	if (feedingType != 2) { return; } //only after we have dosed our reservoir with topoff concentrates can we being to correct EC drift on plants
 	if (((millis() - phPlantMillis) < (phDelay * 60000)) || ((millis() - ecMillis) < (topOffDelay * 60000))) { return; } //has we waited long enough since eiher last pH adjustment or EC adjustment?
 	
@@ -100,11 +100,10 @@ void correctPlantEC(){
 		lcd.print(F("PLEASE HOLD!!!"));
 		flowOutRate = flowInRate = pulseInFlowCount = 0;
 
-		float secondsPerGallon = (60 / flowMeterConfig[1]) * 3.78; //60sec / meter's liters per min * 3.78 lpg = 41 seconds per gallon
-		//Drain configured gallons first by drainingSeconds
-		drainPlants(0, secondsPerGallon * topOffAmount); //41 seconds * topOff gallons
-		//Feed configured gallons next by feedingSeconds
-		feedPlants(0, secondsPerGallon * topOffAmount); //41 seconds * topOff gallons
+		//Drain plant water by configred gallons converted into time (seconds)
+		drainPlants(0, ((60 / flowMeterConfig[1]) * 3.78) * topOffAmount);
+		//Feed plants by by configured gallon amount
+		feedPlants(topOffAmount); //41 seconds * topOff gallons
 
 		//Preventive measures must be taken
 		RelayToggle(11, false);
