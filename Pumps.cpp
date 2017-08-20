@@ -68,8 +68,18 @@ void printPumpDelay(int dir = 0){
 		if (tmpInts[0] <= 0){
 			tmpInts[0] = 1;
 		}
+		if (tmpInts[0] >= 100){
+			tmpInts[0] = 100;
+		}
 	}
-	lcd.print(String(tmpInts[0] * 60000) + F(" Min(s) Delay"));
+	lcd.clear();
+	if (tmpInts[0] >= 10){
+		lcd.print("0");
+	}else{
+		lcd.print("00");
+	}
+	lcd.print(tmpInts[0]);
+	lcd.print(F(" Min(s) Delay"));
 	lcd.setCursor(0, 2);
 	lcd.print(F("<back>      <ok>"));
 	cursorX = 2;
@@ -109,7 +119,6 @@ void pumpCreate(String path, byte pumpIndex, int totalRegimens, JsonObject& regi
 	SD.mkdir(path + "/Prime");
 	if (pumpIndex <= 7){
 		SD.mkdir(path + "/Amount");
-		SD.mkdir(path + "/Delay");
 		for (byte j = 1; j <= totalRegimens; j++){
 			makeNewFile(path + "/pmpse" + j + ".dro", regimenData);
 			Serial.flush();

@@ -119,8 +119,7 @@ const char _startend[9] PROGMEM = "STARTEND";
 const char _weeks[6] PROGMEM = "WEEKS";
 const char _flowcal[8] PROGMEM = "FLOWCAL";
 const char _manFlush[9] PROGMEM = "MANFLUSH";
-
-const char _delay[6] PROGMEM = "DELAY";
+const char _pumpDelay[8] PROGMEM = "PUMPDLY";
 
 
 //Consolidated Repeating Displays Words
@@ -190,7 +189,7 @@ const char* const screenNames[menusBufferSize][3] PROGMEM = {
 	{ _regimens, NumberOf, RegimensDoses },
 	{ _weeks, NumberOf, Weeks },
 	{ _amt, RegimensML, Configuration },
-	{ _delay, PumpDose, DelayConfig },
+	{ _pumpDelay, PumpDose, DelayConfig },
 	{ _pumpCal, Pump, Calib },
 	{ _flowcal, FlowMeters, Calib },
 	{ _manFlush, Manual, Flush },
