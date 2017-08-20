@@ -50,12 +50,13 @@ void setup()
 		//Setup Flow Sensor Pins
 		pinMode(FlowPinIn, INPUT);	//irrigation "in" flow meter
 		digitalWrite(FlowPinIn, HIGH);
+
 		pinMode(FlowPinOut, INPUT);	//irrigation "out" flow meter
 		digitalWrite(FlowPinOut, HIGH);
 
 		//irrigation flow meters being hooked into flow counter methods
-		attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, FALLING);
-		attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, FALLING);
+		attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
+		attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
 
 		//Setup Relay Pins
 		pinMode(RELAY1, OUTPUT);	//perstaltic pump 1
@@ -94,7 +95,7 @@ void setup()
 		digitalWrite(RELAY16, HIGH);
 
 		//Serial.begin(9600);
-		Wire.begin();   // enable I2C port.
+		Wire.begin();   // enable i2c ports.
 		coreInit();		//Loads or Creates Crops
 	}
 }
@@ -103,15 +104,17 @@ void setup()
 void loop()
 {
 	Key = analogRead(0);
-
+	
 	//Reset home screen and menu timers to current miliseconds after any interaction with LCD keys
 	if (Key >= 0 && Key <= 650){
 		homeMillis = menuMillis = millis();
 	}
-	
+	//OS monitors flowRates of both irrigation directions
+	if ((millis() - menuMillis) >= 10000){
+		checkFlowRates();
+	}
 	//1 second has passed
-	if ((millis() - flowMillis) >= 1000){
-		checkFlowRates();	//OS monitors change to in and out water flow directions
+	if ((millis() - homeMillis) >= 1000){
 		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus == 1) {
 			correctRsvrPH();
 			correctPlantPH();
@@ -121,16 +124,13 @@ void loop()
 		if (screenName == "RSVRVOL"){
 			printReservoirVolume();
 		}
-		flowMillis = millis();
-	}
-
-	//if 2 seconds has passed since last homeScreen print && 10 seconds since menu interaction
-	if ((millis() - homeMillis) >= 2000 && (millis() - menuMillis >= 10000)) {
-		if (screenName == ""){	   //only if not currently in a screen
+		if ((millis() - homeMillis) >= 2000 && (millis() - menuMillis >= 10000) && screenName == "") {
 			printHomeScreen();	   //finally we call the print home method
 			homeMillis = millis(); //reset home millis
 		}
 	}
+
+
 
 	//60 seconds has passed - Check logic for action
 	if (previousMinute != rtc.getTime().min) {

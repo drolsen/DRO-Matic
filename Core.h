@@ -28,5 +28,6 @@ extern int getECProbeValue(byte channel);
 extern void RelayToggle(int channel, bool gate);
 extern void makeNewFile(String path, JsonObject& data);
 extern int tmpIntsToInt(byte decimalPlaces);
+extern void resetTimestamps();
 #endif
 

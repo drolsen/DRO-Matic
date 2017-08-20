@@ -101,58 +101,23 @@ void correctPlantEC(){
 		flowOutRate = flowInRate = pulseInFlowCount = 0;
 
 		float secondsPerGallon = (60 / flowMeterConfig[1]) * 3.78; //60sec / meter's liters per min * 3.78 lpg = 41 seconds per gallon
-		int feedingSeconds = secondsPerGallon * topOffAmount; //41 seconds * topOff gallons
-		int drainingSeconds = secondsPerGallon * topOffAmount; //41 seconds * topOff gallons
-
 		//Drain configured gallons first by drainingSeconds
-		while (drainingSeconds--){
-			RelayToggle(12, false); //out
-			RelayToggle(11, true); //in
-			lcd.clear();
-			if (drainingSeconds < 10){
-				lcd.print(F("00"));
-			}
-			else if (drainingSeconds < 100){
-				lcd.print(F("0"));
-			}
-			lcd.print(drainingSeconds);
-			lcd.print(F(" SECONDS IN"));
-			lcd.setCursor(0, 1);
-			lcd.print(F("DRAINING REMAIN"));
-			delay(1000);
-		}
-
+		drainPlants(0, secondsPerGallon * topOffAmount); //41 seconds * topOff gallons
 		//Feed configured gallons next by feedingSeconds
-		while (feedingSeconds--){
-			RelayToggle(12, true); //out
-			RelayToggle(11, false); //in
-			checkFlowRates();
-			lcd.clear();
-			if (feedingSeconds < 10){
-				lcd.print(F("00"));
-			}
-			else if (feedingSeconds < 100){
-				lcd.print(F("0"));
-			}
-			lcd.print(feedingSeconds);
-			lcd.print(F(" SECONDS IN"));
-			lcd.setCursor(0,1);
-			lcd.print(F("FEEDING REMAIN"));
-			//have we run out of topoff water?
-			if (flowInRate > 0.025 && feedingType == 2){ 
-				break; //Stop EC correction if reservoir beings filling up
-			}
-			delay(1000);
-		}
+		feedPlants(0, secondsPerGallon * topOffAmount); //41 seconds * topOff gallons
+
+		//Preventive measures must be taken
 		RelayToggle(11, false);
 		RelayToggle(12, false);
-		ecMillis = millis(); //reset EC millis
+
+		//Proventative measures
+		resetTimestamps();
 	}
 }
 
 //is it time to fix ph dift of plant water?
 void correctPlantPH(){
-	if (flowOutRate > 0.01) { return; } //no pH corrections while feeding or topoff is taking place
+	if (flowOutRate > 0.025) { return; } //no pH corrections while feeding or topoff is taking place
 	if (feedingType == 0) { return; } //we don't want to correct plant pH while under full feeding type
 	if (((millis() - phPlantMillis) < (phDelay * 60000))) { return; } // have we waited long enough since our last pH correction?
 	float pH = getPHProbeValue(PLANTPH);
@@ -169,14 +134,19 @@ void correctPlantPH(){
 		else if (pH < minPH){	//we must micro-ph-dose our plant water UP
 			pumpSpin(phAmount, 9);
 		}
-		phPlantMillis = millis();
+		//Proventative measures
+		resetTimestamps();
 	}
+
 }
 
 //is it time fix reservoir pH drift?
 void correctRsvrPH(){
-	//are we permitted to correct reservoir pH?
-	if ((flowInRate > 0.01 || flowOutRate > 0.01) || ((millis() - phRsvrMillis) < (phDelay * 60000))) { return; }
+	//can't proceed if we have a flow rate in either direction
+	if ((flowInRate > 0.025 || flowOutRate > 0.025)) { return; }
+	//can't proceed if we have not waited long enough since last time we pH corrected
+	if (((millis() - phRsvrMillis) < (phDelay * 60000))) { return; }
+
 	float pH = getPHProbeValue(RSVRPH);
 	if (pH > maxPH || pH < minPH){ //if current ph is outside of configred ph ranges
 		lcd.clear();
@@ -184,7 +154,8 @@ void correctRsvrPH(){
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEAES HOLD!!!"));
 		pumpSpin(phAmount, 8);
-		phRsvrMillis = millis();
+		//Proventative measures
+		resetTimestamps();
 	}
 }
 
@@ -216,6 +187,7 @@ float getPHProbeValue(byte channel){
 	}
 	return returnedValue.toFloat();
 }
+
 //Get either EC probe values
 int getECProbeValue(byte channel){					
 	Wire.beginTransmission(channel_ids[channel]);			// open a EC channel
@@ -361,7 +333,9 @@ void makeNewFile(String path, JsonObject& data){
 	tmpFile.close();
 	Serial.flush();
 }
-
+void resetTimestamps(){
+	ecMillis = phRsvrMillis = phPlantMillis = flowMillis = millis();
+}
 
 //converts tmpInts array into a whole number that send to our EC circuts.
 int tmpIntsToInt(byte decimalPlaces){

@@ -265,43 +265,102 @@ void saveDrainTime(){
 }
 
 //Helpers
-void checkFlowRates(){
-	//detach ISRs
-	detachInterrupt(digitalPinToInterrupt(FlowPinIn));
-	detachInterrupt(digitalPinToInterrupt(FlowPinOut));
 
-	//Get our rate of flow for either irrigation directions
-	flowInRate = ((1000.0 / (millis() - homeMillis)) * pulseInFlowCount) / flowMeterConfig[0]; 
-	flowOutRate = ((1000.0 / (millis() - homeMillis)) * pulseOutFlowCount) / flowMeterConfig[1];
+//Flush only plant water (drainTime config based)
+void drainPlants(int min = 0, int sec = 0){
+	lcd.clear();
+	lcd.print(F("FLUSHING PLANTS"));
+	lcd.setCursor(0, 1);
+	lcd.print(F("PLEASE HOLD!!!"));
+	RelayToggle(11, false);
+	RelayToggle(12, true);
+	int i = (min * 60) + sec; //mins x 60secs = loop total
+	while (i--){
+		delay(1000); //1 second delay ensures we don't exceed 30k delay max
+	}
+	RelayToggle(12, false); //if out of wait loops, we turn drain valve off.
+}
+
+//Flush only reservoir water (flowInRate event based)
+void feedPlants(int min = 0, int sec = 0){
+	lcd.clear();
+	lcd.print(F("FEEDING PLANTS"));
+	lcd.setCursor(0, 1);
+	lcd.print(F("PLEASE HOLD!!!"));
+	RelayToggle(11, true);
+	RelayToggle(12, false);
+	flowInRate = flowOutRate = pulseInFlowCount = pulseOutFlowCount = 0;
+	if (min == 0 && sec == 0){ //event based drain
+		while (flowInRate < 0.025){
+			checkFlowRates();
+		}
+	}
+	else {
+		int i = (min * 60) + sec;
+		while (i--){ //time based drain
+			checkFlowRates();
+			if (flowInRate > 0.025 && feedingType == 2){ //early stop if reservoir starts filling up
+				break; //Stop EC correction if reservoir beings filling up
+			}
+			delay(1000);
+		}
+	}
+	RelayToggle(11, false);
+}
+
+void checkFlowRates(){
+	if ((millis() - flowMillis) <= 1000){ return; }
+
+	//detach ISRs
+	//detachInterrupt(digitalPinToInterrupt(FlowPinIn));
+	//detachInterrupt(digitalPinToInterrupt(FlowPinOut));
+
+	//Capture our flow rates for both irrigation directions
+	//lcd.clear();
+	//lcd.print(pulseInFlowCount);
+	//lcd.setCursor(0,1);
+	//lcd.print(pulseOutFlowCount);
+	//delay(2000);
+
+	flowInRate = ((1000.0 / (millis() - flowMillis)) * pulseInFlowCount) / flowMeterConfig[0];
+	flowOutRate = ((1000.0 / (millis() - flowMillis)) * pulseOutFlowCount) / flowMeterConfig[1];
 
 	//automated irrigation or a menu config editing irrigation?
 	//we don't want to store or capture currentRsvrVol while configuring OS
 	if (screenName == ""){
 		//do we have a flow rate for in?
-		if (flowInRate > 0.025){ //true irrigations will be over .025 (for safe measure)
+		if (flowInRate > 1){ //true irrigations will be over .025 (for safe measure)
 			currentRsvrVol += (flowInRate / 60) * 1000;
 			irrigationInFlag = true; //flag OS while irrigation is taking place
 			RelayToggle(11, false); //ensures that we are not feeding un-dosed water to plants
-			if (feedingType == 2){
+			//lcd.clear();
+			//lcd.print("IN FLOW RATE");
+			if (feedingType == 2 && cropStatus == 1){
 				moveToNextRegimen();
 			}
 		}
 
 		//do we have a flow rate for out?
-		if (flowOutRate > 0.025){ //true irrigations will be over .025 (for safe measure)
+		if (flowOutRate > 1){ //true irrigations will be over .025 (for safe measure)
 			currentRsvrVol -= (flowOutRate / 60) * 1000;
 			currentRsvrVol = (currentRsvrVol > 0) ? currentRsvrVol : 0; //prevents rsvr vol from falling below 0
 			irrigationOutFlag = true; //flag OS while irrigation is taking place
-			if (flowInRate > 0.01){ RelayToggle(11, false); } //ensures that we are not feeding un-dosed water to plants
+			//lcd.clear();
+			//lcd.print("OUT FLOW RATE");
+			if (flowInRate > 0.05){ RelayToggle(11, false); } //ensures that we are not feeding un-dosed water to plants
 		}
 
 		//when all flowRates have stopped, we store data
 		if ((irrigationInFlag == true || irrigationOutFlag == true) && flowInRate < 0.01 && flowOutRate < 0.01){
 			if (irrigationInFlag == true){
 				irrigationInFlag = false; //reset irrigation flag for OS
+				//lcd.clear();
+				//lcd.print("IN RATE STOP");
 			}
 			if (irrigationOutFlag == true){
 				irrigationOutFlag = false; //reset irrigation flag for OS
+				//lcd.clear();
+				//lcd.print("OUT RATE STOP");
 			}
 
 			//store the reservoir's remaining volume
@@ -311,11 +370,15 @@ void checkFlowRates(){
 			setIrrigationData(irrigationData);
 		}
 	}
+
 	pulseInFlowCount = pulseOutFlowCount = 0; //reset pulse counts for next time around
 
 	//re-attach ISRs
-	attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, FALLING);
-	attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, FALLING);
+	//attachInterrupt(digitalPinToInterrupt(FlowPinIn), countRsvrFill, RISING);
+	//attachInterrupt(digitalPinToInterrupt(FlowPinOut), countRsvrDrain, RISING);
+
+	//reset flowMillis
+	flowMillis = millis();
 }
 
 //flow rate counter for in
@@ -325,37 +388,4 @@ void countRsvrFill(){
 //flow rate counter for out
 void countRsvrDrain(){
 	pulseOutFlowCount++;
-}
-//Flush only plant water (drainTime config based)
-void flushPlantWater(){
-	lcd.clear();
-	lcd.print(F("FLUSHING PLANTS"));
-	lcd.setCursor(0, 1);
-	lcd.print(F("PLEASE HOLD!!!"));
-	RelayToggle(11, false);
-	RelayToggle(12, true);
-	int i = drainTime * 60; //mins x 60secs = loop total
-	while (i--){//loop to count i (aka seconds), then delay each loop by 1 second
-		if (i == 0){ //we done waiting?
-			RelayToggle(12, false); //if out of wait loops, we turn drain valve off.
-		}
-		delay(1000); //1 second delay ensures we don't exceed 30k delay max
-		Serial.flush();
-	}
-}
-//Flush only reservoir water (flowInRate event based)
-void flushRsvrWater(){
-	RelayToggle(11, true);
-	flowInRate = pulseInFlowCount = 0;
-	while (flowInRate < 0.01){
-		if ((millis() - flowMillis) >= 1000){
-			checkFlowRates();
-			lcd.clear();
-			lcd.print(F("FEEDING PLANTS"));
-			lcd.setCursor(0, 1);
-			lcd.print(F("PLEASE HOLD!!!"));
-			flowMillis = millis();
-			Serial.flush();
-		}
-	}
 }

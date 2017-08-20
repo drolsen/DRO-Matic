@@ -212,4 +212,3 @@ const char nov[4] PROGMEM = "Nov";
 const char dec[4] PROGMEM = "Dec";
 
 const char* const months[12] PROGMEM = { jan, feb, mar, apl, may, jun, jul, aug, sep, oct, nov, dec };
-

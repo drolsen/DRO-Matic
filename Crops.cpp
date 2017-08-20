@@ -230,7 +230,7 @@ void cropBuild(){
 	irrigate["tpfamt"] = 0.25;
 	irrigate["currentVol"] = 0;
 	irrigate["drntime"] = 10;
-	flMeters.add(5.5);
+	flMeters.add(4.8);
 	flMeters.add(5.5);
 
 	//Timers File
