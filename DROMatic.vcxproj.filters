@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="DROMatic.ino" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.DROMatic.vsarduino.h">
