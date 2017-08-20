@@ -4,3 +4,5 @@
 /Release/
 *.TMP
 !.gitignore
+.gitattributes
+*.suo
