@@ -218,7 +218,7 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "PUMPDLY"){
+		if (screenName == "DELAY"){
 			matrix = {
 				{ { 2, 2 } },
 				{ { 1, 1 }, { 13, 13 } }
@@ -347,7 +347,7 @@ void loop()
 				printPumpCalibration(dir);
 			}
 		}
-		if (screenName == "PUMPDLY"){
+		if (screenName == "DELAY"){
 			if (cursorX == 2 && cursorY == 0){
 				printPumpDelay(dir);
 			}
@@ -501,7 +501,7 @@ void loop()
 					tmpInts[0] = pumpCalibration;
 					printPumpCalibration();
 				}
-				if (screenName == "PUMPDLY"){
+				if (screenName == "DELAY"){
 					tmpInts[0] = pumpDelay;
 					printPumpDelay();
 				}
@@ -743,7 +743,7 @@ void loop()
 		if (screenName == "PUMPCAL"){
 			savePumpCalibration();
 		}
-		if (screenName == "PUMPDLY"){
+		if (screenName == "DELAY"){
 			savePumpDelay();
 		}
 		if (screenName == "AMOUNT"){
