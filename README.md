@@ -5,21 +5,22 @@ The OS allow users to create, configure and share what are called "crops" by int
 A single DRO-Matic crop disk size (SD card) can very, but in very extreme crop configurations (10 channels, 100 weeks of dosing sessions per channel) were found to be just under 5MB.
 
 ## Why?
-With a DRO-Matic you are allowed you be flexible in any way which you would like to configure both the dosings of your hydroponic solutions. 
-However, before we get into the settings and configuration of the OS, its important to ask our selfs why this even exists? 
-It's undoubtedly true across almost all cultures that agriculture and food growth is not only a necessity but also expensive. 
-Agriculture is expensive in the amount of land used, energy spent to get to harvest, and even time spent consistency with successful crops year after year.
+With a DRO-Matic you are allowed to be flexible in any which way you would like to configure your hydroponic solutions. 
+However, before we get into the configuration of the OS, it's important to ask ourselves why this even exists? 
+It's undoubtedly true across all cultures that agriculture and food growth is not only a necessity but also very expensive. 
+Agriculture is expensive in the amount of land used, time used to harvest, and energy spent to obtaining consistant crops year after year.
 
-In steps hydroponics, and vertical farming. We now have the technology to begin moving farms into a hydroponic setup that stacks vertically. 
-This means no more time spent in large scale soil maintenance, crops can be summed up into much smaller spaces and thus operations can get bigger (concentrated spaces if you will), and crop consistency is much easier to achieve.
+We now have the technology to move large soil based farms into a vertical hydroponic setup to save land, time and money in mass food production. This means no more time spent at large scale soil maintenance, farms can summed up into much smaller but scaleable spaces, and crop consistency is much easier to achieve all year.
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=BwgXb9h-Qgs
 " target="_blank"><img src="http://img.youtube.com/vi/BwgXb9h-Qgs/0.jpg" 
 alt="" width="900" height="620" border="10" /></a>
 
-However, the big down side to moving to vertical farming or hydroponics in general means you do have to learn a lot about nutrients, dosing regimens, regimen drifting, EC/PPM and PH testing etc etc.
+However the big down side to moving to vertical farming (or hydroponics in general) means you do have to learn a lot about nutrients, dosing regimens, regimen drifting, EC/PPM and PH testing etc etc. Because of this rather large learning curve, we don't see a lot of traditional farmer make the jump to this more cost effective solution because of this sheer learning curve. We need a way to simply the entire process of hydropinic farming for everyone and still be scaleable...
 
-In steps the DRO-Matic OS to take care of all the heavy lifting in hydroponic farming for you. Our goal is curve the time spent learning and maintaining hydroponic farms in hopes to better bring this much more efficient way of food production to a lot more farmers.
+In steps the DRO-Matic OS to take care of all the heavy lifting our of your hydroponic farming needs. The goal is curve all time spent learning and maintaining hydroponic farms by automating nearly every aspect and ultimatly bring a much more efficient way of food production option to the world.
+
+Please note that this OS is only the OS part of this solution; without the actual DRO-Matic dosing cabinet (not commercially available, must DIY build), this OS makes no sense for you yet. For detailed instructions on how to DIY build your own DRO-Matic cabinet, please visit our <a href="https://github.com/drolsen/DRO-Matic/wiki/6)-Hardware-Requirements">hardware requirements page videos.</a>
 
 ## OS Overview
 Th DRO-Matic OS has the ability to fully automate the follow process for you:
@@ -40,6 +41,7 @@ Below is a overview of the available OS features.
 - **EC Calibration** = 3 point calibration (Dry, Low, High) for both EC probes.
 - **pH Calibration** = 3 point calibration (Low, Mid, High) for both pH probes.
 - **Pump Calibration** = Calibrate how many milliliters per minute your perstaltics can pumps.
+- **Pump Delay** = Calibrate how long of a delay each dosing pump should take between dosing each solution (allows time to fully mix each solution).
 
 ### <a href="https://github.com/drolsen/DRO-Matic/wiki/2)-Crop-Settings">Crop Settings</a>
 - **New Crop** = Start a brand new crop project on your SD card

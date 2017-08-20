@@ -21,66 +21,66 @@
     <ClInclude Include="__vm\.DROMatic.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Globals.h">
+    <ClInclude Include="src\Core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Crops.h">
+    <ClInclude Include="src\Crops.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Core.h">
+    <ClInclude Include="src\DatesTime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Menus.h">
+    <ClInclude Include="src\Globals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DatesTime.h">
+    <ClInclude Include="src\Irrigation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Screens.h">
+    <ClInclude Include="src\Menus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Timers.h">
+    <ClInclude Include="src\Pumps.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Irrigation.h">
+    <ClInclude Include="src\Regimens.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Regimens.h">
+    <ClInclude Include="src\Screens.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Pumps.h">
+    <ClInclude Include="src\Timers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Globals.cpp">
+    <ClCompile Include="src\Core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Crops.cpp">
+    <ClCompile Include="src\Crops.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core.cpp">
+    <ClCompile Include="src\DatesTime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Menus.cpp">
+    <ClCompile Include="src\Globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DatesTime.cpp">
+    <ClCompile Include="src\Irrigation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Screens.cpp">
+    <ClCompile Include="src\Menus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Timers.cpp">
+    <ClCompile Include="src\Pumps.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Irrigation.cpp">
+    <ClCompile Include="src\Regimens.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Regimens.cpp">
+    <ClCompile Include="src\Screens.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Pumps.cpp">
+    <ClCompile Include="src\Timers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
