@@ -209,7 +209,7 @@ void moveToNextRegimen(){
 
 //Regimen dosing functionality
 void checkRegimenDosing(){
-	if (flowInRate > 0.01 || feedingType == 2) { return; } //if we have a flowInRate, we can't proceed.
+	if (flowInRate > 0.05 || feedingType == 2) { return; } //if we have a flowInRate, we can't proceed.
 	if (((millis() - phRsvrMillis) < (phDelay * 60))){ return; } //if we have not waited longer enough since last pH adjustment, we can't proceed. 
 	float pH = getPHProbeValue(RSVRPH);
 	if (pH > maxPH || pH < minPH) { return; } //if we still have a pH lower or higher than configured range, we can't proceed.
@@ -222,7 +222,12 @@ void checkRegimenDosing(){
 
 	for (byte i = 1; i <= 7; i++){
 		lcd.clear();
-		lcd.print(F("DOSING REGIMEN"));
+		if (feedingType == 0){
+			lcd.print(F("DOSING REGIMEN"));
+		}
+		else if (feedingType == 1){
+			lcd.print(F("DOSING TOPOFF"));
+		}
 		lcd.setCursor(0, 1);
 		lcd.print(F("PLEASE HOLD!!"));
 		lcd.home();
@@ -239,8 +244,8 @@ void checkRegimenDosing(){
 		if (i == 7){
 			//if this is a full feedingType dosing, we flush the whole
 			if (feedingType == 0){	//only while under full feeding type do we flush entire batch of water to plants
-				flushPlantWater();	//flush any exsisting poopy water away from plants
-				flushRsvrWater();	//next, we feed our enture batch of freshly dosed water to plants.
+				drainPlants(drainTime);	//flush all exsisting poopy plant water
+				feedPlants();	//next, we feed our entire batch of freshly dosed water to plants.
 				cropData["feedType"] = feedingType = 1;	//lastly we progress crop to next feeding type to being top off dosing
 			}else if (feedingType == 1){ 
 				cropData["feedType"] = feedingType = 2; 
