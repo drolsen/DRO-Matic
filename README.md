@@ -1,20 +1,20 @@
 # DRO<img src="https://raw.githubusercontent.com/devinrayolsen/DRO-Matic/master/Docs/images/hydro-hyphen.png" width="64">Matic OS
 
 The DRO-Matic OS has been built to automate nearly every aspect of hydroponic farming for you! 
-From nutrient dosing to pH / EC drift fixing, feeding types to draining and top-offs to timers; we have quantified everything you need to automate successful crops. 
+From nutrient dosing to pH / EC drift fixing, feeding types to draining, top-offs and even timers; we have quantified everything you need to automate successful crops. 
 
-Users create, configure and even share what are called "crops" by interfacing with an LCD screen and external MicroSD card. 
+Users create, configure and share what are called "crops" by interfacing with an LCD screen and external MicroSD card. 
 A single DRO-Matic crop disk size (SD card) can vary, but in very extreme crop configurations (10 channels, 100 weeks of dosing sessions per channel) were found to be just under 5MB.
-The OS has also been built to scale to nearly any size farm, so have no fear if you are considering using this for a large-scale farm or just as a small personal garden.
+The OS has also been built to scale to nearly any size farm; so, have no fear if you are considering using this for a large-scale farm or a small personal garden.
 
 ## Why do we need this?
 Before diving into the OS configuration, let's ask ourselves why this even exists? 
 It's undoubtedly true across all cultures that agriculture and food growth is not just a necessity, but is also very expensive. 
-Agriculture is most expensive in amount of land used, but also time spent to get a harvest and even energy burned to obtain consistent quality.
-While human race can expect another 9 billion people over the next 30 years, we need to seriously address the fact that as of today, nearly 90% of all farmable land is currently being used at its max capacity.
+Agriculture is not only expensive in amount of land used, but also time spent to get a harvest and even energy burned to obtain consistent quality.
+While humans can expect another 9 billion people over the next 30 years; we need to seriously address the fact that as of today 90% of all farmable land is currently being used at its max capacity.
 
 The technology to solve feeding 9 billion people is available and also removes the costly impacts of large soil based farms, it’s called vertical hydroponic farming.
-Vertical farms save vital land usage by summing farms up into much smaller (stackable) area, and saves time/money at food production because it's quicker to achieve a consistent crop quality ALL YEAR LONG.
+Vertical farms save vital land usage by summing farms up into much smaller (stackable) areas. Vertical gardens save time/money at food production because it's quicker to achieve a consistent crop quality ALL YEAR LONG.
 
 (this video explains the problem and pros of vertical farming in further detail)
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=BwgXb9h-Qgs
@@ -22,10 +22,10 @@ Vertical farms save vital land usage by summing farms up into much smaller (stac
 alt="" width="900" height="620" border="10" /></a>
 
 However, the down side to vertical farming (or hydroponics in general) is you do have to learn A LOT about nutrients, dosing regimens, regimen drifting, EC/PPM and PH testing etc etc. 
-Because of the large learning curve, we still don't see a lot of traditional farmers make the jump to this more cost effective solution. 
-So, to answer the question "Why", farmers need a way to simply the process of hydroponic farming if we are ever going to be serious about seeing efforts in addressing our very serious agriculture issue.
+Because of the large learning curve, we still don't see a lot of traditional farmers make the jump to this more cost-effective solution. 
+So, to answer the question of "Why DRO-Matic"; it all comes down to farmers need a way to simplify the process of hydroponic farming and what better way to do this than to go fully automated.
 
-In steps the DRO-Matic OS to take care of all the heavy lifting our of your hydroponic farming needs. The goal is curve all time spent learning and maintaining hydroponic farms by automating nearly every aspect and ultimately bring a much more efficient way of food production option to the world.
+The DRO-Matic OS is here to take care of all the heavy lifting our of your hydroponic farming needs. The goal is curve all time spent learning and maintaining hydroponic farms by automating nearly every aspect and ultimately bring a much more efficient way of food production option to the world.
 Please note that this OS is only the OS part of this solution; without the actual DRO-Matic dosing cabinet (not commercially available, must DIY build), this OS makes no sense for you yet. For detailed instructions on how to DIY build your own DRO-Matic cabinet, please visit our <a href="https://github.com/drolsen/DRO-Matic/wiki/6)-Hardware-Requirements">hardware requirements page videos. </a>
 
 ## OS Overview
@@ -72,5 +72,5 @@ Below is a overview of the available OS features.
 
 
 ### <a href="https://github.com/drolsen/DRO-Matic/wiki/5)-Timer-Settings">Timer Settings (after choosing a timer)</a>
-- **Start End Times** = Configure start and end times over a given day of the week, for an infinate amonut of configurable weeks.
+- **Start End Times** = Configure start and end times over a given day of the week, for an infinite amount of configurable weeks.
 
