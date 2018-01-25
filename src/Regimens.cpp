@@ -15,16 +15,16 @@
 
 byte currentRegimenIndex;
 //Read & Write from SD
-JsonObject& getRegimenData(JsonBuffer& b, byte pumpIndex = currentPumpIndex, byte sessionIndex = currentRegimenIndex){
-	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pmpse" + sessionIndex + ".dro", O_READ);
+JsonObject& getRegimenData(JsonBuffer& b, byte pumpIndex = currentPumpIndex, byte regimenIndex = currentRegimenIndex){
+	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pmpse" + regimenIndex + ".dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
 
-void setRegimenData(JsonObject& d, byte pumpIndex = currentPumpIndex, byte sessionIndex = currentRegimenIndex, bool returnHome = true){
+void setRegimenData(JsonObject& d, byte pumpIndex = currentPumpIndex, byte regimenIndex = currentRegimenIndex, bool returnHome = true){
 	char b[256];
-	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pmpse" + sessionIndex + ".dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/pumps/syspmp" + pumpIndex + "/pmpse" + regimenIndex + ".dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -62,9 +62,12 @@ void printRegimenAmount(int dir = 0){
 	if (dir != 0 && cursorX == 12){ 
 		//only when changing value
 		lcd.clear();
+
 		if (dir > 0){
 			tmpFloats[0] += .1;
-		}else{
+		}
+
+		if (dir < 0){
 			tmpFloats[0] -= .1;
 		}
 
@@ -188,23 +191,21 @@ void moveToNextRegimen(){
 	lcd.clear();
 	lcd.print(F("MOVING ONTO"));
 	lcd.setCursor(0, 1);
-	lcd.print(F("NEXT REGIMEN"));
-	currentRegimen++;
-	currentRegimen = (currentRegimen > maxRegimens) ? maxRegimens : currentRegimen;
+	currentRegimen = ((currentRegimen+1) >= maxRegimens) ? currentRegimen : (currentRegimen+1);
+	lcd.print(currentRegimen);
+	lcd.print(F(" REGIMEN"));
+	
 	StaticJsonBuffer<cropBufferSize> cropBuffer;
 	JsonObject& cropData = getCropData(cropBuffer);
 	cropData["currentReg"] = currentRegimen;
 	cropData["feedType"] = feedingType = 0;
-
-	//are we loading new regimen ranges, or continuing last ones?
-	if (currentRegimen != maxRegimens){
-		//load EC Conductivity ranges
-		StaticJsonBuffer<ecBufferSize> ecBuffer;
-		JsonObject& ECData = getECData(ecBuffer, currentRegimen);
-		minPPM = ECData["ec"].asArray()[0];
-		maxPPM = ECData["ec"].asArray()[1];
-	}
 	setCropData(cropData);
+
+	//load new EC ranges
+	StaticJsonBuffer<ecBufferSize> ecBuffer;
+	JsonObject& ECData = getECData(ecBuffer, currentRegimen);
+	minPPM = ECData["ec"].asArray()[0];
+	maxPPM = ECData["ec"].asArray()[1];
 }
 
 //Regimen dosing functionality
@@ -232,6 +233,7 @@ void checkRegimenDosing(){
 		lcd.print(F("RSVR EC:"));
 		lcd.print(getECProbeValue(RSVREC));
 		lcd.home();
+
 		//Get current regimen's ml dosing amount for this pump
 		StaticJsonBuffer<regimenBufferSize> regimenBuffer;
 		JsonObject& regimenData = getRegimenData(regimenBuffer, i, currentRegimen); //remember, this is a single pump instance (aka getPumpData)
@@ -240,15 +242,15 @@ void checkRegimenDosing(){
 		float ml = (feedingType == 0) ? (amount * rsvrVol) : (concentrate * rsvrVol);
 		pumpSpin(ml, i); //perform dosing 
 
-		//Third, if we have reached the end of our 7 available pumps
-		//we need to update our crop settings to let OS know if current reservoir water is full feeding water, or topoff feeding water
+		//Have reached the end of our 7 available pumps?
+		//We need to update our crop settings to let OS know if current reservoir water is full feeding water, or topoff feeding water
 		if (i == 7){
 			//if this is a full feedingType dosing, we flush the whole
 			if (feedingType == 0){	//only while under full feeding type do we flush entire batch of water to plants
 				drainPlants(drainTime);	//flush all exsisting poopy plant water
 				feedPlants();	//next, we feed our entire batch of freshly dosed water to plants.
 				cropData["feedType"] = feedingType = 1;	//lastly we progress crop to next feeding type to being top off dosing
-			}else if (feedingType == 1){ 
+			} else if (feedingType == 1) { 
 				cropData["feedType"] = feedingType = 2; 
 			}
 			setCropData(cropData); //save

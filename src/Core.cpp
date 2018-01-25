@@ -88,7 +88,7 @@ void correctPlantEC(){
 	if (rsvrpH > maxPH || rsvrpH < minPH) { return; } //sorry, no EC correction while reservoir pH is out of range
 	if (plantpH > maxPH || plantpH < minPH) { return; } //sorry, no EC correction while plants pH is out of range
 	
-	int EC = getECProbeValue(PLANTEC); 
+	int EC = getECProbeValue(PLANTEC);
 
 	if ((EC > maxPPM || EC < minPPM)){
 		StaticJsonBuffer<cropBufferSize> cropBuffer;
@@ -100,10 +100,11 @@ void correctPlantEC(){
 		lcd.print(F("PLEASE HOLD!!!"));
 		flowOutRate = flowInRate = pulseInFlowCount = 0;
 
-		//Drain plant water by configred gallons converted into time (seconds)
-		drainPlants(0, ((60 / flowMeterConfig[1]) * 3.78) * topOffAmount);
-		//Feed plants by by configured gallon amount
-		feedPlants(topOffAmount); //41 seconds * topOff gallons
+		//Drain plant water by time
+		drainPlants(0, 10);
+
+		//Feed plants by time
+		feedPlants(0, 8);
 
 		//Preventive measures must be taken
 		RelayToggle(11, false);
