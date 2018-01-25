@@ -109,24 +109,32 @@ void loop()
 	if (Key >= 0 && Key <= 650){
 		homeMillis = menuMillis = millis();
 	}
-	//OS monitors flowRates of both irrigation directions
+	//If no menu interactions have happened after 10 seconds
 	if ((millis() - menuMillis) >= 10000){
-		checkFlowRates();
-	}
-	//1 second has passed
-	if ((millis() - homeMillis) >= 1000){
-		if (screenName == "" && (millis() - menuMillis >= 10000) && cropStatus == 1) {
-			correctRsvrPH();
-			correctPlantPH();
-			correctPlantEC();
-			checkRegimenDosing();
+
+		//OS monitors flowRates of both irrigation directions
+		if ((millis() - flowMillis) >= 1000){
+			checkFlowRates();
+			if (screenName == "RSVRVOL"){
+				printReservoirVolume();
+			}
 		}
-		if (screenName == "RSVRVOL"){
-			printReservoirVolume();
-		}
-		if ((millis() - homeMillis) >= 2000 && (millis() - menuMillis >= 10000) && screenName == "") {
-			printHomeScreen();	   //finally we call the print home method
-			homeMillis = millis(); //reset home millis
+
+		//Home print, PH corrections and EC corrections
+		if ((millis() - homeMillis) >= 1000){
+			if (screenName == "") {
+				if (cropStatus == 1){
+					correctPlantPH(); //check if plant PH correction is needed
+					correctPlantEC(); //check if plant EC correction is needed
+					correctRsvrPH(); //check if reservoir PH correction is needed
+					checkRegimenDosing(); //check if we are ready for a regimen dosing (full or topoff)
+				}
+
+				if ((millis() - homeMillis) >= 2000) {
+					printHomeScreen();	   //home print
+					homeMillis = millis(); //home millis reset 
+				}
+			}
 		}
 	}
 
@@ -206,7 +214,7 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "DOSES"){
+		if (screenName == "REGIMENS"){
 			matrix = {
 				{ { 1, 1 } },
 				{ { 1, 1 }, { 13, 13 } }
@@ -236,7 +244,7 @@ void loop()
 				{ { 1, 1 }, { 13, 13 } }
 			};
 		}
-		if (screenName == "TPFAMT"){
+		if (screenName == "TPFAMNT"){
 			matrix = {
 				{ { 15, 15 } },
 				{ { 1, 1 }, { 13, 13 } }
@@ -337,7 +345,7 @@ void loop()
 				printStatus(dir);
 			}
 		}
-		if (screenName == "DOSES"){
+		if (screenName == "REGIMENS"){
 			if (cursorX == 1 && cursorY == 0){
 				printRegimenNumber(dir);
 			}
@@ -362,8 +370,8 @@ void loop()
 				printTopOffConcentrate(dir);
 			}
 		}
-		if (screenName == "TPFAMT"){
-			if (cursorX == 0 && cursorY == 0){
+		if (screenName == "TPFAMNT"){
+			if (cursorX == 15 && cursorY == 0){
 				printTopOffAmount(dir);
 			}
 		}
@@ -477,14 +485,15 @@ void loop()
 				if (screenName == "RESET"){
 					printReset();
 				}
-				//if (screenName == "DELETE"){}
+
 				if (screenName == "STATUS") {
 					printStatus();
 				}
 				if (screenName == "RSVRVOL"){
+					menuMillis = 9000; //bypasses the 10second menuMillis wait period
 					tmpFloats[0] = 0;
 				}
-				if (screenName == "DOSES"){
+				if (screenName == "REGIMENS"){
 					cursorX = 1;
 					cursorY = 0;
 					StaticJsonBuffer<cropBufferSize> buffer;
@@ -512,7 +521,7 @@ void loop()
 					tmpInts[0] = topOffConcentrate;
 					printTopOffConcentrate();
 				}
-				if (screenName == "TPFAMT"){
+				if (screenName == "TPFAMNT"){
 					tmpInts[0] = topOffAmount;
 					printTopOffAmount();
 				}
@@ -707,13 +716,14 @@ void loop()
 			cropReset();
 		}
 		//if (screenName == "DELETE") {}
+
 		if (screenName == "STATUS") {
 			saveStatus();
 		}
 		if (screenName == "RSVRVOL") {
 			saveReservoirVolume();
 		}
-		if (screenName == "DOSES"){
+		if (screenName == "REGIMENS"){
 			if (cursorX == 13 && cursorY == 1){
 				lcd.clear();
 				StaticJsonBuffer<cropBufferSize> buffer;
@@ -752,7 +762,7 @@ void loop()
 		if (screenName == "TPFCCNT"){
 			saveTopOffConcentrate();
 		}
-		if (screenName == "TPFAMT"){
+		if (screenName == "TPFAMNT"){
 			saveTopOffAmount();
 		}
 		if (screenName == "TPFDLY") {

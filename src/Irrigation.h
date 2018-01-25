@@ -30,7 +30,7 @@ extern void saveFlowCalibration();
 extern void saveDrainTime();
 
 //Helpers
-extern void feedPlants(float amount = 0);
+extern void feedPlants(int min = 0, int sec = 0);
 extern void drainPlants(int min = 0, int sec = 0);
 extern void checkFlowRates();
 extern void countRsvrFill();

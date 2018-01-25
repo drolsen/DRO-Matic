@@ -36,14 +36,14 @@ void setCropData(JsonObject& d, bool returnHome = true){
 }
 
 JsonObject& getECData(JsonBuffer& b, byte ecRangeIndex = 1){
-	tmpFile = SD.open("dromatic/" + cropName + "/Crop/EC/ECRng" + ecRangeIndex + ".dro", O_READ);
+	tmpFile = SD.open("dromatic/" + cropName + "/Crop/ECRange/ECRng" + ecRangeIndex + ".dro", O_READ);
 	JsonObject& d = b.parseObject(tmpFile.readString());
 	tmpFile.close();
 	return d;
 }
 void setECData(JsonObject& d, byte ecRangeIndex = 1){
 	char b[512];
-	tmpFile = SD.open("dromatic/" + cropName + "/Crop/EC/ECRng" + ecRangeIndex + ".dro", O_WRITE | O_TRUNC);
+	tmpFile = SD.open("dromatic/" + cropName + "/Crop/ECRange/ECRng" + ecRangeIndex + ".dro", O_WRITE | O_TRUNC);
 	d.printTo(b, sizeof(b));
 	tmpFile.print(b);
 	tmpFile.close();
@@ -283,7 +283,7 @@ void cropBuild(){
 
 	//EC/PPM ranges
 	for (i = 1; i <= 12; i++){ //4 receptacals
-		makeNewFile("dromatic/" + cropName + "/Crop/EC/ECRng" + i + ".dro", ecRange);
+		makeNewFile("dromatic/" + cropName + "/Crop/ECRange/ECRng" + i + ".dro", ecRange);
 	}
 
 	//Now we make the actual files 
@@ -375,8 +375,14 @@ void cropLoad(){
 	//load pump delay
 	pumpDelay = pumpsData["delay"];
 
+	//Capture starting millis flags
+	menuMillis = homeMillis = flowMillis = ecMillis = phRsvrMillis = phPlantMillis = millis();
+
 	//Check recepticals before proceeding
 	checkTimers();
+	//Turning on all recepticals for pump usage
+	RelayToggle(15, true);
+	RelayToggle(16, true);
 }
 
 
