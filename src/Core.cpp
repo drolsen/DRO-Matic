@@ -104,7 +104,7 @@ void correctPlantEC(){
 		drainPlants(0, 10);
 
 		//Feed plants by time
-		feedPlants(0, 8);
+		feedPlants(0, 10);
 
 		//Preventive measures must be taken
 		RelayToggle(11, false);
