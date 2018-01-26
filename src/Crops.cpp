@@ -380,9 +380,6 @@ void cropLoad(){
 
 	//Check recepticals before proceeding
 	checkTimers();
-	//Turning on all recepticals for pump usage
-	RelayToggle(15, true);
-	RelayToggle(16, true);
 }
 
 
