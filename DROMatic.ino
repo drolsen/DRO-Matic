@@ -15,16 +15,16 @@
 #include <ArduinoJson.h> //Arduno Json (aka epic)
 #include <DS3231.h> //Real time clock lib
  
-#include "src\Globals.h" //All temp and PROGMEM global variables
-#include "src\Core.h" //All core functions and variables
-#include "src\Crops.h" //All crop functions and variables
-#include "src\Pumps.h" //All pump functions and variables
-#include "src\Regimens.h" //All session functions and variables
-#include "src\Screens.h" //All screen functions and variables
-#include "src\Menus.h" //All menu functions and variables
-#include "src\DatesTime.h" //All date & time functions and variables
-#include "src\Irrigation.h" //All irrigation related functions and variables
-#include "src\Timers.h" //All timer related functions and variables
+#include "src/Globals.h" //All temp and PROGMEM global variables
+#include "src/Core.h" //All core functions and variables
+#include "src/Crops.h" //All crop functions and variables
+#include "src/Pumps.h" //All pump functions and variables
+#include "src/Regimens.h" //All session functions and variables
+#include "src/Screens.h" //All screen functions and variables
+#include "src/Menus.h" //All menu functions and variables
+#include "src/DatesTime.h" //All date & time functions and variables
+#include "src/Irrigation.h" //All irrigation related functions and variables
+#include "src/Timers.h" //All timer related functions and variables
 
 //OS main setup
 void setup()
