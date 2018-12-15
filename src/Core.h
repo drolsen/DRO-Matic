@@ -10,7 +10,7 @@
 
 #include "Globals.h"
 #include <Wire.h>
-#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+#include <ArduinoJson.h> //Arduno Json (aka epic)
 
 
 extern JsonObject& getCoreData(JsonBuffer& b);

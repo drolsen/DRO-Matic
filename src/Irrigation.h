@@ -7,7 +7,7 @@
 
 #ifndef _IRRIGATION_h
 #define _IRRIGATION_h
-#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+#include <ArduinoJson.h> //Arduno Json (aka epic)
 
 extern JsonObject& getIrrigationData(JsonBuffer& b);
 extern void setIrrigationData(JsonObject& d);

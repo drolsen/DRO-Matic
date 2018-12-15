@@ -8,7 +8,7 @@
 #ifndef _CROPS_h
 #define _CROPS_h
 #include "Globals.h"
-#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+#include <ArduinoJson.h> //Arduno Json (aka epic)
 
 extern String cropName;
 
