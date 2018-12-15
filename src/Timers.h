@@ -8,7 +8,7 @@
 #ifndef _TIMERS_h
 #define _TIMERS_h
 #include "Globals.h"
-#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+#include <ArduinoJson.h> //Arduno Json (aka epic)
 
 extern byte currentTimerIndex, currentTimerSessionIndex, currentTimerSessionDayIndex;
 

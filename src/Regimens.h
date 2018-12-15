@@ -9,7 +9,7 @@
 #define _SESSIONS_h
 #include "Globals.h"
 #include "Pumps.h"
-#include <ArduinoJson\ArduinoJson.h> //Arduno Json (aka epic)
+#include <ArduinoJson.h> //Arduno Json (aka epic)
 
 extern byte currentRegimenIndex;
 

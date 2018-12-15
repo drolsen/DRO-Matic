@@ -12,7 +12,7 @@
 #include <SPI.h> //Suppoting lib for SD card
 #include <SD.h> //SD card API
 #include <StandardCplusplus.h> //STD
-#include <StandardCplusplus\vector> //Vectors
+#include <vector> //Vectors
 #include <LiquidCrystal.h> //lib for interfacing with LCD screen
 #include <DS3231.h> //Real time clock lib
 #include <Adafruit_NeoPixel.h> //LED lib
